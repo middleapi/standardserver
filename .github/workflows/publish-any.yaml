@@ -1,0 +1,22 @@
+name: Publish Any Commit
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - run: pnpm i
+
+      - run: pnpm --filter='./packages/*' run -r build
+
+      - run: pnpm dlx pkg-pr-new publish './packages/*' --pnpm --compact --template './playgrounds/*'

@@ -1,0 +1,38 @@
+name: Publish @next
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - run: pnpm i
+
+      - run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - run: |
+          echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "timestamp=$(date +%Y%m%d%H%M%S)" >> $GITHUB_OUTPUT
+        id: commit
+
+      - run: pnpm dlx bumpp -r --yes --no-push 0.0.0-next.${{ steps.commit.outputs.timestamp }}-${{ steps.commit.outputs.short_sha }}
+
+      - run: pnpm config set '//registry.npmjs.org/:_authToken' "${NPM_TOKEN}"
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - run: pnpm --filter='./packages/*' publish -r --access=public --tag=next
+        env:
+          NPM_CONFIG_PROVENANCE: true

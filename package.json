@@ -1,0 +1,35 @@
+{
+  "name": "@standardserver/repo",
+  "type": "module",
+  "version": "0.0.0",
+  "packageManager": "pnpm@10.24.0",
+  "license": "MIT",
+  "scripts": {
+    "prepare": "simple-git-hooks",
+    "type:check": "pnpm -r run type:check && tsc",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint --max-warnings=0 .",
+    "lint:fix": "eslint --max-warnings=0 --fix .",
+    "monorepo:fix": "sherif --fix"
+  },
+  "devDependencies": {
+    "@antfu/eslint-config": "^6.4.2",
+    "@types/node": "^24.10.1",
+    "@vitest/coverage-v8": "^4.0.15",
+    "eslint": "^9.39.1",
+    "eslint-plugin-format": "^1.1.0",
+    "lint-staged": "^16.2.7",
+    "sherif": "^1.9.0",
+    "simple-git-hooks": "^2.13.1",
+    "typescript": "^5.9.3",
+    "unbuild": "^3.6.1",
+    "vitest": "^4.0.15"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "pnpm lint-staged"
+  },
+  "lint-staged": {
+    "*": "eslint --no-warn-ignored --max-warnings=0 --fix"
+  }
+}
