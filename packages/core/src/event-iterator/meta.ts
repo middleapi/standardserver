@@ -1,4 +1,5 @@
 import type { EventMeta } from './types'
+import { createEnhancedProxy } from '@standardserver/shared'
 import { getPackageSymbol } from '../consts'
 import { assertEventComment, assertEventId, assertEventRetry } from './encoder'
 
@@ -45,13 +46,13 @@ export function withEventMeta<T extends object>(container: T, meta: EventMeta): 
     }
   }
 
-  return new Proxy(container, {
-    get(target, prop, receiver) {
+  return createEnhancedProxy(container, {
+    get(_target, prop, _receiver, fallback) {
       if (prop === EVENT_SOURCE_META_SYMBOL) {
         return meta
       }
-      // @todo - some instance require method to bind to the proxy target before returning
-      return Reflect.get(target, prop, receiver)
+
+      return fallback()
     },
   })
 }

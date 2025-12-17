@@ -1,5 +1,5 @@
 {
-  "name": "@standardserver/core",
+  "name": "@standardserver/shared",
   "type": "module",
   "version": "0.0.0",
   "license": "MIT",
@@ -7,7 +7,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/standardserver/standardserver.git",
-    "directory": "packages/core"
+    "directory": "packages/shared"
   },
   "publishConfig": {
     "exports": {
@@ -27,8 +27,5 @@
   "scripts": {
     "build": "unbuild",
     "type:check": "tsc -b"
-  },
-  "dependencies": {
-    "@standardserver/shared": "workspace:*"
   }
 }
