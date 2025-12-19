@@ -1,21 +1,8 @@
 import type { EventMeta } from './types'
-import { createEnhancedProxy } from '@standardserver/shared'
-import { getPackageSymbol } from '../consts'
+import { createEnhancedProxy, getPackageSymbol, isTypescriptObject } from '@standardserver/shared'
 import { assertEventComment, assertEventId, assertEventRetry } from './encoder'
 
 export const EVENT_SOURCE_META_SYMBOL = getPackageSymbol('EVENT_SOURCE_META')
-
-/**
- * Checks whether the provided container can hold event meta information.
- */
-export function isEventMetaContainer(container: unknown): container is object {
-  if (!container) {
-    return false
-  }
-
-  const type = typeof container
-  return type === 'object' || type === 'function'
-}
 
 /**
  * Attaches event meta information to the provided container.
@@ -61,7 +48,7 @@ export function withEventMeta<T extends object>(container: T, meta: EventMeta): 
  * Retrieves event meta information from the provided container.
  */
 export function getEventMeta(container: unknown): EventMeta | undefined {
-  if (!isEventMetaContainer(container)) {
+  if (!isTypescriptObject(container)) {
     return undefined
   }
 

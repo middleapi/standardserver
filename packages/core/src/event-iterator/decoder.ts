@@ -1,5 +1,5 @@
 import type { EventMessage } from './types'
-import { EventDecoderError } from './errors'
+import { EventDecoderError } from './error'
 
 export function decodeEventMessage(encoded: string): EventMessage {
   const lines = encoded.replace(/\n+$/, '').split(/\n/)

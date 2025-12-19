@@ -1,15 +1,4 @@
-import { getEventMeta, isEventMetaContainer, withEventMeta } from './meta'
-
-it('isEventMetaContainer', () => {
-  expect(isEventMetaContainer(null)).toBe(false)
-  expect(isEventMetaContainer(undefined)).toBe(false)
-  expect(isEventMetaContainer(123)).toBe(false)
-  expect(isEventMetaContainer('string')).toBe(false)
-
-  expect(isEventMetaContainer({})).toBe(true)
-  expect(isEventMetaContainer(new Date())).toBe(true)
-  expect(isEventMetaContainer(() => {})).toBe(true)
-})
+import { getEventMeta, withEventMeta } from './meta'
 
 it('get/withEventMeta', () => {
   const data = { value: 123, meta: undefined }

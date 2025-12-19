@@ -1,5 +1,5 @@
 import type { EventMessage } from './types'
-import { EventEncoderError } from './errors'
+import { EventEncoderError } from './error'
 
 export function assertEventId(id: string): void {
   if (id.includes('\n')) {

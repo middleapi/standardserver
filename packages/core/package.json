@@ -15,11 +15,17 @@
         "types": "./dist/index.d.mts",
         "import": "./dist/index.mjs",
         "default": "./dist/index.mjs"
+      },
+      "./event-iterator": {
+        "types": "./dist/event-iterator.d.mts",
+        "import": "./dist/event-iterator.mjs",
+        "default": "./dist/event-iterator.mjs"
       }
     }
   },
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./event-iterator": "./src/event-iterator/index.ts"
   },
   "files": [
     "dist"
