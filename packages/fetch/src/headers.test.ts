@@ -1,0 +1,36 @@
+import type { StandardHeaders } from '@standardserver/core'
+import { toFetchHeaders, toStandardHeaders } from './headers'
+
+it('toStandardHeaders', () => {
+  const headers = new Headers()
+
+  headers.append('content-type', 'application/json')
+  headers.append('x-custom-header', 'custom-value')
+  headers.append('set-cookie', 'foo=bar')
+  headers.append('set-cookie', 'bar=baz')
+
+  const standardHeaders = toStandardHeaders(headers)
+
+  expect(standardHeaders).toEqual({
+    'content-type': 'application/json',
+    'x-custom-header': 'custom-value',
+    'set-cookie': ['foo=bar', 'bar=baz'],
+  })
+})
+
+it('toFetchHeaders', () => {
+  const standardHeaders: StandardHeaders = {
+    'content-type': 'application/json',
+    'x-custom-header': ['custom-value'],
+    'set-cookie': ['foo=bar', 'bar=baz'],
+  }
+
+  const fetchHeaders = toFetchHeaders(standardHeaders)
+
+  expect([...fetchHeaders]).toEqual([
+    ['content-type', 'application/json'],
+    ['set-cookie', 'foo=bar'],
+    ['set-cookie', 'bar=baz'],
+    ['x-custom-header', 'custom-value'],
+  ])
+})

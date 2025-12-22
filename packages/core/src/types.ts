@@ -2,6 +2,15 @@ export interface StandardHeaders {
   [key: string]: string | string[] | undefined
 }
 
+export type StandardBodyHint
+  = | 'json' // application/json
+    | 'form-data' // multipart/form-data
+    | 'url-search-params' // application/x-www-form-urlencoded
+    | 'event-stream' // text/event-stream
+    | 'stream' // binary stream
+    | 'file' // binary
+    | 'none' // undefined
+
 export type StandardBody
   = | unknown // application/json
     | URLSearchParams // x-www-form-urlencoded
@@ -11,21 +20,38 @@ export type StandardBody
     | Blob // binary
     | undefined // empty
 
-export interface StandardRequest {
+export interface StandardUrl {
   /**
-   * The origin of the request.
-   *
    * @example 'https://example.com'
    */
   origin?: string | undefined
   /**
    * @example '/path/to/resource'
    */
-  pathname: string
+  pathname: `/${string}`
   /**
    * @example new URLSearchParams('foo=bar&baz=qux')
    */
-  query: URLSearchParams
+  query?: URLSearchParams | undefined
+  /**
+   * @example '#section', etc.
+   */
+  hash?: `#${string}` | undefined
+  /**
+   * @example 'username', etc.
+   */
+  username?: string | undefined
+  /**
+   * @example 'password', etc.
+   */
+  password?: string | undefined
+}
+
+export interface StandardRequest {
+  /**
+   * @example { origin: 'https://example.com', pathname: '/path/to/resource', query: new URLSearchParams('foo=bar&baz=qux'), hash: '#section' }
+   */
+  url: StandardUrl
   /**
    * @example 'GET', 'POST', etc.
    */

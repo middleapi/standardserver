@@ -28,4 +28,13 @@ export default antfu({
       },
     ],
   },
+}, {
+  files: ['**/*.test.ts', '**/*.test.tsx', '**/*.test-d.ts', '**/*.test-d.tsx', 'playgrounds/**', 'packages/*/playground/**'],
+  rules: {
+    'unused-imports/no-unused-vars': 'off',
+    'antfu/no-top-level-await': 'off',
+    'no-alert': 'off',
+    'ban/ban': 'off',
+    'no-console': 'off',
+  },
 })

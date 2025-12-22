@@ -23,9 +23,16 @@ it('withEventMeta only proxy when make sense', () => {
   expect(withEventMeta(data, { id: '' })).not.toBe(data)
   expect(withEventMeta(data, { retry: 0 })).not.toBe(data)
   expect(withEventMeta(data, { comments: [''] })).not.toBe(data)
+  expect(withEventMeta(data, { comments: [] })).not.toBe(data)
 
   expect(withEventMeta(data, {})).toBe(data)
   expect(withEventMeta(data, { notExists: true } as any)).toBe(data)
   expect(withEventMeta(data, { id: undefined })).toBe(data)
-  expect(withEventMeta(data, { comments: [] })).toBe(data)
+})
+
+it('getEventMeta remove unknown meta', () => {
+  const data = { value: 123, meta: undefined }
+  const meta = { id: '123', unknown: 'value1' }
+  const applied = withEventMeta(data, meta)
+  expect(getEventMeta(applied)).toEqual({ id: '123' })
 })
