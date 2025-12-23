@@ -1,0 +1,11 @@
+POST http://localhost:3000
+Content-Type: text/event-stream
+
+event: message
+data: {"foo":"bar"}
+
+event: message
+data: {"foo":"bar"}
+
+event: done
+data: 123

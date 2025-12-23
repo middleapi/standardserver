@@ -10,33 +10,36 @@ export const EVENT_SOURCE_META_SYMBOL = getPackageSymbol('EVENT_SOURCE_META')
  * @info The returned container is a proxy that intercepts access to the meta symbol.
  */
 export function withEventMeta<T extends object>(container: T, meta: EventMeta): T {
-  // avoid proxy overhead if no meta is set
-  if (
-    meta.id === undefined
-    && meta.retry === undefined
-    && !meta.comments?.length
-  ) {
-    return container
-  }
-
+  let assertedMeta: EventMeta | undefined
   if (meta.id !== undefined) {
     assertEventId(meta.id)
+    assertedMeta ??= {}
+    assertedMeta.id = meta.id
   }
 
   if (meta.retry !== undefined) {
     assertEventRetry(meta.retry)
+    assertedMeta ??= {}
+    assertedMeta.retry = meta.retry
   }
 
   if (meta.comments !== undefined) {
     for (const comment of meta.comments) {
       assertEventComment(comment)
     }
+    assertedMeta ??= {}
+    assertedMeta.comments = meta.comments
+  }
+
+  // avoid proxy creation if no meta is asserted
+  if (!assertedMeta) {
+    return container
   }
 
   return createEnhancedProxy(container, {
     get(_target, prop, _receiver, fallback) {
       if (prop === EVENT_SOURCE_META_SYMBOL) {
-        return meta
+        return assertedMeta
       }
 
       return fallback()
