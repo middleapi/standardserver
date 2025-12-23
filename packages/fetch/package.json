@@ -31,5 +31,8 @@
   "dependencies": {
     "@standardserver/core": "workspace:*",
     "@standardserver/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@hono/node-server": "^1.19.7"
   }
 }

@@ -43,6 +43,19 @@ describe('toStandardUrl', () => {
     const standardUrl = toStandardUrl(url)
     expect(standardUrl.pathname).toBe('/')
   })
+
+  it('handles URL with username and password', () => {
+    const url = new URL('https://user:pass@example.com/path')
+    const standardUrl = toStandardUrl(url)
+    expect(standardUrl).toEqual({
+      origin: 'https://example.com',
+      pathname: '/path',
+      query: url.searchParams,
+      hash: undefined,
+      username: 'user',
+      password: 'pass',
+    })
+  })
 })
 
 describe('toFetchUrl', () => {

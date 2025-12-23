@@ -11,7 +11,7 @@ export interface ToStandardLazyRequestOptions extends ToStandardBodyOptions {}
  */
 export function toStandardLazyRequest(request: Request, options: ToStandardLazyRequestOptions = {}): StandardLazyRequest {
   return {
-    url: toStandardUrl(new URL(request.url)),
+    ...toStandardUrl(new URL(request.url)),
     method: request.method,
     get headers() {
       // lazy headers to improve performance
@@ -35,7 +35,7 @@ export interface ToFetchRequestOptions extends ToFetchBodyOptions {}
 export function toFetchRequest(request: StandardRequest, options: ToFetchRequestOptions = {}): Request {
   const [body, headers] = toFetchBody(request.body, toFetchHeaders(request.headers), options)
 
-  return new Request(toFetchUrl(request.url), {
+  return new Request(toFetchUrl(request), {
     method: request.method,
     headers,
     body: body ?? null, // null = empty body

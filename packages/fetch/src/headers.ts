@@ -25,18 +25,18 @@ export function toStandardHeaders(headers: Headers): StandardHeaders {
  * Convert standard headers to fetch headers.
  */
 export function toFetchHeaders(standardHeaders: StandardHeaders): Headers {
-  const fetchHeaders = new Headers()
+  const headers = new Headers()
 
   for (const [key, value] of Object.entries(standardHeaders)) {
     if (Array.isArray(value)) {
       for (const v of value) {
-        fetchHeaders.append(key, v)
+        headers.append(key, v)
       }
     }
     else if (value !== undefined) {
-      fetchHeaders.append(key, value)
+      headers.append(key, value)
     }
   }
 
-  return fetchHeaders
+  return headers
 }

@@ -8,13 +8,14 @@ it('toStandardHeaders', () => {
   headers.append('x-custom-header', 'custom-value')
   headers.append('set-cookie', 'foo=bar')
   headers.append('set-cookie', 'bar=baz')
+  headers.append('set-cookie', '3=3')
 
   const standardHeaders = toStandardHeaders(headers)
 
   expect(standardHeaders).toEqual({
     'content-type': 'application/json',
     'x-custom-header': 'custom-value',
-    'set-cookie': ['foo=bar', 'bar=baz'],
+    'set-cookie': ['foo=bar', 'bar=baz', '3=3'],
   })
 })
 
@@ -23,6 +24,7 @@ it('toFetchHeaders', () => {
     'content-type': 'application/json',
     'x-custom-header': ['custom-value'],
     'set-cookie': ['foo=bar', 'bar=baz'],
+    'some-thing': undefined,
   }
 
   const fetchHeaders = toFetchHeaders(standardHeaders)

@@ -10,8 +10,8 @@ export function toStandardUrl(url: URL): StandardUrl {
     pathname: url.pathname.startsWith('/') ? url.pathname as `/${string}` : `/${url.pathname}`,
     query: url.searchParams,
     hash: url.hash.startsWith('#') ? url.hash as `#${string}` : undefined,
-    username: url.username,
-    password: url.password,
+    username: url.username || undefined, // convert empty string to undefined
+    password: url.password || undefined, // convert empty string to undefined
   }
 }
 

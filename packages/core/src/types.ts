@@ -38,20 +38,18 @@ export interface StandardUrl {
    */
   hash?: `#${string}` | undefined
   /**
-   * @example 'username', etc.
+   * @example 'user', etc.
+   * @deprecated Authentication credentials in URLs are deprecated and often ignored for security reasons.
    */
   username?: string | undefined
   /**
-   * @example 'password', etc.
+   * @example 'pass', etc.
+   * @deprecated Authentication credentials in URLs are deprecated and often ignored for security reasons.
    */
   password?: string | undefined
 }
 
-export interface StandardRequest {
-  /**
-   * @example { origin: 'https://example.com', pathname: '/path/to/resource', query: new URLSearchParams('foo=bar&baz=qux'), hash: '#section' }
-   */
-  url: StandardUrl
+export interface StandardRequest extends StandardUrl {
   /**
    * @example 'GET', 'POST', etc.
    */

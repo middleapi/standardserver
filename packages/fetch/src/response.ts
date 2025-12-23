@@ -23,6 +23,7 @@ export function toStandardLazyResponse(
     body: () => toStandardBody(response, options),
     status: response.status,
     get headers() {
+      // lazy headers to improve performance
       const headers = toStandardHeaders(response.headers)
       Object.defineProperty(this, 'headers', { value: headers, writable: true })
       return headers

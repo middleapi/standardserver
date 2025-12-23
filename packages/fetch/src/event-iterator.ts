@@ -28,7 +28,7 @@ export function toEventIterator(
        *    a value when the sender explicitly indicates completion.
        *
        * 2. The only implicit behavior we allow is when the sender successfully
-       *    closes the stream without sending a 'done' event - in this case,
+       *    closes the stream without sending a 'close' event - in this case,
        *    we resolve with { done: true, value: undefined }.
        */
       if (done) {
@@ -58,14 +58,14 @@ export function toEventIterator(
           throw error
         }
 
-        case 'done': {
-          let done = parseEmptyableJSON(value.data)
+        case 'close': {
+          let close = parseEmptyableJSON(value.data)
 
-          if (isTypescriptObject(done)) {
-            done = withEventMeta(done, value)
+          if (isTypescriptObject(close)) {
+            close = withEventMeta(close, value)
           }
 
-          return { done: true, value: done }
+          return { done: true, value: close }
         }
       }
     }
@@ -114,6 +114,14 @@ export interface ToEventStreamOptions {
    * @default ''
    */
   eventIteratorInitialComment?: string
+
+  /**
+   * If true, a 'close' event is always sent when the iterator completes.
+   * By default, a 'close' event is only sent if the iterator returns a non-empty value (undefined).
+   *
+   * @default false
+   */
+  eventIteratorAlwaysSendCloseEvent?: boolean
 }
 
 export function toEventStream(
@@ -125,6 +133,7 @@ export function toEventStream(
   const keepAliveComment = options.eventIteratorKeepAliveComment ?? ''
   const initialCommentEnabled = options.eventIteratorInitialCommentEnabled ?? true
   const initialComment = options.eventIteratorInitialComment ?? ''
+  const alwaysSendCloseEvent = options.eventIteratorAlwaysSendCloseEvent ?? false
 
   let cancelled = false
   let timeout: ReturnType<typeof setInterval> | undefined
@@ -157,8 +166,8 @@ export function toEventStream(
 
         const meta = getEventMeta(value.value)
 
-        if (!value.done || value.value !== undefined || meta !== undefined) {
-          const event = value.done ? 'done' : 'message'
+        if (alwaysSendCloseEvent || !value.done || value.value !== undefined || meta !== undefined) {
+          const event = value.done ? 'close' : 'message'
           controller.enqueue(encodeEventMessage({
             ...meta,
             event,
