@@ -25,7 +25,7 @@ describe('toStandardLazyRequest', () => {
       },
     })
 
-    const standardRequest = toStandardLazyRequest(request, { bodyHint: 'json' })
+    const standardRequest = toStandardLazyRequest(request, { body: { hint: 'json' } })
 
     expect(standardRequest).toEqual(expect.objectContaining(toStandardUrlSpy.mock.results[0]!.value))
     expect(standardRequest.method).toBe('POST')
@@ -40,7 +40,7 @@ describe('toStandardLazyRequest', () => {
     expect(toStandardHeadersSpy).toBeCalledWith(request.headers)
 
     expect(toStandardBodySpy).toBeCalledTimes(1)
-    expect(toStandardBodySpy).toBeCalledWith(request, { bodyHint: 'json' })
+    expect(toStandardBodySpy).toBeCalledWith(request, { hint: 'json' })
   })
 
   it('headers is lazy and can override', async () => {
@@ -82,7 +82,7 @@ describe('toFetchRequest', () => {
       body: { foo: 'bar' },
     }
 
-    const options = { eventIteratorKeepAliveComment: 'test' }
+    const options = { body: { eventIterator: { keepAliveComment: 'test' } } }
     const fetchRequest = toFetchRequest(standardRequest, options)
     expect(fetchRequest.url).toEqual(toFetchUrlSpy.mock.results[0]!.value)
     expect(fetchRequest.method).toEqual(standardRequest.method)
@@ -95,7 +95,7 @@ describe('toFetchRequest', () => {
     expect(toFetchHeadersSpy).toHaveBeenCalledWith(standardRequest.headers)
 
     expect(toFetchBodySpy).toHaveBeenCalledTimes(1)
-    expect(toFetchBodySpy).toHaveBeenCalledWith(standardRequest.body, toFetchHeadersSpy.mock.results[0]!.value, options)
+    expect(toFetchBodySpy).toHaveBeenCalledWith(standardRequest.body, toFetchHeadersSpy.mock.results[0]!.value, options.body)
 
     await expect(fetchRequest.json()).resolves.toEqual(standardRequest.body)
 

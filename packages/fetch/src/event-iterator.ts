@@ -84,21 +84,21 @@ export interface ToEventStreamOptions {
    *
    * @default true
    */
-  eventIteratorKeepAliveEnabled?: boolean
+  keepAliveEnabled?: boolean
 
   /**
    * Interval (in milliseconds) between ping comments sent after the last event.
    *
    * @default 5000
    */
-  eventIteratorKeepAliveInterval?: number
+  keepAliveInterval?: number
 
   /**
    * The content of the ping comment. Must not include newline characters.
    *
    * @default ''
    */
-  eventIteratorKeepAliveComment?: string
+  keepAliveComment?: string
 
   /**
    * If true, an initial comment is sent immediately upon stream start to flush headers.
@@ -106,14 +106,14 @@ export interface ToEventStreamOptions {
    *
    * @default true
    */
-  eventIteratorInitialCommentEnabled?: boolean
+  initialCommentEnabled?: boolean
 
   /**
    * The content of the initial comment sent upon stream start. Must not include newline characters.
    *
    * @default ''
    */
-  eventIteratorInitialComment?: string
+  initialComment?: string
 
   /**
    * If true, a 'close' event is always sent when the iterator completes.
@@ -121,19 +121,19 @@ export interface ToEventStreamOptions {
    *
    * @default false
    */
-  eventIteratorAlwaysSendCloseEvent?: boolean
+  alwaysSendCloseEvent?: boolean
 }
 
 export function toEventStream(
   iterator: AsyncIterator<unknown | void, unknown | void, void>,
   options: ToEventStreamOptions = {},
 ): ReadableStream<Uint8Array<ArrayBuffer>> {
-  const keepAliveEnabled = options.eventIteratorKeepAliveEnabled ?? true
-  const keepAliveInterval = options.eventIteratorKeepAliveInterval ?? 5000
-  const keepAliveComment = options.eventIteratorKeepAliveComment ?? ''
-  const initialCommentEnabled = options.eventIteratorInitialCommentEnabled ?? true
-  const initialComment = options.eventIteratorInitialComment ?? ''
-  const alwaysSendCloseEvent = options.eventIteratorAlwaysSendCloseEvent ?? false
+  const keepAliveEnabled = options.keepAliveEnabled ?? true
+  const keepAliveInterval = options.keepAliveInterval ?? 5000
+  const keepAliveComment = options.keepAliveComment ?? ''
+  const initialCommentEnabled = options.initialCommentEnabled ?? true
+  const initialComment = options.initialComment ?? ''
+  const alwaysSendCloseEvent = options.alwaysSendCloseEvent ?? false
 
   let cancelled = false
   let timeout: ReturnType<typeof setInterval> | undefined

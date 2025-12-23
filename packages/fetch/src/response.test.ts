@@ -22,7 +22,7 @@ describe('toFetchResponse', () => {
       status: 206,
     }
 
-    const options = { eventIteratorKeepAliveEnabled: true }
+    const options = { body: { eventIterator: { keepAliveEnabled: true } } }
     const fetchResponse = toFetchResponse(standardResponse, options)
 
     expect(fetchResponse.status).toBe(206)
@@ -33,7 +33,7 @@ describe('toFetchResponse', () => {
     expect(toFetchHeadersSpy).toBeCalledWith(standardResponse.headers)
 
     expect(toFetchBodySpy).toBeCalledTimes(1)
-    expect(toFetchBodySpy).toBeCalledWith(standardResponse.body, toFetchHeadersSpy.mock.results[0]!.value, options)
+    expect(toFetchBodySpy).toBeCalledWith(standardResponse.body, toFetchHeadersSpy.mock.results[0]!.value, options.body)
   })
 })
 
@@ -47,7 +47,7 @@ describe('toStandardLazyResponse', () => {
       status: 206,
     })
 
-    const options = { bodyHint: 'json' } as const
+    const options = { body: { hint: 'json' } } as const
     const lazyResponse = toStandardLazyResponse(response, options)
 
     expect(lazyResponse.status).toBe(206)
@@ -58,7 +58,7 @@ describe('toStandardLazyResponse', () => {
 
     expect(lazyResponse.body()).toBe(toStandardBodySpy.mock.results[0]!.value)
     expect(toStandardBodySpy).toBeCalledTimes(1)
-    expect(toStandardBodySpy).toBeCalledWith(response, options)
+    expect(toStandardBodySpy).toBeCalledWith(response, options.body)
   })
 
   it('headers is lazy and can override', async () => {

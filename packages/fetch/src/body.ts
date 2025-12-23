@@ -8,16 +8,16 @@ export interface ToStandardBodyOptions {
   /**
    * Hints on how the body should be parsed.
    */
-  bodyHint?: StandardBodyHint | undefined
+  hint?: StandardBodyHint | undefined
 }
 
 /**
  * Convert a fetch request or response to a standard body.
  */
 export async function toStandardBody(re: Request | Response, options?: ToStandardBodyOptions): Promise<StandardBody> {
-  const bodyHint = re.headers.get('standard-server') ?? options?.bodyHint
+  const hint = re.headers.get('standard-server') ?? options?.hint
 
-  if (bodyHint === 'none') {
+  if (hint === 'none') {
     return undefined
   }
 
@@ -32,25 +32,25 @@ export async function toStandardBody(re: Request | Response, options?: ToStandar
     ? getFilenameFromContentDisposition(contentDisposition)
     : undefined
 
-  if (bodyHint === 'json' || (bodyHint === undefined && fileName === undefined && mimeType === 'application/json')) {
+  if (hint === 'json' || (hint === undefined && fileName === undefined && mimeType === 'application/json')) {
     const text = await re.text()
     return parseEmptyableJSON(text)
   }
 
-  if (bodyHint === 'form-data' || (bodyHint === undefined && fileName === undefined && mimeType === 'multipart/form-data')) {
+  if (hint === 'form-data' || (hint === undefined && fileName === undefined && mimeType === 'multipart/form-data')) {
     return await re.formData()
   }
 
-  if (bodyHint === 'url-search-params' || (bodyHint === undefined && fileName === undefined && mimeType === 'application/x-www-form-urlencoded')) {
+  if (hint === 'url-search-params' || (hint === undefined && fileName === undefined && mimeType === 'application/x-www-form-urlencoded')) {
     const text = await re.text()
     return new URLSearchParams(text)
   }
 
-  if (bodyHint === 'event-stream' || (bodyHint === undefined && fileName === undefined && mimeType === 'text/event-stream')) {
+  if (hint === 'event-stream' || (hint === undefined && fileName === undefined && mimeType === 'text/event-stream')) {
     return toEventIterator(re.body)
   }
 
-  if (bodyHint === 'stream') {
+  if (hint === 'stream') {
     return re.body ?? new ReadableStream({
       start(controller) {
         controller.close()
@@ -60,7 +60,7 @@ export async function toStandardBody(re: Request | Response, options?: ToStandar
 
   const contentLength = re.headers.get('content-length')
 
-  if (bodyHint === 'file' || (bodyHint === undefined && (fileName !== undefined || contentLength !== null))) {
+  if (hint === 'file' || (hint === undefined && (fileName !== undefined || contentLength !== null))) {
     const blob = await re.blob()
     return new File([blob], fileName ?? 'blob', {
       type: blob.type,
@@ -70,7 +70,12 @@ export async function toStandardBody(re: Request | Response, options?: ToStandar
   return re.body ?? undefined // stream or undefined
 }
 
-export interface ToFetchBodyOptions extends ToEventStreamOptions {}
+export interface ToFetchBodyOptions {
+  /**
+   * Options for the event iterator, like keep-alive settings, initial comment, etc.
+   */
+  eventIterator?: ToEventStreamOptions
+}
 
 /**
  * Convert a standard body to a fetch body.
@@ -134,7 +139,7 @@ export function toFetchBody(
     headers.set('standard-server', 'event-stream' satisfies StandardBodyHint)
     headers.set('content-type', 'text/event-stream')
 
-    return [toEventStream(body, options), headers]
+    return [toEventStream(body, options.eventIterator), headers]
   }
 
   headers.set('standard-server', 'json' satisfies StandardBodyHint)

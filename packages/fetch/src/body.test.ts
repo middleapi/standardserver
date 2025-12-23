@@ -49,7 +49,7 @@ describe('toStandardBody', () => {
     const stream = new ReadableStream<string>({
       async pull(controller) {
         controller.enqueue('event: message\ndata: 123\n\n')
-        controller.enqueue('event: done\ndata: 456\n\n')
+        controller.enqueue('event: close\ndata: 456\n\n')
         controller.close()
       },
     }).pipeThrough(new TextEncoderStream())
@@ -189,7 +189,7 @@ describe('toStandardBody', () => {
       const stream = new ReadableStream<string>({
         async pull(controller) {
           controller.enqueue('event: message\ndata: 123\n\n')
-          controller.enqueue('event: done\ndata: 456\n\n')
+          controller.enqueue('event: close\ndata: 456\n\n')
           controller.close()
         },
       }).pipeThrough(new TextEncoderStream())
@@ -301,7 +301,7 @@ describe('toStandardBody', () => {
 
       expect(await toStandardBody(request)).toEqual({ foo: 'bar' })
       await expect(toStandardBody(request)).rejects.toThrow('Failed to read body: body stream already read')
-      expect(await toStandardBody(request, { bodyHint: 'none' })).toBe(undefined)
+      expect(await toStandardBody(request, { hint: 'none' })).toBe(undefined)
     })
 
     it('fallback to user defined body hint', async () => {
@@ -313,7 +313,7 @@ describe('toStandardBody', () => {
         },
       })
 
-      const standardBody = await toStandardBody(request, { bodyHint: 'stream' })
+      const standardBody = await toStandardBody(request, { hint: 'stream' })
       expect(standardBody).toBeInstanceOf(ReadableStream)
       const reader = (standardBody as ReadableStream).pipeThrough(new TextDecoderStream()).getReader()
       expect(await reader.read()).toEqual({ done: false, value: 'hello' })
@@ -511,11 +511,11 @@ describe('toFetchBody', () => {
       yield 123
       return 456
     }
-    const options = { eventIteratorKeepAliveEnabled: false }
+    const options = { eventIterator: { keepAliveEnabled: false } }
     const base = new Headers(baseHeaders)
     const [body, headers] = toFetchBody(gen(), base, options)
 
-    expect(toEventStreamSpy).toHaveBeenCalledWith(gen(), options)
+    expect(toEventStreamSpy).toHaveBeenCalledWith(gen(), options.eventIterator)
 
     expect(body).toBeInstanceOf(ReadableStream)
     expect(Object.fromEntries(headers)).toEqual({
@@ -528,7 +528,7 @@ describe('toFetchBody', () => {
 
     expect(await reader.read()).toEqual({ done: false, value: ': \n\n' })
     expect(await reader.read()).toEqual({ done: false, value: 'event: message\ndata: 123\n\n' })
-    expect(await reader.read()).toEqual({ done: false, value: 'event: done\ndata: 456\n\n' })
+    expect(await reader.read()).toEqual({ done: false, value: 'event: close\ndata: 456\n\n' })
   })
 
   it('stream', async () => {

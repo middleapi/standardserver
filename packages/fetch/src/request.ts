@@ -4,7 +4,12 @@ import { toFetchBody, toStandardBody } from './body'
 import { toFetchHeaders, toStandardHeaders } from './headers'
 import { toFetchUrl, toStandardUrl } from './url'
 
-export interface ToStandardLazyRequestOptions extends ToStandardBodyOptions {}
+export interface ToStandardLazyRequestOptions {
+  /**
+   * Options for body conversion, like event iterator options, etc.
+   */
+  body?: ToStandardBodyOptions
+}
 
 /**
  * Convert a fetch request to a standard request.
@@ -22,18 +27,23 @@ export function toStandardLazyRequest(request: Request, options: ToStandardLazyR
     set headers(value) {
       Object.defineProperty(this, 'headers', { value, writable: true })
     },
-    body: () => toStandardBody(request, options),
+    body: () => toStandardBody(request, options.body),
     signal: request.signal,
   }
 }
 
-export interface ToFetchRequestOptions extends ToFetchBodyOptions {}
+export interface ToFetchRequestOptions {
+  /**
+   * Options for body conversion, like event iterator options, etc.
+   */
+  body?: ToFetchBodyOptions
+}
 
 /**
  * Convert a standard request to a fetch request.
  */
 export function toFetchRequest(request: StandardRequest, options: ToFetchRequestOptions = {}): Request {
-  const [body, headers] = toFetchBody(request.body, toFetchHeaders(request.headers), options)
+  const [body, headers] = toFetchBody(request.body, toFetchHeaders(request.headers), options.body)
 
   return new Request(toFetchUrl(request), {
     method: request.method,

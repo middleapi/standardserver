@@ -389,10 +389,10 @@ describe('toEventStream', () => {
       }
 
       const stream = toEventStream(gen(), {
-        eventIteratorInitialCommentEnabled: false,
-        eventIteratorKeepAliveEnabled: true,
-        eventIteratorKeepAliveInterval: 40,
-        eventIteratorKeepAliveComment: 'ping',
+        initialCommentEnabled: false,
+        keepAliveEnabled: true,
+        keepAliveInterval: 40,
+        keepAliveComment: 'ping',
       })
 
       const reader = stream
@@ -441,10 +441,10 @@ describe('toEventStream', () => {
       }
 
       const stream = toEventStream(gen(), {
-        eventIteratorInitialCommentEnabled: false,
-        eventIteratorKeepAliveEnabled: false,
-        eventIteratorKeepAliveInterval: 40,
-        eventIteratorKeepAliveComment: 'ping',
+        initialCommentEnabled: false,
+        keepAliveEnabled: false,
+        keepAliveInterval: 40,
+        keepAliveComment: 'ping',
       })
 
       const reader = stream
@@ -473,9 +473,9 @@ describe('toEventStream', () => {
       }
 
       const stream = toEventStream(gen(), {
-        eventIteratorInitialCommentEnabled: true,
-        eventIteratorInitialComment: 'stream-started',
-        eventIteratorKeepAliveEnabled: false,
+        initialCommentEnabled: true,
+        initialComment: 'stream-started',
+        keepAliveEnabled: false,
       })
 
       const reader = stream
@@ -500,8 +500,8 @@ describe('toEventStream', () => {
       }
 
       const stream = toEventStream(gen(), {
-        eventIteratorInitialCommentEnabled: false,
-        eventIteratorKeepAliveEnabled: false,
+        initialCommentEnabled: false,
+        keepAliveEnabled: false,
       })
 
       const reader = stream
@@ -524,9 +524,9 @@ describe('toEventStream', () => {
       }
 
       const stream = toEventStream(gen(), {
-        eventIteratorInitialCommentEnabled: false,
-        eventIteratorKeepAliveEnabled: false,
-        eventIteratorAlwaysSendCloseEvent: true,
+        initialCommentEnabled: false,
+        keepAliveEnabled: false,
+        alwaysSendCloseEvent: true,
       })
 
       const reader = stream
@@ -544,9 +544,9 @@ describe('toEventStream', () => {
       }
 
       const stream = toEventStream(gen(), {
-        eventIteratorInitialCommentEnabled: false,
-        eventIteratorKeepAliveEnabled: false,
-        eventIteratorAlwaysSendCloseEvent: false,
+        initialCommentEnabled: false,
+        keepAliveEnabled: false,
+        alwaysSendCloseEvent: false,
       })
 
       const reader = stream
@@ -564,9 +564,9 @@ describe('toEventStream', () => {
       }
 
       const stream = toEventStream(gen(), {
-        eventIteratorInitialCommentEnabled: false,
-        eventIteratorKeepAliveEnabled: false,
-        eventIteratorAlwaysSendCloseEvent: alwaysSendCloseEvent,
+        initialCommentEnabled: false,
+        keepAliveEnabled: false,
+        alwaysSendCloseEvent,
       })
 
       const reader = stream
@@ -589,7 +589,7 @@ it.each([
       await new Promise(resolve => setTimeout(resolve, 50))
       yield value
     }
-  })(), { eventIteratorKeepAliveInterval: 10 }))
+  })(), { keepAliveInterval: 10 }))
 
   for (const expectedValue of values) {
     await Promise.all([
