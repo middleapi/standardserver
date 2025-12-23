@@ -87,7 +87,7 @@ export function toFetchBody(
   headers.delete('standard-server')
 
   if (body instanceof ReadableStream) {
-    headers.set('standard-server', 'stream')
+    headers.set('standard-server', 'stream' satisfies StandardBodyHint)
     return [body, headers]
   }
 
@@ -97,12 +97,12 @@ export function toFetchBody(
   headers.delete('content-disposition')
 
   if (body === undefined) {
-    headers.set('standard-server', 'none')
+    headers.set('standard-server', 'none' satisfies StandardBodyHint)
     return [undefined, headers]
   }
 
   if (body instanceof Blob) {
-    headers.set('standard-server', 'file') // file is a blob, but blob is not a file
+    headers.set('standard-server', 'file' satisfies StandardBodyHint) // file is a blob, but blob is not a file
     headers.set('content-type', body.type)
 
     if (contentDisposition === null || getFilenameFromContentDisposition(contentDisposition) === undefined) {
@@ -121,23 +121,23 @@ export function toFetchBody(
   }
 
   if (body instanceof FormData) {
-    headers.set('standard-server', 'form-data')
+    headers.set('standard-server', 'form-data' satisfies StandardBodyHint)
     return [body, headers]
   }
 
   if (body instanceof URLSearchParams) {
-    headers.set('standard-server', 'url-search-params')
+    headers.set('standard-server', 'url-search-params' satisfies StandardBodyHint)
     return [body, headers]
   }
 
   if (isAsyncIteratorObject(body)) {
-    headers.set('standard-server', 'event-stream')
+    headers.set('standard-server', 'event-stream' satisfies StandardBodyHint)
     headers.set('content-type', 'text/event-stream')
 
     return [toEventStream(body, options), headers]
   }
 
-  headers.set('standard-server', 'json')
+  headers.set('standard-server', 'json' satisfies StandardBodyHint)
   headers.set('content-type', 'application/json')
   return [stringifyJSON(body), headers]
 }

@@ -8,7 +8,7 @@ export type StandardBodyHint
     | 'url-search-params' // application/x-www-form-urlencoded
     | 'event-stream' // text/event-stream
     | 'stream' // binary stream
-    | 'file' // binary
+    | 'file' // binary - file is also a blob
     | 'none' // undefined
 
 export type StandardBody
