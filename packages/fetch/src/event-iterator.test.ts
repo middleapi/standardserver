@@ -232,6 +232,7 @@ describe('toEventStream', () => {
     expect((await reader.read())).toEqual({ done: false, value: 'event: message\nid: id-1\ndata: {"order":1}\n\n' })
     expect((await reader.read())).toEqual({ done: false, value: 'event: message\nretry: 20000\ndata: {"order":2}\n\n' })
     expect((await reader.read())).toEqual({ done: false, value: 'event: message\n\n' })
+    expect((await reader.read())).toEqual({ done: false, value: 'event: close\n\n' })
     expect((await reader.read())).toEqual({ done: true })
   })
 
@@ -393,6 +394,7 @@ describe('toEventStream', () => {
         keepAliveEnabled: true,
         keepAliveInterval: 40,
         keepAliveComment: 'ping',
+        alwaysSendCloseEvent: false,
       })
 
       const reader = stream
@@ -445,6 +447,7 @@ describe('toEventStream', () => {
         keepAliveEnabled: false,
         keepAliveInterval: 40,
         keepAliveComment: 'ping',
+        alwaysSendCloseEvent: false,
       })
 
       const reader = stream
@@ -473,6 +476,7 @@ describe('toEventStream', () => {
       }
 
       const stream = toEventStream(gen(), {
+        alwaysSendCloseEvent: false,
         initialCommentEnabled: true,
         initialComment: 'stream-started',
         keepAliveEnabled: false,
@@ -500,6 +504,7 @@ describe('toEventStream', () => {
       }
 
       const stream = toEventStream(gen(), {
+        alwaysSendCloseEvent: false,
         initialCommentEnabled: false,
         keepAliveEnabled: false,
       })

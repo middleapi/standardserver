@@ -100,4 +100,13 @@ describe('toFetchUrl', () => {
     }
     expect(toFetchUrl(standardUrl)).toBe('/path')
   })
+
+  it('handles query parameters with special characters', () => {
+    const standardUrl = {
+      pathname: '/path' as const,
+      query: new URLSearchParams('/foo=bar&baz=qux/'),
+    }
+
+    expect(toFetchUrl(standardUrl)).toBe('/path?%2Ffoo=bar&baz=qux%2F')
+  })
 })

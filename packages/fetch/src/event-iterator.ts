@@ -116,10 +116,10 @@ export interface ToEventStreamOptions {
   initialComment?: string
 
   /**
-   * If true, a 'close' event is always sent when the iterator completes.
-   * By default, a 'close' event is only sent if the iterator returns a non-empty value (undefined).
+   * If false, a 'close' event is only sent if the iterator returns a non-empty value (undefined).
+   * By default, a 'close' event is always sent when the iterator completes.
    *
-   * @default false
+   * @default true
    */
   alwaysSendCloseEvent?: boolean
 }
@@ -133,7 +133,7 @@ export function toEventStream(
   const keepAliveComment = options.keepAliveComment ?? ''
   const initialCommentEnabled = options.initialCommentEnabled ?? true
   const initialComment = options.initialComment ?? ''
-  const alwaysSendCloseEvent = options.alwaysSendCloseEvent ?? false
+  const alwaysSendCloseEvent = options.alwaysSendCloseEvent ?? true
 
   let cancelled = false
   let timeout: ReturnType<typeof setInterval> | undefined
