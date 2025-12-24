@@ -32,6 +32,7 @@ export function sendStandardResponse(
     }
 
     if (resBody === undefined) {
+      // NOTE: some custom-runtime not allow pass undefined to `res.end`
       res.end()
     }
     else if (typeof resBody === 'string') {

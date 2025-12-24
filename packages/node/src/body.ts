@@ -44,7 +44,7 @@ export async function toStandardBody(
     return req.body
   }
 
-  if (req.readable) {
+  if (!req.readable) {
     // native fetch error use TypeError
     throw new TypeError('Failed to read body: body stream already read or destroyed')
   }
