@@ -1,0 +1,40 @@
+{
+  "name": "@standardserver/node",
+  "type": "module",
+  "version": "0.0.0",
+  "license": "MIT",
+  "homepage": "https://standardserver.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/standardserver/standardserver.git",
+    "directory": "packages/node"
+  },
+  "publishConfig": {
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.mts",
+        "import": "./dist/index.mjs",
+        "default": "./dist/index.mjs"
+      }
+    }
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "unbuild",
+    "type:check": "tsc -b"
+  },
+  "dependencies": {
+    "@standardserver/core": "workspace:*",
+    "@standardserver/fetch": "workspace:*",
+    "@standardserver/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.3",
+    "supertest": "^7.1.4"
+  }
+}

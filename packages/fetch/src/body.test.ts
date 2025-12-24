@@ -140,6 +140,24 @@ describe('toStandardBody', () => {
     expect(getFilenameFromContentDispositionSpy).toHaveBeenCalledWith('attachment; filename="foo.pdf"')
   })
 
+  it('file (without disposition)', async () => {
+    const request = new Request('https://example.com', {
+      method: 'POST',
+      body: new Blob(['{"value":123}'], { type: 'application/pdf' }),
+      headers: {
+        'content-length': '123',
+      },
+    })
+
+    const standardFile = await toStandardBody(request) as any
+    expect(standardFile).toBeInstanceOf(File)
+    expect(standardFile.name).toBe('blob')
+    expect(standardFile.type).toBe('application/pdf')
+    expect(await standardFile.text()).toBe('{"value":123}')
+
+    expect(getFilenameFromContentDispositionSpy).toHaveBeenCalledTimes(0)
+  })
+
   it('stream', async () => {
     const stream = new ReadableStream({
       start(controller) {
@@ -472,20 +490,17 @@ describe('toFetchBody', () => {
     expect(generateContentDispositionSpy).toHaveBeenCalledTimes(0)
   })
 
-  it('file with invalid content-disposition', () => {
+  it('file with existing content-disposition', () => {
     const base = new Headers(baseHeaders)
     base.set('content-disposition', 'attachment;') // Missing filename
     const blob = new File(['foo'], 'foo.pdf', { type: 'application/pdf' })
-
-    getFilenameFromContentDispositionSpy.mockReturnValue(undefined)
-    generateContentDispositionSpy.mockReturnValue('content-disposition-generated')
 
     const [body, headers] = toFetchBody(blob, base, {})
 
     expect(body).toBe(blob)
     // Should imply it generated a new content-disposition because the existing one failed to Parse filename
-    expect(generateContentDispositionSpy).toHaveBeenCalledWith('foo.pdf')
-    expect(headers.get('content-disposition')).toBe('content-disposition-generated')
+    expect(generateContentDispositionSpy).toHaveBeenCalledTimes(0)
+    expect(headers.get('content-disposition')).toBe('attachment;')
   })
 
   it('file with size=nan', () => {

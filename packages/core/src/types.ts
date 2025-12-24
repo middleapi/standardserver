@@ -72,7 +72,7 @@ export interface StandardLazyRequest extends Omit<StandardRequest, 'body'> {
   /**
    * The lazy-body has been parsed based on the content headers.
    */
-  body: () => Promise<StandardBody>
+  body: (hint?: StandardBodyHint | undefined) => Promise<StandardBody>
 }
 
 export interface StandardResponse {
@@ -94,5 +94,5 @@ export interface StandardLazyResponse extends Omit<StandardResponse, 'body'> {
   /**
    * The lazy-body has been parsed based on the content headers.
    */
-  body: () => Promise<StandardBody>
+  body: (hint?: StandardBodyHint | undefined) => Promise<StandardBody>
 }

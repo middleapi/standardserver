@@ -1,5 +1,5 @@
 import type { StandardLazyResponse, StandardResponse } from '@standardserver/core'
-import type { ToFetchBodyOptions, ToStandardBodyOptions } from './body'
+import type { ToFetchBodyOptions } from './body'
 import { toFetchBody, toStandardBody } from './body'
 import { toFetchHeaders, toStandardHeaders } from './headers'
 
@@ -18,19 +18,11 @@ export function toFetchResponse(
   return new Response(body, { headers, status: response.status })
 }
 
-export interface ToStandardLazyResponseOptions {
-  /**
-   * Options for body conversion, like event iterator options, etc.
-   */
-  body?: ToStandardBodyOptions
-}
-
 export function toStandardLazyResponse(
   response: Response,
-  options: ToStandardLazyResponseOptions = {},
 ): StandardLazyResponse {
   return {
-    body: () => toStandardBody(response, options.body),
+    body: hint => toStandardBody(response, { hint }),
     status: response.status,
     get headers() {
       // lazy headers to improve performance
