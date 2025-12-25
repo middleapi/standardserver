@@ -47,8 +47,7 @@ describe('toStandardLazyResponse', () => {
       status: 206,
     })
 
-    const options = { body: { hint: 'json' } } as const
-    const lazyResponse = toStandardLazyResponse(response, options)
+    const lazyResponse = toStandardLazyResponse(response)
 
     expect(lazyResponse.status).toBe(206)
 
@@ -56,9 +55,9 @@ describe('toStandardLazyResponse', () => {
     expect(toStandardHeadersSpy).toBeCalledTimes(1)
     expect(toStandardHeadersSpy).toBeCalledWith(response.headers)
 
-    expect(lazyResponse.body()).toBe(toStandardBodySpy.mock.results[0]!.value)
+    expect(lazyResponse.body('json')).toBe(toStandardBodySpy.mock.results[0]!.value)
     expect(toStandardBodySpy).toBeCalledTimes(1)
-    expect(toStandardBodySpy).toBeCalledWith(response, options.body)
+    expect(toStandardBodySpy).toBeCalledWith(response, { hint: 'json' })
   })
 
   it('headers is lazy and can override', async () => {

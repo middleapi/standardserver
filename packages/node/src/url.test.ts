@@ -26,5 +26,6 @@ describe('toStandardUrl', () => {
   it('malformed url', () => {
     expect(toStandardUrl({ url: '////' } as any).pathname).toEqual('////')
     expect(toStandardUrl({ url: ':::' } as any).pathname).toEqual('/:::')
+    expect(toStandardUrl({ url: undefined } as any).pathname).toEqual('/')
   })
 })

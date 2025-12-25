@@ -6,6 +6,7 @@ export function toStandardUrl(req: NodeHttpRequest): StandardUrl {
   const url = new URL(`http://localhost${postfix?.startsWith('/') ? '' : '/'}${postfix}`)
 
   return {
+    /* v8 ignore next 1 - url always starts with / */
     pathname: url.pathname?.startsWith('/') ? url.pathname as `/${string}` : `/${url.pathname}`,
     hash: url.hash?.startsWith('#') ? url.hash as `#${string}` : undefined,
     query: url.searchParams,

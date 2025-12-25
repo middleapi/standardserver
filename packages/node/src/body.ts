@@ -114,6 +114,9 @@ export function toNodeHttpBody(
     if (contentDisposition === undefined || getFilenameFromContentDisposition(contentDisposition) === undefined) {
       headers['content-disposition'] = generateContentDisposition(body instanceof File ? body.name : 'blob')
     }
+    else {
+      headers['content-disposition'] = contentDisposition
+    }
 
     // BunS3 can use NaN for the size
     if (!Number.isNaN(body.size)) {
