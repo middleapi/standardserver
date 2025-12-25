@@ -16,8 +16,19 @@ export interface ToStandardBodyOptions {
  */
 export async function toStandardBody(re: Request | Response, options?: ToStandardBodyOptions): Promise<StandardBody> {
   const hint = re.headers.get('standard-server') ?? options?.hint
+  const mimeType = re.headers.get('content-type')?.split(';')[0]?.trim()
+  const contentDisposition = re.headers.get('content-disposition')
+  const contentLength = re.headers.get('content-length')
 
   if (hint === 'none') {
+    return undefined
+  }
+
+  // request.body might be null if the method is GET, HEAD, or other methods.
+  // @warning response.body over fetch is almost always a stream,
+  // even if the standard-server response body is undefined.
+  // @warning React Native fetch body might not exist (undefined), so we need to explicitly check for null.
+  if (hint === undefined && re.body === null) {
     return undefined
   }
 
@@ -26,48 +37,40 @@ export async function toStandardBody(re: Request | Response, options?: ToStandar
     throw new TypeError('Failed to read body: body stream already read')
   }
 
-  const mimeType = re.headers.get('content-type')?.split(';')[0]?.trim()
-  const contentDisposition = re.headers.get('content-disposition')
-  const fileName = contentDisposition !== null
-    ? getFilenameFromContentDisposition(contentDisposition)
-    : undefined
-
-  if (hint === 'json' || (hint === undefined && fileName === undefined && mimeType === 'application/json')) {
+  if (hint === 'json' || (hint === undefined && contentDisposition === null && mimeType === 'application/json')) {
     const text = await re.text()
     return parseEmptyableJSON(text)
   }
 
-  if (hint === 'form-data' || (hint === undefined && fileName === undefined && mimeType === 'multipart/form-data')) {
+  if (hint === 'form-data' || (hint === undefined && contentDisposition === null && mimeType === 'multipart/form-data')) {
     return await re.formData()
   }
 
-  if (hint === 'url-search-params' || (hint === undefined && fileName === undefined && mimeType === 'application/x-www-form-urlencoded')) {
+  if (hint === 'url-search-params' || (hint === undefined && contentDisposition === null && mimeType === 'application/x-www-form-urlencoded')) {
     const text = await re.text()
     return new URLSearchParams(text)
   }
 
-  if (hint === 'event-stream' || (hint === undefined && fileName === undefined && mimeType === 'text/event-stream')) {
+  if (hint === 'event-stream' || (hint === undefined && contentDisposition === null && mimeType === 'text/event-stream')) {
     return toEventIterator(re.body)
   }
 
-  if (hint === 'stream') {
-    return re.body ?? new ReadableStream({
-      start(controller) {
-        controller.close()
-      },
-    })
-  }
+  if (hint === 'file' || (hint === undefined && (contentDisposition !== null || contentLength !== null))) {
+    const fileName = contentDisposition !== null
+      ? getFilenameFromContentDisposition(contentDisposition)
+      : undefined
 
-  const contentLength = re.headers.get('content-length')
-
-  if (hint === 'file' || (hint === undefined && (fileName !== undefined || contentLength !== null))) {
     const blob = await re.blob()
     return new File([blob], fileName ?? 'blob', {
       type: blob.type,
     })
   }
 
-  return re.body ?? undefined // stream or undefined
+  return re.body ?? new ReadableStream({
+    start(controller) {
+      controller.close()
+    },
+  })
 }
 
 export interface ToFetchBodyOptions {
@@ -110,19 +113,20 @@ export function toFetchBody(
     headers.set('standard-server', 'file' satisfies StandardBodyHint) // file is a blob, but blob is not a file
     headers.set('content-type', body.type)
 
-    if (contentDisposition === null || getFilenameFromContentDisposition(contentDisposition) === undefined) {
+    if (contentDisposition === null) {
       headers.set('content-disposition', generateContentDisposition(body instanceof File ? body.name : 'blob'))
     }
     else {
       headers.set('content-disposition', contentDisposition)
     }
 
-    if (Number.isSafeInteger(body.size)) {
-      headers.set('content-length', body.size.toString())
-      return [body, headers]
+    // BunS3 can use NaN for the size
+    if (Number.isNaN(body.size)) {
+      return [body.stream(), headers]
     }
 
-    return [body.stream(), headers]
+    headers.set('content-length', body.size.toString())
+    return [body, headers]
   }
 
   if (body instanceof FormData) {
