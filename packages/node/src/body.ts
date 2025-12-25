@@ -15,8 +15,10 @@ export interface ToStandardBodyOptions {
    */
   hint?: StandardBodyHint | undefined
 }
-
-const EMPTY_BODY_METHOD_SET = new Set(['GET', 'HEAD', 'OPTIONS', 'TRACE'])
+/**
+ * https://developer.mozilla.org/en-US/docs/Web/API/Request/body
+ */
+const EMPTY_BODY_METHOD_SET = new Set(['GET', 'HEAD'])
 
 /**
  * Parses the body of a node http request.

@@ -35,11 +35,6 @@ describe('toStandardBody', () => {
     }).head('/')
 
     expect(standardBody).toBe(undefined)
-
-    await request(async (req: IncomingMessage, res: ServerResponse) => {
-      standardBody = await toStandardBody(req)
-      res.end()
-    }).post('/')
   })
 
   it('json', async () => {
