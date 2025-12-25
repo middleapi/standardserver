@@ -25,13 +25,13 @@ describe('toStandardLazyRequest', () => {
       },
     })
 
-    const standardRequest = toStandardLazyRequest(request, { body: { hint: 'json' } })
+    const standardRequest = toStandardLazyRequest(request)
 
     expect(standardRequest).toEqual(expect.objectContaining(toStandardUrlSpy.mock.results[0]!.value))
     expect(standardRequest.method).toBe('POST')
     expect(standardRequest.signal).toBe(request.signal)
     expect(standardRequest.headers).toEqual(toStandardHeadersSpy.mock.results[0]!.value)
-    expect(standardRequest.body()).toBe(toStandardBodySpy.mock.results[0]!.value)
+    expect(standardRequest.body('json')).toBe(toStandardBodySpy.mock.results[0]!.value)
 
     expect(toStandardUrlSpy).toBeCalledTimes(1)
     expect(toStandardUrlSpy).toBeCalledWith(new URL(request.url))
