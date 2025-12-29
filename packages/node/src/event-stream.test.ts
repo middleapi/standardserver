@@ -1,7 +1,7 @@
 import { Readable } from 'node:stream'
 import * as FetchAdapter from '@standardserver/fetch'
 import { isAsyncIteratorObject } from '@standardserver/shared'
-import { toEventIterator, toEventStream } from './event-iterator'
+import { toEventIterator, toEventStream } from './event-stream'
 
 const toEventIteratorFetch = vi.spyOn(FetchAdapter, 'toEventIterator')
 const toEventStreamFetch = vi.spyOn(FetchAdapter, 'toEventStream')

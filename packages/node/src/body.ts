@@ -1,12 +1,12 @@
 import type { StandardBody, StandardBodyHint, StandardHeaders } from '@standardserver/core'
 import type { Buffer } from 'node:buffer'
 import type { IncomingMessage } from 'node:http'
-import type { ToEventStreamOptions } from './event-iterator'
+import type { ToEventStreamOptions } from './event-stream'
 import type { NodeHttpRequest } from './types'
 import { Readable } from 'node:stream'
 import { flattenStandardHeader, generateContentDisposition, getFilenameFromContentDisposition } from '@standardserver/core'
 import { isAsyncIteratorObject, parseEmptyableJSON, stringifyJSON } from '@standardserver/shared'
-import { toEventIterator, toEventStream } from './event-iterator'
+import { toEventIterator, toEventStream } from './event-stream'
 import { toStandardMethod } from './method'
 
 export interface ToStandardBodyOptions {

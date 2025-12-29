@@ -1,10 +1,10 @@
-import type { EventMessage } from './types'
-import { EventDecoderError } from './error'
+import type { EventStreamMessage } from './types'
+import { EventStreamDecoderError } from './error'
 
-export function decodeEventMessage(encoded: string): EventMessage {
+export function decodeEventStreamMessage(encoded: string): EventStreamMessage {
   const lines = encoded.replace(/\n+$/, '').split(/\n/)
 
-  const message: EventMessage & { comments?: string[] } = {}
+  const message: EventStreamMessage & { comments?: string[] } = {}
 
   for (const line of lines) {
     const index = line.indexOf(':')
@@ -52,11 +52,11 @@ export function decodeEventMessage(encoded: string): EventMessage {
   return message
 }
 
-export class EventDecoder {
+export class EventStreamDecoder {
   private incomplete: string = ''
 
   constructor(
-    private readonly onEvent: (event: EventMessage) => void,
+    private readonly onEvent: (event: EventStreamMessage) => void,
   ) {
   }
 
@@ -73,7 +73,7 @@ export class EventDecoder {
     this.incomplete = this.incomplete.slice(lastCompleteIndex + 2)
 
     for (const encoded of completes) {
-      const message = decodeEventMessage(`${encoded}\n\n`)
+      const message = decodeEventStreamMessage(`${encoded}\n\n`)
       this.onEvent(message)
     }
 
@@ -82,18 +82,18 @@ export class EventDecoder {
 
   end(): void {
     if (this.incomplete) {
-      throw new EventDecoderError('Event Iterator ended before complete')
+      throw new EventStreamDecoderError('Event Stream ended before complete')
     }
   }
 }
 
-export class EventDecoderStream extends TransformStream<string, EventMessage> {
+export class EventStreamDecoderStream extends TransformStream<string, EventStreamMessage> {
   constructor() {
-    let decoder!: EventDecoder
+    let decoder!: EventStreamDecoder
 
     super({
       start(controller) {
-        decoder = new EventDecoder((event) => {
+        decoder = new EventStreamDecoder((event) => {
           controller.enqueue(event)
         })
       },

@@ -1,5 +1,5 @@
 import { serve } from '@hono/node-server'
-import { withEventMeta } from '@standardserver/core/event-iterator'
+import { withEventIteratorEventMeta } from '@standardserver/core/event-stream'
 import { isAsyncIteratorObject } from '@standardserver/shared'
 import { toStandardLazyRequest } from '../src/request'
 import { toFetchResponse } from '../src/response'
@@ -24,12 +24,12 @@ serve({
       let i = 0
       try {
         while (i++ < 5) {
-          yield withEventMeta({ now: Date.now() }, { retry: 0 })
+          yield withEventIteratorEventMeta({ now: Date.now() }, { retry: 0 })
           console.log('yield')
           await new Promise(resolve => setTimeout(resolve, 1000))
         }
 
-        return withEventMeta({ event: 'done' }, { retry: 0 })
+        return withEventIteratorEventMeta({ event: 'done' }, { retry: 0 })
       }
       catch {
         console.log('---------------------error')

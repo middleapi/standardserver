@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createEnhancedProxy } from './proxy'
+import { createEnhancedProxy, getEnhancedProxyTarget } from './proxy'
 
 describe('createEnhancedProxy', () => {
   it('should allow handler to intercept and modify values', () => {
@@ -34,4 +34,16 @@ describe('createEnhancedProxy', () => {
     expect(getName()).toBe('target') // should bind
     expect(getName).toBe(proxy.getName) // should cache
   })
+})
+
+it('getEnhancedProxyTarget', () => {
+  const target = { foo: 'bar' }
+  const proxy = createEnhancedProxy(target, {
+    get: (_target: typeof target, _p: PropertyKey, _receiver: any, fallback: () => any) => {
+      return fallback()
+    },
+  })
+
+  expect(getEnhancedProxyTarget(proxy)).toBe(target)
+  expect(getEnhancedProxyTarget(target)).toBe(target) // return itself if not a proxy
 })

@@ -8,7 +8,7 @@ import { toFetchHeaders } from '@standardserver/fetch'
 import { isAsyncIteratorObject } from '@standardserver/shared'
 import request from 'supertest'
 import { toNodeHttpBody, toStandardBody } from './body'
-import * as EventIteratorModule from './event-iterator'
+import * as EventIteratorModule from './event-stream'
 
 const toEventStreamSpy = vi.spyOn(EventIteratorModule, 'toEventStream')
 const generateContentDispositionSpy = vi.spyOn(StandardServerModule, 'generateContentDisposition')
@@ -326,7 +326,7 @@ describe('toStandardBody', () => {
       let standardBody: any
 
       await request(async (req: IncomingMessage, res: ServerResponse) => {
-        standardBody = await toStandardBody(req, { hint: 'stream' })
+        standardBody = await toStandardBody(req, { hint: 'octet-stream' })
         res.end()
       })
         .post('/')

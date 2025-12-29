@@ -1,8 +1,8 @@
 import type { StandardBody, StandardBodyHint } from '@standardserver/core'
-import type { ToEventStreamOptions } from './event-iterator'
+import type { ToEventStreamOptions } from './event-stream'
 import { generateContentDisposition, getFilenameFromContentDisposition } from '@standardserver/core'
 import { isAsyncIteratorObject, parseEmptyableJSON, stringifyJSON } from '@standardserver/shared'
-import { toEventIterator, toEventStream } from './event-iterator'
+import { toEventIterator, toEventStream } from './event-stream'
 
 export interface ToStandardBodyOptions {
   /**
@@ -95,7 +95,7 @@ export function toFetchBody(
   headers.delete('standard-server')
 
   if (body instanceof ReadableStream) {
-    headers.set('standard-server', 'stream' satisfies StandardBodyHint)
+    headers.set('standard-server', 'octet-stream' satisfies StandardBodyHint)
     return [body, headers]
   }
 

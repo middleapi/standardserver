@@ -1,7 +1,7 @@
 import * as StandardServerModule from '@standardserver/core'
 import { isAsyncIteratorObject } from '@standardserver/shared'
 import { toFetchBody, toStandardBody } from './body'
-import * as EventIteratorModule from './event-iterator'
+import * as EventIteratorModule from './event-stream'
 
 const generateContentDispositionSpy = vi.spyOn(StandardServerModule, 'generateContentDisposition')
 const getFilenameFromContentDispositionSpy = vi.spyOn(StandardServerModule, 'getFilenameFromContentDisposition')
@@ -158,7 +158,7 @@ describe('toStandardBody', () => {
     expect(getFilenameFromContentDispositionSpy).toHaveBeenCalledTimes(0)
   })
 
-  it('stream', async () => {
+  it('octet-stream', async () => {
     const stream = new ReadableStream({
       start(controller) {
         controller.enqueue(new TextEncoder().encode('hello'))
@@ -275,12 +275,12 @@ describe('toStandardBody', () => {
       expect(await result.text()).toBe('foo')
     })
 
-    it('stream', async () => {
+    it('octet-stream', async () => {
       const request = new Request('https://example.com', {
         method: 'POST',
         body: 'hello',
         headers: {
-          'standard-server': 'stream',
+          'standard-server': 'octet-stream',
         },
       })
 
@@ -296,7 +296,7 @@ describe('toStandardBody', () => {
         method: 'POST',
         body: null,
         headers: {
-          'standard-server': 'stream',
+          'standard-server': 'octet-stream',
         },
       })
 
@@ -331,7 +331,7 @@ describe('toStandardBody', () => {
         },
       })
 
-      const standardBody = await toStandardBody(request, { hint: 'stream' })
+      const standardBody = await toStandardBody(request, { hint: 'octet-stream' })
       expect(standardBody).toBeInstanceOf(ReadableStream)
       const reader = (standardBody as ReadableStream).pipeThrough(new TextDecoderStream()).getReader()
       expect(await reader.read()).toEqual({ done: false, value: 'hello' })
@@ -546,7 +546,7 @@ describe('toFetchBody', () => {
     expect(await reader.read()).toEqual({ done: false, value: 'event: close\ndata: 456\n\n' })
   })
 
-  it('stream', async () => {
+  it('octet-stream', async () => {
     const stream = new ReadableStream({
       start(controller) {
         controller.enqueue(new Uint8Array([1, 2, 3]))
@@ -560,7 +560,7 @@ describe('toFetchBody', () => {
     expect(Object.fromEntries(headers)).toEqual({
       'content-type': 'application/json',
       'x-custom-header': 'custom-value',
-      'standard-server': 'stream',
+      'standard-server': 'octet-stream',
     })
   })
 })

@@ -16,16 +16,16 @@
         "import": "./dist/index.mjs",
         "default": "./dist/index.mjs"
       },
-      "./event-iterator": {
-        "types": "./dist/event-iterator.d.mts",
-        "import": "./dist/event-iterator.mjs",
-        "default": "./dist/event-iterator.mjs"
+      "./event-stream": {
+        "types": "./dist/event-stream.d.mts",
+        "import": "./dist/event-stream.mjs",
+        "default": "./dist/event-stream.mjs"
       }
     }
   },
   "exports": {
     ".": "./src/index.ts",
-    "./event-iterator": "./src/event-iterator/index.ts"
+    "./event-stream": "./src/event-stream/index.ts"
   },
   "files": [
     "dist"

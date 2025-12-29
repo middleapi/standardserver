@@ -1,4 +1,4 @@
-import { encodeEventMessage, ErrorEvent, EventDecoderStream, getEventMeta, withEventMeta } from '@standardserver/core/event-iterator'
+import { encodeEventStreamMessage, EventIteratorErrorEvent, EventStreamDecoderStream, getEventIteratorEventMeta, withEventIteratorEventMeta } from '@standardserver/core/event-stream'
 import { AbortError, AsyncIteratorClass, isTypescriptObject, parseEmptyableJSON, stringifyJSON } from '@standardserver/shared'
 
 export function toEventIterator(
@@ -6,7 +6,7 @@ export function toEventIterator(
 ): AsyncIteratorClass<unknown> {
   const eventStream = stream
     ?.pipeThrough(new TextDecoderStream())
-    .pipeThrough(new EventDecoderStream())
+    .pipeThrough(new EventStreamDecoderStream())
 
   const reader = eventStream?.getReader()
   let isCancelled = false
@@ -44,16 +44,16 @@ export function toEventIterator(
           let message = parseEmptyableJSON(value.data)
 
           if (isTypescriptObject(message)) {
-            message = withEventMeta(message, value)
+            message = withEventIteratorEventMeta(message, value)
           }
 
           return { done: false, value: message }
         }
 
         case 'error': {
-          let error = new ErrorEvent(parseEmptyableJSON(value.data))
+          let error = new EventIteratorErrorEvent(parseEmptyableJSON(value.data))
 
-          error = withEventMeta(error, value)
+          error = withEventIteratorEventMeta(error, value)
 
           throw error
         }
@@ -62,7 +62,7 @@ export function toEventIterator(
           let close = parseEmptyableJSON(value.data)
 
           if (isTypescriptObject(close)) {
-            close = withEventMeta(close, value)
+            close = withEventIteratorEventMeta(close, value)
           }
 
           return { done: true, value: close }
@@ -141,7 +141,7 @@ export function toEventStream(
   const stream = new ReadableStream<string>({
     start(controller) {
       if (initialCommentEnabled) {
-        controller.enqueue(encodeEventMessage({
+        controller.enqueue(encodeEventStreamMessage({
           comments: [initialComment],
         }))
       }
@@ -150,7 +150,7 @@ export function toEventStream(
       try {
         if (keepAliveEnabled) {
           timeout = setInterval(() => {
-            controller.enqueue(encodeEventMessage({
+            controller.enqueue(encodeEventStreamMessage({
               comments: [keepAliveComment],
             }))
           }, keepAliveInterval)
@@ -164,11 +164,11 @@ export function toEventStream(
           return
         }
 
-        const meta = getEventMeta(value.value)
+        const meta = getEventIteratorEventMeta(value.value)
 
         if (alwaysSendCloseEvent || !value.done || value.value !== undefined || meta !== undefined) {
           const event = value.done ? 'close' : 'message'
-          controller.enqueue(encodeEventMessage({
+          controller.enqueue(encodeEventStreamMessage({
             ...meta,
             event,
             data: stringifyJSON(value.value),
@@ -186,9 +186,9 @@ export function toEventStream(
           return
         }
 
-        if (err instanceof ErrorEvent) {
-          controller.enqueue(encodeEventMessage({
-            ...getEventMeta(err),
+        if (err instanceof EventIteratorErrorEvent) {
+          controller.enqueue(encodeEventStreamMessage({
+            ...getEventIteratorEventMeta(err),
             event: 'error',
             data: stringifyJSON(err.data),
           }))

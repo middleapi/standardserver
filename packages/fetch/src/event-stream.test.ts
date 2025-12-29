@@ -1,6 +1,6 @@
-import { ErrorEvent, getEventMeta, withEventMeta } from '@standardserver/core/event-iterator'
+import { EventIteratorErrorEvent, getEventIteratorEventMeta, withEventIteratorEventMeta } from '@standardserver/core/event-stream'
 import { AbortError, isAsyncIteratorObject, sleep } from '@standardserver/shared'
-import { toEventIterator, toEventStream } from './event-iterator'
+import { toEventIterator, toEventStream } from './event-stream'
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -30,7 +30,7 @@ describe('toEventIterator', () => {
     expect(await generator.next()).toSatisfy(({ done, value }) => {
       expect(done).toEqual(false)
       expect(value).toEqual({ order: 1 })
-      expect(getEventMeta(value)).toEqual({ id: 'id-1', retry: 10000 })
+      expect(getEventIteratorEventMeta(value)).toEqual({ id: 'id-1', retry: 10000 })
 
       return true
     })
@@ -38,7 +38,7 @@ describe('toEventIterator', () => {
     expect(await generator.next()).toSatisfy(({ done, value }) => {
       expect(done).toEqual(false)
       expect(value).toEqual({ order: 2 })
-      expect(getEventMeta(value)).toEqual({ id: 'id-2' })
+      expect(getEventIteratorEventMeta(value)).toEqual({ id: 'id-2' })
 
       return true
     })
@@ -46,7 +46,7 @@ describe('toEventIterator', () => {
     expect(await generator.next()).toSatisfy(({ done, value }) => {
       expect(done).toEqual(true)
       expect(value).toEqual({ order: 3 })
-      expect(getEventMeta(value)).toEqual({ id: 'id-3', retry: 30000 })
+      expect(getEventIteratorEventMeta(value)).toEqual({ id: 'id-3', retry: 30000 })
 
       return true
     })
@@ -68,7 +68,7 @@ describe('toEventIterator', () => {
     expect(await generator.next()).toSatisfy(({ done, value }) => {
       expect(done).toEqual(false)
       expect(value).toEqual({ order: 1 })
-      expect(getEventMeta(value)).toEqual({ id: 'id-1', retry: 10000 })
+      expect(getEventIteratorEventMeta(value)).toEqual({ id: 'id-1', retry: 10000 })
 
       return true
     })
@@ -76,7 +76,7 @@ describe('toEventIterator', () => {
     expect(await generator.next()).toSatisfy(({ done, value }) => {
       expect(done).toEqual(false)
       expect(value).toEqual({ order: 2 })
-      expect(getEventMeta(value)).toEqual({ id: 'id-2' })
+      expect(getEventIteratorEventMeta(value)).toEqual({ id: 'id-2' })
 
       return true
     })
@@ -84,7 +84,7 @@ describe('toEventIterator', () => {
     expect(await generator.next()).toSatisfy(({ done, value }) => {
       expect(done).toEqual(true)
       expect(value).toEqual(undefined)
-      expect(getEventMeta(value)).toEqual(undefined)
+      expect(getEventIteratorEventMeta(value)).toEqual(undefined)
 
       return true
     })
@@ -116,7 +116,7 @@ describe('toEventIterator', () => {
     expect(await generator.next()).toSatisfy(({ done, value }) => {
       expect(done).toEqual(false)
       expect(value).toEqual({ order: 1 })
-      expect(getEventMeta(value)).toEqual({ id: 'id-1', retry: 10000 })
+      expect(getEventIteratorEventMeta(value)).toEqual({ id: 'id-1', retry: 10000 })
 
       return true
     })
@@ -124,15 +124,15 @@ describe('toEventIterator', () => {
     expect(await generator.next()).toSatisfy(({ done, value }) => {
       expect(done).toEqual(false)
       expect(value).toEqual({ order: 2 })
-      expect(getEventMeta(value)).toEqual({ id: 'id-2' })
+      expect(getEventIteratorEventMeta(value)).toEqual({ id: 'id-2' })
 
       return true
     })
 
     await expect(generator.next()).rejects.toSatisfy((error: any) => {
-      expect(error).toBeInstanceOf(ErrorEvent)
+      expect(error).toBeInstanceOf(EventIteratorErrorEvent)
       expect(error.data).toEqual({ order: 3 })
-      expect(getEventMeta(error)).toEqual({ id: 'id-3', retry: 30000 })
+      expect(getEventIteratorEventMeta(error)).toEqual({ id: 'id-3', retry: 30000 })
 
       return true
     })
@@ -155,7 +155,7 @@ describe('toEventIterator', () => {
     expect(await generator.next()).toSatisfy(({ done, value }) => {
       expect(done).toEqual(false)
       expect(value).toEqual({ order: 1 })
-      expect(getEventMeta(value)).toEqual({ id: 'id-1', retry: 10000 })
+      expect(getEventIteratorEventMeta(value)).toEqual({ id: 'id-1', retry: 10000 })
 
       return true
     })
@@ -185,7 +185,7 @@ describe('toEventIterator', () => {
     expect(await generator.next()).toSatisfy(({ done, value }) => {
       expect(done).toEqual(false)
       expect(value).toEqual({ order: 1 })
-      expect(getEventMeta(value)).toEqual({ id: 'id-1', retry: 10000 })
+      expect(getEventIteratorEventMeta(value)).toEqual({ id: 'id-1', retry: 10000 })
 
       return true
     })
@@ -199,10 +199,10 @@ describe('toEventIterator', () => {
 describe('toEventStream', () => {
   it('with return', async () => {
     async function* gen() {
-      yield withEventMeta({ order: 1 }, { id: 'id-1' })
-      yield withEventMeta({ order: 2 }, { retry: 20000 })
+      yield withEventIteratorEventMeta({ order: 1 }, { id: 'id-1' })
+      yield withEventIteratorEventMeta({ order: 2 }, { retry: 20000 })
       yield undefined
-      return withEventMeta({ order: 4 }, { id: 'id-4', retry: 40000 })
+      return withEventIteratorEventMeta({ order: 4 }, { id: 'id-4', retry: 40000 })
     }
 
     const reader = toEventStream(gen())
@@ -219,8 +219,8 @@ describe('toEventStream', () => {
 
   it('without return', async () => {
     async function* gen() {
-      yield withEventMeta({ order: 1 }, { id: 'id-1' })
-      yield withEventMeta({ order: 2 }, { retry: 20000 })
+      yield withEventIteratorEventMeta({ order: 1 }, { id: 'id-1' })
+      yield withEventIteratorEventMeta({ order: 2 }, { retry: 20000 })
       yield undefined
     }
 
@@ -238,10 +238,10 @@ describe('toEventStream', () => {
 
   it('with non-ErrorEvent error', async () => {
     async function* gen() {
-      yield withEventMeta({ order: 1 }, { id: 'id-1' })
-      yield withEventMeta({ order: 2 }, { retry: 20000 })
+      yield withEventIteratorEventMeta({ order: 1 }, { id: 'id-1' })
+      yield withEventIteratorEventMeta({ order: 2 }, { retry: 20000 })
       yield undefined
-      throw withEventMeta(new Error('order-4'), { id: 'id-4', retry: 40000 })
+      throw withEventIteratorEventMeta(new Error('order-4'), { id: 'id-4', retry: 40000 })
     }
 
     const reader = toEventStream(gen())
@@ -257,10 +257,10 @@ describe('toEventStream', () => {
 
   it('with ErrorEvent error', async () => {
     async function* gen() {
-      yield withEventMeta({ order: 1 }, { id: 'id-1' })
-      yield withEventMeta({ order: 2 }, { retry: 20000 })
+      yield withEventIteratorEventMeta({ order: 1 }, { id: 'id-1' })
+      yield withEventIteratorEventMeta({ order: 2 }, { retry: 20000 })
       yield undefined
-      throw withEventMeta(new ErrorEvent({ order: 4 }), { id: 'id-4', retry: 40000 })
+      throw withEventIteratorEventMeta(new EventIteratorErrorEvent({ order: 4 }), { id: 'id-4', retry: 40000 })
     }
 
     const reader = toEventStream(gen())

@@ -7,18 +7,18 @@ export type StandardBodyHint
     | 'form-data' // multipart/form-data
     | 'url-search-params' // application/x-www-form-urlencoded
     | 'event-stream' // text/event-stream
-    | 'stream' // binary stream
-    | 'file' // binary - file is also a blob
-    | 'none' // undefined
+    | 'octet-stream' // generic binary stream (any content-type)
+    | 'file' // binary - file is also a blob (any content-type)
+    | 'none' // undefined (any content-type)
 
 export type StandardBody
   = | unknown // application/json
     | URLSearchParams // x-www-form-urlencoded
     | FormData // multipart/form-data
     | AsyncIterator<unknown | void, unknown | void, undefined> // text/event-stream
-    | ReadableStream<Uint8Array<ArrayBuffer>> // binary stream
-    | Blob // binary
-    | undefined // empty
+    | ReadableStream<Uint8Array<ArrayBuffer>> // generic binary stream (any content-type)
+    | Blob // binary - file is also a blob (any content-type)
+    | undefined // empty (any content-type)
 
 export interface StandardUrl {
   /**
