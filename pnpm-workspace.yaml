@@ -3,7 +3,6 @@ packages:
   - packages/*
   - playgrounds/*
 
-useNodeVersion: 22.21.1
 preferWorkspacePackages: true
 linkWorkspacePackages: true
 shamefullyHoist: true
