@@ -46,29 +46,33 @@ export class ClientPeer {
   get size(): number {
     return this.responseMessageQueue.length
       + this.eventStreamMessageQueue.length
+      + this.octetStreamMessageQueue.length
       + this.controllers.size
       + this.cleanupFns.size
   }
 
   /**
-   * Send a request to the server peer
+   * Open a request to allow receiving and sending messages
    */
-  async request(request: StandardRequest): Promise<StandardResponse> {
-    const requestSignal = request.signal
-    requestSignal?.throwIfAborted()
-
-    const id = this.idGenerator.generate()
+  private open(id: string, requestSignal: AbortSignal | undefined): AbortSignal {
     requestSignal?.throwIfAborted()
 
     this.eventStreamMessageQueue.open(id)
+    this.octetStreamMessageQueue.open(id)
     this.responseMessageQueue.open(id)
 
     const controller = new AbortController()
     this.controllers.set(id, controller)
 
-    let abortListener: () => void
-    requestSignal?.addEventListener('abort', abortListener = () => {
-      controller.abort(requestSignal.reason)
+    let abortListener: () => Promise<void>
+    requestSignal?.addEventListener('abort', abortListener = async () => {
+      try {
+        controller.abort(requestSignal.reason)
+        await this.send({ id, kind: 'abort' })
+      }
+      finally {
+        this.close({ id, reason: controller.signal.reason })
+      }
     })
 
     const cleanupFns: (() => void)[] = [
@@ -84,10 +88,15 @@ export class ClientPeer {
     ]
     this.cleanupFns.set(id, cleanupFns)
 
-    controller.signal.addEventListener('abort', async () => {
-      await this.send({ id, kind: 'abort' })
-      this.close({ id, reason: controller.signal.reason })
-    }, { once: true })
+    return controller.signal
+  }
+
+  /**
+   * Send a request to the server peer
+   */
+  async request(request: StandardRequest): Promise<StandardResponse> {
+    const id = this.idGenerator.generate()
+    const signal = this.open(id, request.signal)
 
     try {
       const requestMessage: PeerRequestMessage = {
@@ -127,31 +136,41 @@ export class ClientPeer {
         requestMessage.json.headers['standard-server'] = 'url-search-params' satisfies StandardBodyHint
       }
 
-      controller.signal.throwIfAborted()
+      signal.throwIfAborted()
       /**
        * We must ensure the request is sent before send any additional messages,
        * such as event iterator messages, signal messages, etc.
        * Otherwise, the server may not recognize them as part of the request.
        */
       await this.send(requestMessage)
-      controller.signal.throwIfAborted()
+      signal.throwIfAborted()
 
       if (isAsyncIteratorObject(request.body)) {
         /**
          * Do not await here; we don't want it to block response processing.
          */
-        void sendEventIterator(request.body, id, controller.signal, this.send)
-          .catch((err) => {
-            controller.abort(err)
+        void sendEventIterator(request.body, id, signal, this.send)
+          .catch(async (reason) => {
+            try {
+              await this.send({ id, kind: 'abort' })
+            }
+            finally {
+              this.close({ id, reason })
+            }
           })
       }
       else if (request.body instanceof ReadableStream) {
         /**
          * Do not await here; we don't want it to block response processing.
          */
-        void sendOctetStream(request.body, id, controller.signal, this.send)
-          .catch((err) => {
-            controller.abort(err)
+        void sendOctetStream(request.body, id, signal, this.send)
+          .catch(async (reason) => {
+            try {
+              await this.send({ id, kind: 'abort' })
+            }
+            finally {
+              this.close({ id, reason })
+            }
           })
       }
 

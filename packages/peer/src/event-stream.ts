@@ -17,14 +17,14 @@ export function toEventIterator(
 ): AsyncIteratorClass<unknown> {
   return new AsyncIteratorClass(async () => {
     while (true) {
-      const { json: message } = await pull()
+      const { json } = await pull()
 
-      switch (message.event) {
+      switch (json.event) {
         case 'message': {
-          let data = message.data
+          let data = json.data
 
           if (isTypescriptObject(data)) {
-            data = withEventIteratorEventMeta(data, message)
+            data = withEventIteratorEventMeta(data, json)
           }
 
           return { value: data, done: false }
@@ -33,16 +33,16 @@ export function toEventIterator(
         case 'error': {
           // Error events are surfaced by throwing a special error type
           throw withEventIteratorEventMeta(
-            new EventIteratorErrorEvent(message.data),
-            message,
+            new EventIteratorErrorEvent(json.data),
+            json,
           )
         }
 
-        case 'done': {
-          let data = message.data
+        case 'close': {
+          let data = json.data
 
           if (isTypescriptObject(data)) {
-            data = withEventIteratorEventMeta(data, message)
+            data = withEventIteratorEventMeta(data, json)
           }
 
           return { value: data, done: true }
@@ -88,7 +88,7 @@ export async function sendEventIterator(
 
         return {
           ...meta,
-          event: done ? 'done' : 'message',
+          event: done ? 'close' : 'message',
           data,
         }
       }
@@ -115,7 +115,9 @@ export async function sendEventIterator(
     })()
 
     try {
-      await send({ json, kind: 'event-stream', id: messageId })
+      if (!signal?.aborted) {
+        await send({ json, kind: 'event-stream', id: messageId })
+      }
     }
     catch (err) {
       if (!completed) {

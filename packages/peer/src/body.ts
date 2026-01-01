@@ -50,8 +50,8 @@ export async function toStandardBody(
       return fromData
     }
 
-    if (bodyHint === 'url-search-params' satisfies StandardBodyHint && typeof message.json === 'string') {
-      return new URLSearchParams(message.json)
+    if (bodyHint === 'url-search-params' satisfies StandardBodyHint && typeof message.json.body === 'string') {
+      return new URLSearchParams(message.json.body)
     }
 
     return message.json.body

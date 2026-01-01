@@ -84,12 +84,14 @@ export async function sendOctetStream(
     }
 
     try {
-      await send({
-        json: { end: done ? true : undefined },
-        binary,
-        kind: 'octet-stream',
-        id: messageId,
-      })
+      if (!signal?.aborted) {
+        await send({
+          json: { end: done ? true : undefined },
+          binary,
+          kind: 'octet-stream',
+          id: messageId,
+        })
+      }
     }
     catch (err) {
       if (!completed) {

@@ -42,6 +42,14 @@ export class ServerPeer {
       + this.controller.size
   }
 
+  private open(id: string): AbortSignal {
+    this.eventStreamMessageQueue.open(id)
+    this.octetStreamMessageQueue.open(id)
+    const controller = new AbortController()
+    this.controller.set(id, controller)
+    return controller.signal
+  }
+
   /**
    * Handle a message from client
    */
@@ -68,16 +76,13 @@ export class ServerPeer {
       return
     }
 
-    this.eventStreamMessageQueue.open(message.id)
-    this.octetStreamMessageQueue.open(message.id)
-    const controller = new AbortController()
-    this.controller.set(message.id, controller)
+    const signal = this.open(message.id)
 
     try {
       const request: StandardRequest = {
         ...message.json,
         query: message.json.query !== undefined ? new URLSearchParams(message.json.query) : undefined,
-        signal: controller.signal,
+        signal,
         body: await toStandardBody(
           message,
           this.eventStreamMessageQueue,
@@ -93,7 +98,7 @@ export class ServerPeer {
       const response = await handleRequest(request)
 
       // only send message if still open and not aborted
-      if (controller.signal.aborted) {
+      if (signal.aborted) {
         return
       }
 
@@ -133,7 +138,7 @@ export class ServerPeer {
         responseMessage.json.headers['standard-server'] = 'url-search-params' satisfies StandardBodyHint
       }
 
-      if (controller.signal.aborted) {
+      if (signal.aborted) {
         return
       }
       /**
@@ -141,7 +146,7 @@ export class ServerPeer {
        * so the server can recognize them as part of the response.
        */
       await this.send(responseMessage)
-      if (controller.signal.aborted) {
+      if (signal.aborted) {
         return
       }
 
@@ -151,11 +156,11 @@ export class ServerPeer {
         }
         else {
           const iterator = response.body
-          await sendEventIterator(iterator, message.id, controller.signal, this.send)
+          await sendEventIterator(iterator, message.id, signal, this.send)
         }
       }
       else if (response.body instanceof ReadableStream) {
-        await sendOctetStream(response.body, message.id, controller.signal, this.send)
+        await sendOctetStream(response.body, message.id, signal, this.send)
       }
 
       // close without aborting, because the request is finished successfully
@@ -163,10 +168,16 @@ export class ServerPeer {
       this.close({ id: message.id })
     }
     catch (reason) {
-      // there error while handling or sending response
+      try {
+        // there error while handling or sending response
       // so we need let client know by sending abort message
-      await this.send({ id: message.id, kind: 'abort' })
-      this.close({ id: message.id, reason })
+        await this.send({ id: message.id, kind: 'abort' })
+      }
+      finally {
+        // error may be from this.send so we need finally to always close
+        this.close({ id: message.id, reason })
+      }
+
       throw reason
     }
   }

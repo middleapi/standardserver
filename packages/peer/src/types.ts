@@ -1,6 +1,11 @@
 import type { StandardRequest, StandardResponse } from '@standardserver/core'
 import type { EventStreamMessage as EventIteratorEventMessage } from '@standardserver/core/event-stream'
 
+/**
+ * Base interface for all peer messages.
+ *
+ * SHOULD only contain data that friendly with structure clone algorithm.
+ */
 export interface PeerMessage {
   /**
    * Correlation ID for a single request/response lifecycle.
