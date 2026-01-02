@@ -1,3 +1,4 @@
+import type { AsyncCleanupFn } from './types'
 import { sequential } from './function'
 
 export function isAsyncIteratorObject(maybe: unknown): maybe is AsyncIteratorObject<any, any, any> {
@@ -12,21 +13,17 @@ export interface AsyncIteratorClassNextFn<T, TReturn> {
   (): Promise<IteratorResult<T, TReturn>>
 }
 
-export interface AsyncIteratorClassCleanupFn {
-  (reason: 'return' | 'throw' | 'next' | 'dispose'): Promise<void>
-}
-
 const fallbackAsyncDisposeSymbol: unique symbol = Symbol.for('asyncDispose')
 const asyncDisposeSymbol: typeof Symbol extends { asyncDispose: infer T } ? T : typeof fallbackAsyncDisposeSymbol = (Symbol as any).asyncDispose ?? fallbackAsyncDisposeSymbol
 
 export class AsyncIteratorClass<T, TReturn = unknown, TNext = unknown> implements AsyncIteratorObject<T, TReturn, TNext>, AsyncGenerator<T, TReturn, TNext> {
   private isDone = false
   private isExecuteComplete = false
-  private readonly cleanup: AsyncIteratorClassCleanupFn
+  private readonly cleanup: AsyncCleanupFn
 
   readonly next: AsyncIteratorClassNextFn<T, TReturn>
 
-  constructor(next: AsyncIteratorClassNextFn<T, TReturn>, cleanup: AsyncIteratorClassCleanupFn) {
+  constructor(next: AsyncIteratorClassNextFn<T, TReturn>, cleanup: AsyncCleanupFn) {
     this.cleanup = cleanup
     this.next = sequential(async () => {
       if (this.isDone) {
@@ -49,7 +46,7 @@ export class AsyncIteratorClass<T, TReturn = unknown, TNext = unknown> implement
       finally {
         if (this.isDone && !this.isExecuteComplete) {
           this.isExecuteComplete = true
-          await this.cleanup('next')
+          await this.cleanup(true)
         }
       }
     })
@@ -59,7 +56,7 @@ export class AsyncIteratorClass<T, TReturn = unknown, TNext = unknown> implement
     this.isDone = true
     if (!this.isExecuteComplete) {
       this.isExecuteComplete = true
-      await this.cleanup('return')
+      await this.cleanup(false)
     }
 
     return { done: true, value }
@@ -69,7 +66,7 @@ export class AsyncIteratorClass<T, TReturn = unknown, TNext = unknown> implement
     this.isDone = true
     if (!this.isExecuteComplete) {
       this.isExecuteComplete = true
-      await this.cleanup('throw')
+      await this.cleanup(false)
     }
 
     throw err
@@ -82,7 +79,7 @@ export class AsyncIteratorClass<T, TReturn = unknown, TNext = unknown> implement
     this.isDone = true
     if (!this.isExecuteComplete) {
       this.isExecuteComplete = true
-      await this.cleanup('dispose')
+      await this.cleanup(false)
     }
   }
 
