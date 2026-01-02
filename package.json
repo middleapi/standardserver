@@ -14,10 +14,10 @@
     "monorepo:fix": "sherif --fix"
   },
   "devDependencies": {
-    "@antfu/eslint-config": "^6.4.2",
+    "@antfu/eslint-config": "^6.7.3",
     "@types/node": "^25.0.3",
     "@vitest/coverage-v8": "^4.0.15",
-    "eslint": "^9.39.1",
+    "eslint": "^9.39.2",
     "eslint-plugin-ban": "^2.0.0",
     "eslint-plugin-format": "^1.1.0",
     "lint-staged": "^16.2.7",
