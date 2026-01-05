@@ -97,9 +97,14 @@ export function toNodeHttpBody(
   headers: StandardHeaders,
 ] {
   headers = { ...headers } // copy
+  headers['standard-server'] = undefined
+
+  if (body instanceof ReadableStream) {
+    headers['standard-server'] = 'octet-stream' satisfies StandardBodyHint
+    return [Readable.fromWeb(body), headers]
+  }
 
   const contentDisposition = flattenStandardHeader(headers['content-disposition'])
-
   headers['content-type'] = undefined
   headers['content-length'] = undefined
   headers['content-disposition'] = undefined

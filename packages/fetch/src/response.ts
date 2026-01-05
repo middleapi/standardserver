@@ -11,11 +11,16 @@ export interface ToFetchResponseOptions {
 }
 
 export function toFetchResponse(
-  response: StandardResponse,
+  standardResponse: StandardResponse,
   options: ToFetchResponseOptions = {},
 ): Response {
-  const [body, headers] = toFetchBody(response.body, toFetchHeaders(response.headers), options.body)
-  return new Response(body, { headers, status: response.status })
+  const [body, headers] = toFetchBody(standardResponse.body, toFetchHeaders(standardResponse.headers), options.body)
+  const response = new Response(body, { headers, status: standardResponse.status })
+
+  // not sure why, but some tests (@hono/node-server) fail without pre-accessing body
+  void response.body
+
+  return response
 }
 
 export function toStandardLazyResponse(
