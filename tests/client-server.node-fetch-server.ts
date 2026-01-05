@@ -1,7 +1,7 @@
 import type { AddressInfo } from 'node:net'
 import type { ClientServerTest } from './client-server'
 import * as http from 'node:http'
-import { createRequestListener } from '@mjackson/node-fetch-server'
+import { createRequestListener } from '@remix-run/node-fetch-server'
 import { toFetchBody, toFetchHeaders, toFetchResponse, toFetchUrl, toStandardLazyRequest, toStandardLazyResponse } from '@standardserver/fetch'
 
 export function createNodeFetchServerClientServerTest(): ClientServerTest {
