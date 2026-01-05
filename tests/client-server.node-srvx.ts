@@ -1,9 +1,9 @@
-import type { AddressInfo } from 'node:net'
 import type { ClientServerTest } from './client-server'
-import { serve } from '@hono/node-server'
 import { toFetchBody, toFetchHeaders, toFetchResponse, toFetchUrl, toStandardLazyRequest, toStandardLazyResponse } from '@standardserver/fetch'
 
-export function createHonoFetchClientServerTest(): ClientServerTest {
+import { serve } from 'srvx/node'
+
+export function createNodeSrvxClientServerTest(): ClientServerTest {
   const handler: ClientServerTest['handler'] = vi.fn(async () => {
     return { status: 404, body: 'Not Found', headers: {} }
   })
@@ -32,7 +32,7 @@ export function createHonoFetchClientServerTest(): ClientServerTest {
     server.close()
   })
 
-  const addressInfo = server.address() as AddressInfo
+  const port = server.url!.split(':').pop()!.split('/').shift()!
 
   const request: ClientServerTest['request'] = vi.fn(async (standardRequest) => {
     const id = crypto.randomUUID()
@@ -44,7 +44,7 @@ export function createHonoFetchClientServerTest(): ClientServerTest {
 
       const response = await fetch(toFetchUrl({
         ...standardRequest,
-        origin: `http://localhost:${addressInfo.port}`,
+        origin: `http://localhost:${port}`,
       }), {
         method: standardRequest.method,
         signal: standardRequest.signal ?? null,

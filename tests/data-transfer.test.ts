@@ -7,11 +7,13 @@ import { createInprogressFetchClientServerTest } from './client-server.inprogres
 import { createMessagePortClientServerTest } from './client-server.message-port'
 import { createNodeFetchServerClientServerTest } from './client-server.node-fetch-server'
 import { createNodeHttpClientServerTest } from './client-server.node-http'
+import { createNodeSrvxClientServerTest } from './client-server.node-srvx'
 
 describe.each([
   ['inprogress', createInprogressClientServerTest],
   ['inprogress-fetch', createInprogressFetchClientServerTest],
   ['hono-fetch', createHonoFetchClientServerTest],
+  ['node-srvx', createNodeSrvxClientServerTest],
   ['node-fetch-server', createNodeFetchServerClientServerTest],
   ['node-http', createNodeHttpClientServerTest],
   ['message-port', createMessagePortClientServerTest],

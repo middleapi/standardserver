@@ -30,6 +30,7 @@
     "lint-staged": "^16.2.7",
     "sherif": "^1.9.0",
     "simple-git-hooks": "^2.13.1",
+    "srvx": "^0.10.0",
     "typescript": "^5.9.3",
     "unbuild": "^3.6.1",
     "vitest": "^4.0.16"

@@ -3,6 +3,7 @@ import { createHonoFetchClientServerTest } from './client-server.hono-fetch'
 import { createMessagePortClientServerTest } from './client-server.message-port'
 import { createNodeFetchServerClientServerTest } from './client-server.node-fetch-server'
 import { createNodeHttpClientServerTest } from './client-server.node-http'
+import { createNodeSrvxClientServerTest } from './client-server.node-srvx'
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -12,6 +13,7 @@ describe.each([
   // ['inprogress', createInprogressClientServerTest],
   // ['inprogress-fetch', createInprogressFetchClientServerTest],
   ['hono-fetch', createHonoFetchClientServerTest],
+  ['node-srvx', createNodeSrvxClientServerTest],
   ['node-fetch-server', createNodeFetchServerClientServerTest],
   ['node-http', createNodeHttpClientServerTest],
   ['message-port', createMessagePortClientServerTest],
