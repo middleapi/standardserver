@@ -18,81 +18,268 @@ describe.each([
 ])('abort signal: $0', (_, createClientServer) => {
   const clientServer = createClientServer()
 
-  describe('client -> server', () => {
-    it('throw right away if signal already aborted', async () => {
-      const abortController = new AbortController()
-      abortController.abort()
+  it('throw right away if request signal already aborted', async () => {
+    const abortController = new AbortController()
+    abortController.abort()
 
-      await expect(clientServer.request({
+    await expect(clientServer.request({
+      headers: {},
+      body: undefined,
+      method: 'GET',
+      pathname: '/',
+      signal: abortController.signal,
+    })).rejects.toThrow(abortController.signal.reason)
+
+    if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
+      expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(0)
+      expect(clientServer.sendServerPeerMessage).toHaveBeenCalledTimes(0)
+    }
+  })
+
+  it('sync signal', async () => {
+    let serverSignal!: AbortSignal
+
+    clientServer.handler.mockImplementationOnce(async ({ signal }) => {
+      serverSignal = signal!
+
+      await sleep(1000)
+
+      return {
         headers: {},
-        body: undefined,
-        method: 'GET',
-        pathname: '/',
-        signal: abortController.signal,
-      })).rejects.toThrow(abortController.signal.reason)
-
-      if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
-        expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(0)
-        expect(clientServer.sendServerPeerMessage).toHaveBeenCalledTimes(0)
+        status: 200,
+        body: 'Hello',
       }
     })
 
-    it('sync signal', async () => {
-      let serverSignal!: AbortSignal
+    const abortController = new AbortController()
+    const responsePromise = clientServer.request({
+      headers: {},
+      body: undefined,
+      method: 'GET',
+      pathname: '/',
+      signal: abortController.signal,
+    })
 
-      clientServer.handler.mockImplementationOnce(async ({ signal }) => {
-        serverSignal = signal!
+    await sleep(10)
+    expect(serverSignal.aborted).toBe(false)
+    abortController.abort()
+    await sleep(100)
+    expect(serverSignal.aborted).toBe(true)
 
-        await sleep(1000)
+    await expect(responsePromise).rejects.toThrow(abortController.signal.reason)
 
-        return {
-          headers: {},
-          status: 200,
-          body: 'Hello',
-        }
-      })
+    if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
+      expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(2)
+      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
+      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'abort' }))
 
-      const abortController = new AbortController()
-      const responsePromise = clientServer.request({
+      expect(clientServer.sendServerPeerMessage).toHaveBeenCalledTimes(0) // abort before send anything
+    }
+  })
+
+  it('can abort by cancel event stream response', async () => {
+    let serverSignal!: AbortSignal
+    let canceled = false
+
+    clientServer.handler.mockImplementationOnce(async ({ signal }) => {
+      serverSignal = signal!
+
+      return {
         headers: {},
-        body: undefined,
-        method: 'GET',
-        pathname: '/',
-        signal: abortController.signal,
-      })
-
-      await sleep(10)
-      expect(serverSignal.aborted).toBe(false)
-      abortController.abort()
-      await sleep(100)
-      expect(serverSignal.aborted).toBe(true)
-
-      await expect(responsePromise).rejects.toThrow(abortController.signal.reason)
-
-      if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
-        expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(2)
-        expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
-        expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'abort' }))
-
-        expect(clientServer.sendServerPeerMessage).toHaveBeenCalledTimes(0) // abort before send anything
+        status: 200,
+        body: new AsyncIteratorClass(
+          async () => {
+            await sleep(1000)
+            return { done: false, value: 'Hello' }
+          },
+          async () => {
+            canceled = true
+          },
+        ),
       }
     })
 
-    it('stop sending event stream if aborted', async () => {
-      clientServer.handler.mockImplementationOnce(async ({ signal }) => {
-        await sleep(1000)
+    const response = await clientServer.request({
+      headers: {},
+      body: undefined,
+      method: 'GET',
+      pathname: '/',
+    })
 
-        return {
-          headers: {},
-          status: 200,
-          body: 'Hello',
-        }
-      })
+    const actualBody = await response.body() as AsyncGenerator
+    expect(actualBody).toSatisfy(isAsyncIteratorObject)
+    await actualBody.next()
+    expect(serverSignal.aborted).toBe(false)
+    await actualBody.return(undefined)
+    await sleep(10)
+    expect(serverSignal.aborted).toBe(true)
+    expect(canceled).toBe(true)
 
-      let canceled = false
-      const abortController = new AbortController()
-      const responsePromise = clientServer.request({
+    if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
+      expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(2)
+      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
+      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'abort' }))
+
+      expect(clientServer.sendServerPeerMessage).toHaveBeenCalledTimes(2)
+      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'response' }))
+      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'event-stream' }))
+    }
+  })
+
+  it('can abort by cancel octet stream response', async () => {
+    let serverSignal!: AbortSignal
+    let canceled = false
+
+    clientServer.handler.mockImplementationOnce(async ({ signal }) => {
+      serverSignal = signal!
+
+      return {
         headers: {},
+        status: 200,
+        body: new ReadableStream({
+          async pull(controller) {
+            controller.enqueue(new TextEncoder().encode('Hello'))
+            await sleep(100)
+          },
+          cancel() {
+            canceled = true
+          },
+        }),
+      }
+    })
+
+    const response = await clientServer.request({
+      headers: {},
+      body: undefined,
+      method: 'GET',
+      pathname: '/',
+    })
+
+    const actualBody = await response.body() as ReadableStream
+    expect(actualBody).toBeInstanceOf(ReadableStream)
+    const reader = actualBody.getReader()
+
+    await reader.read()
+    expect(serverSignal.aborted).toBe(false)
+    await reader.cancel()
+    await sleep(10)
+    expect(serverSignal.aborted).toBe(true)
+    expect(canceled).toBe(true)
+
+    if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
+      expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(2)
+      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
+      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'abort' }))
+
+      expect(clientServer.sendServerPeerMessage).toHaveBeenCalledTimes(2)
+      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'response' }))
+      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'octet-stream' }))
+    }
+  })
+
+  it('cancel request event stream if aborted while sending', async () => {
+    clientServer.handler.mockImplementationOnce(async ({ signal }) => {
+      await sleep(1000)
+
+      return {
+        headers: {},
+        status: 200,
+        body: 'Hello',
+      }
+    })
+
+    let canceled = false
+    const abortController = new AbortController()
+    const responsePromise = clientServer.request({
+      headers: {},
+      body: new AsyncIteratorClass(
+        async () => {
+          await sleep(100)
+          return { done: false, value: 'Hello' }
+        },
+        async () => {
+          canceled = true
+        },
+      ),
+      method: 'POST',
+      pathname: '/',
+      signal: abortController.signal,
+    })
+
+    await sleep(110)
+    abortController.abort()
+
+    await expect(responsePromise).rejects.toThrow(abortController.signal.reason)
+    expect(canceled).toBe(true) // ensure cleanup on abort
+
+    if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
+      expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(3)
+      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
+      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'event-stream' }))
+      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(3, expect.objectContaining({ kind: 'abort' }))
+
+      expect(clientServer.sendServerPeerMessage).toHaveBeenCalledTimes(0) // abort before send anything
+    }
+  })
+
+  it('cancel request octet stream if aborted while sending', async () => {
+    clientServer.handler.mockImplementationOnce(async ({ signal }) => {
+      await sleep(1000)
+
+      return {
+        headers: {},
+        status: 200,
+        body: 'Hello',
+      }
+    })
+
+    let cancelled = false
+    const abortController = new AbortController()
+    const responsePromise = clientServer.request({
+      headers: {},
+      body: new ReadableStream({
+        async start(controller) {
+          console.log('start')
+        },
+        async pull(controller) {
+          console.log('pull')
+          controller.enqueue(new TextEncoder().encode('Hello'))
+          await sleep(100)
+        },
+        cancel() {
+          console.log('cancel')
+          cancelled = true
+        },
+      }),
+      method: 'POST',
+      pathname: '/',
+      signal: abortController.signal,
+    })
+
+    await sleep(10)
+    abortController.abort()
+
+    await expect(responsePromise).rejects.toThrow(abortController.signal.reason)
+
+    await sleep(100)
+    expect(cancelled).toBe(true) // ensure cleanup on abort
+
+    if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
+      expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(3)
+      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
+      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'octet-stream' }))
+      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(3, expect.objectContaining({ kind: 'abort' }))
+
+      expect(clientServer.sendServerPeerMessage).toHaveBeenCalledTimes(0) // abort before send anything
+    }
+  })
+
+  it('cancel response event stream if aborted while sending', async () => {
+    let canceled = false
+    clientServer.handler.mockImplementationOnce(async ({ signal }) => {
+      return {
+        headers: {},
+        status: 200,
         body: new AsyncIteratorClass(
           async () => {
             await sleep(100)
@@ -102,172 +289,81 @@ describe.each([
             canceled = true
           },
         ),
-        method: 'POST',
-        pathname: '/',
-        signal: abortController.signal,
-      })
-
-      await sleep(110)
-      abortController.abort()
-
-      await expect(responsePromise).rejects.toThrow(abortController.signal.reason)
-      expect(canceled).toBe(true) // ensure cleanup on abort
-
-      if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
-        expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(3)
-        expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
-        expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'event-stream' }))
-        expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(3, expect.objectContaining({ kind: 'abort' }))
-
-        expect(clientServer.sendServerPeerMessage).toHaveBeenCalledTimes(0) // abort before send anything
       }
     })
 
-    it('stop sending octet stream if aborted', async () => {
-      clientServer.handler.mockImplementationOnce(async ({ signal }) => {
-        await sleep(1000)
+    const controller = new AbortController()
+    const response = await clientServer.request({
+      headers: {},
+      body: null,
+      method: 'POST',
+      pathname: '/',
+      signal: controller.signal,
+    })
 
-        return {
-          headers: {},
-          status: 200,
-          body: 'Hello',
-        }
-      })
+    const actualBody = await response.body() as AsyncGenerator
+    expect(actualBody).toSatisfy(isAsyncIteratorObject)
+    await actualBody.next()
 
-      let cancelled = false
-      const abortController = new AbortController()
-      const responsePromise = clientServer.request({
+    controller.abort()
+    await sleep(10)
+    expect(canceled).toBe(true) // ensure cleanup on abort
+
+    if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
+      expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(2)
+      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
+      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'abort' }))
+
+      expect(clientServer.sendServerPeerMessage).toHaveBeenCalledTimes(2)
+      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'response' }))
+      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'event-stream' }))
+    }
+  })
+
+  it('cancel response octet stream if aborted while sending', async () => {
+    let canceled = false
+    clientServer.handler.mockImplementationOnce(async ({ signal }) => {
+      return {
         headers: {},
+        status: 200,
         body: new ReadableStream({
           async pull(controller) {
-            controller.enqueue(new TextEncoder().encode('Hello'))
             await sleep(100)
+            controller.enqueue(new TextEncoder().encode('Hello'))
           },
           cancel() {
-            cancelled = true
+            canceled = true
           },
         }),
-        method: 'POST',
-        pathname: '/',
-        signal: abortController.signal,
-      })
-
-      await sleep(10)
-      abortController.abort()
-
-      await expect(responsePromise).rejects.toThrow(abortController.signal.reason)
-
-      await sleep(100)
-      expect(cancelled).toBe(true) // ensure cleanup on abort
-
-      if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
-        expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(3)
-        expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
-        expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'octet-stream' }))
-        expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(3, expect.objectContaining({ kind: 'abort' }))
-
-        expect(clientServer.sendServerPeerMessage).toHaveBeenCalledTimes(0) // abort before send anything
       }
     })
 
-    it('can abort by cancel event stream response', async () => {
-      let serverSignal!: AbortSignal
-      let canceled = false
-
-      clientServer.handler.mockImplementationOnce(async ({ signal }) => {
-        serverSignal = signal!
-
-        return {
-          headers: {},
-          status: 200,
-          body: new AsyncIteratorClass(
-            async () => {
-              await sleep(1000)
-              return { done: false, value: 'Hello' }
-            },
-            async () => {
-              canceled = true
-            },
-          ),
-        }
-      })
-
-      const response = await clientServer.request({
-        headers: {},
-        body: undefined,
-        method: 'GET',
-        pathname: '/',
-      })
-
-      const actualBody = await response.body() as AsyncGenerator
-      expect(actualBody).toSatisfy(isAsyncIteratorObject)
-      await actualBody.next()
-      expect(serverSignal.aborted).toBe(false)
-      await actualBody.return(undefined)
-      await sleep(10)
-      expect(serverSignal.aborted).toBe(true)
-      expect(canceled).toBe(true)
-
-      if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
-        expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(2)
-        expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
-        expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'abort' }))
-
-        expect(clientServer.sendServerPeerMessage).toHaveBeenCalledTimes(2)
-        expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'response' }))
-        expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'event-stream' }))
-      }
+    const controller = new AbortController()
+    const response = await clientServer.request({
+      headers: {},
+      body: null,
+      method: 'POST',
+      pathname: '/',
+      signal: controller.signal,
     })
 
-    it('can abort by cancel octet stream response', async () => {
-      let serverSignal!: AbortSignal
-      let canceled = false
+    const actualBody = await response.body() as ReadableStream
+    expect(actualBody).toBeInstanceOf(ReadableStream)
+    const reader = actualBody.getReader()
+    await reader.read()
 
-      clientServer.handler.mockImplementationOnce(async ({ signal }) => {
-        serverSignal = signal!
+    controller.abort()
+    await sleep(10)
+    expect(canceled).toBe(true) // ensure cleanup on abort
 
-        return {
-          headers: {},
-          status: 200,
-          body: new ReadableStream({
-            async pull(controller) {
-              controller.enqueue(new TextEncoder().encode('Hello'))
-              await sleep(100)
-            },
-            cancel() {
-              canceled = true
-            },
-          }),
-        }
-      })
+    if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
+      expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(2)
+      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
+      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'abort' }))
 
-      const response = await clientServer.request({
-        headers: {},
-        body: undefined,
-        method: 'GET',
-        pathname: '/',
-      })
-
-      const actualBody = await response.body() as ReadableStream
-      expect(actualBody).toBeInstanceOf(ReadableStream)
-      const reader = actualBody.getReader()
-
-      await reader.read()
-      expect(serverSignal.aborted).toBe(false)
-      await reader.cancel()
-      await sleep(10)
-      expect(serverSignal.aborted).toBe(true)
-      expect(canceled).toBe(true)
-
-      if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
-        expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(2)
-        expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
-        expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'abort' }))
-
-        expect(clientServer.sendServerPeerMessage).toHaveBeenCalledTimes(2)
-        expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'response' }))
-        expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'octet-stream' }))
-      }
-    })
+      expect(clientServer.sendServerPeerMessage).toHaveBeenCalledTimes(2)
+      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'response' }))
+      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'octet-stream' }))
+    }
   })
 })
