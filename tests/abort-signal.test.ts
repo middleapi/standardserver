@@ -1,4 +1,4 @@
-import { isAsyncIteratorObject, sleep } from '@standardserver/shared'
+import { AsyncIteratorClass, isAsyncIteratorObject, sleep } from '@standardserver/shared'
 import { createHonoFetchClientServerTest } from './client-server.hono-fetch'
 import { createMessagePortClientServerTest } from './client-server.message-port'
 import { createNodeFetchServerClientServerTest } from './client-server.node-fetch-server'
@@ -93,26 +93,24 @@ describe.each([
       const abortController = new AbortController()
       const responsePromise = clientServer.request({
         headers: {},
-        body: (async function* () {
-          try {
-            yield 'Hello'
+        body: new AsyncIteratorClass(
+          async () => {
             await sleep(100)
-          }
-          finally {
+            return { done: false, value: 'Hello' }
+          },
+          async () => {
             canceled = true
-          }
-        }()),
+          },
+        ),
         method: 'POST',
         pathname: '/',
         signal: abortController.signal,
       })
 
-      await sleep(10)
+      await sleep(110)
       abortController.abort()
 
       await expect(responsePromise).rejects.toThrow(abortController.signal.reason)
-
-      await sleep(100)
       expect(canceled).toBe(true) // ensure cleanup on abort
 
       if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
@@ -182,17 +180,15 @@ describe.each([
         return {
           headers: {},
           status: 200,
-          body: (async function* () {
-            try {
-              while (true) {
-                yield 'Hello'
-                await sleep(100)
-              }
-            }
-            finally {
+          body: new AsyncIteratorClass(
+            async () => {
+              await sleep(1000)
+              return { done: false, value: 'Hello' }
+            },
+            async () => {
               canceled = true
-            }
-          }()),
+            },
+          ),
         }
       })
 
@@ -210,7 +206,6 @@ describe.each([
       await actualBody.return(undefined)
       await sleep(10)
       expect(serverSignal.aborted).toBe(true)
-      await sleep(100)
       expect(canceled).toBe(true)
 
       if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
@@ -262,7 +257,6 @@ describe.each([
       await reader.cancel()
       await sleep(10)
       expect(serverSignal.aborted).toBe(true)
-      await sleep(100)
       expect(canceled).toBe(true)
 
       if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
