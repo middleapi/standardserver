@@ -27,6 +27,7 @@
     "eslint": "^9.39.2",
     "eslint-plugin-ban": "^2.0.0",
     "eslint-plugin-format": "^1.1.0",
+    "h3": "2.0.1-rc.7",
     "lint-staged": "^16.2.7",
     "sherif": "^1.9.0",
     "simple-git-hooks": "^2.13.1",

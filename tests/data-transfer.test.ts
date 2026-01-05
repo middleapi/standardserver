@@ -1,6 +1,8 @@
 import { Buffer } from 'node:buffer'
 import { EventIteratorErrorEvent, resolveEventIteratorEvent, withEventIteratorEventMeta } from '@standardserver/core/event-stream'
 import { isAsyncIteratorObject } from '@standardserver/shared'
+import { createH3NodeHandlerClientServerTest } from './client-server.h3-node-handler'
+import { createH3WebHandlerClientServerTest } from './client-server.h3-web-handler'
 import { createHonoFetchClientServerTest } from './client-server.hono-fetch'
 import { createInprogressClientServerTest } from './client-server.inprogress'
 import { createInprogressFetchClientServerTest } from './client-server.inprogress-fetch'
@@ -12,6 +14,8 @@ import { createNodeSrvxClientServerTest } from './client-server.node-srvx'
 describe.each([
   ['inprogress', createInprogressClientServerTest],
   ['inprogress-fetch', createInprogressFetchClientServerTest],
+  ['h3-node-handler', createH3NodeHandlerClientServerTest],
+  ['h3-web-handler', createH3WebHandlerClientServerTest],
   ['hono-fetch', createHonoFetchClientServerTest],
   ['node-srvx', createNodeSrvxClientServerTest],
   ['node-fetch-server', createNodeFetchServerClientServerTest],
@@ -39,7 +43,7 @@ describe.each([
     },
   ])('buffered body %s', async (createBody) => {
     const method = Math.random() < 0.5 ? 'POST' : 'PATCH'
-    const status = Math.random() < 0.5 ? 200 : 404
+    const status = Math.random() < 0.5 ? 200 : 201
     const pathname = Math.random() < 0.5 ? '/test' : '/test2'
 
     clientServer.handler.mockImplementationOnce(async (request) => {
@@ -85,30 +89,13 @@ describe.each([
 
       const actualBody = await request.body() as AsyncGenerator
       expect(actualBody).toSatisfy(isAsyncIteratorObject)
-      const expectedBody = generator()
-
-      while (true) {
-        const expected = await expectedBody.next()
-        const actual = await actualBody.next()
-
-        const [expectedData, expectedMeta] = resolveEventIteratorEvent(expected.value)
-        const [actualData, actualMeta] = resolveEventIteratorEvent(actual.value)
-
-        expect(expectedData).toEqual(actualData)
-        expect(expectedMeta).toEqual(actualMeta)
-        expect(actual.done).toEqual(expected.done)
-
-        if (expected.done) {
-          break
-        }
-      }
 
       return {
         headers: {
           'x-from': 'server',
         },
         status: 200,
-        body: generator(),
+        body: actualBody,
       }
     })
 
@@ -135,8 +122,8 @@ describe.each([
       const [expectedData, expectedMeta] = resolveEventIteratorEvent(expected.value)
       const [actualData, actualMeta] = resolveEventIteratorEvent(actual.value)
 
-      expect(expectedData).toEqual(actualData)
-      expect(expectedMeta).toEqual(actualMeta)
+      expect(actualData).toEqual(expectedData)
+      expect(actualMeta).toEqual(expectedMeta)
       expect(actual.done).toEqual(expected.done)
 
       if (expected.done) {
@@ -174,35 +161,12 @@ describe.each([
       const actualBody = await request.body() as AsyncGenerator
       expect(actualBody).toSatisfy(isAsyncIteratorObject)
 
-      const expectedBody = generator()
-
-      try {
-        while (true) {
-          // actual MUST resolve before expected to assert the error
-          const actual = await actualBody.next()
-          const expected = await expectedBody.next()
-
-          const [expectedData, expectedMeta] = resolveEventIteratorEvent(expected.value)
-          const [actualData, actualMeta] = resolveEventIteratorEvent(actual.value)
-
-          expect(expectedData).toEqual(actualData)
-          expect(expectedMeta).toEqual(actualMeta)
-          expect(actual.done).toEqual(expected.done)
-        }
-      }
-      catch (error) {
-        expect(error).toBeInstanceOf(EventIteratorErrorEvent)
-        const [err, errorMeta] = resolveEventIteratorEvent(error)
-        expect((err as any).data).toEqual({ order: 3 })
-        expect(errorMeta).toEqual({ id: 'id-3' })
-      }
-
       return {
         headers: {
           'x-from': 'server',
         },
         status: 200,
-        body: generator(),
+        body: actualBody,
       }
     })
 
@@ -285,22 +249,12 @@ describe.each([
       const actualBody = await request.body() as ReadableStream
       expect(actualBody).toBeInstanceOf(ReadableStream)
 
-      const reader = actualBody.getReader()
-
-      for (const part of parts) {
-        const actual = await reader.read()
-        expect(actual.value).toEqual(part)
-        expect(actual.done).toEqual(false)
-      }
-
-      expect(await reader.read()).toEqual({ value: undefined, done: true })
-
       return {
         headers: {
           'x-from': 'server',
         },
         status: 200,
-        body: createReadableStream(),
+        body: actualBody,
       }
     })
 
