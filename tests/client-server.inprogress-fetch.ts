@@ -1,5 +1,5 @@
 import type { ClientServerTest } from './client-server'
-import { toFetchBody, toFetchHeaders, toFetchResponse, toFetchUrl, toStandardLazyRequest, toStandardLazyResponse } from '@standardserver/fetch'
+import { toFetchBody, toFetchHeaders, toFetchResponse, toStandardLazyRequest, toStandardLazyResponse } from '@standardserver/fetch'
 
 export function createInprogressFetchClientServerTest(): ClientServerTest {
   const handler: ClientServerTest['handler'] = vi.fn(async () => {
@@ -13,7 +13,7 @@ export function createInprogressFetchClientServerTest(): ClientServerTest {
       toFetchResponse(
         await handler(
           toStandardLazyRequest(
-            new Request(toFetchUrl({ origin: 'http://placeholder', ...standardRequest }), {
+            new Request(standardRequest.url, {
               method: standardRequest.method,
               signal: standardRequest.signal ?? null,
               headers,

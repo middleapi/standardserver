@@ -38,8 +38,8 @@ describe('toStandardLazyRequest', () => {
       }
     }).post('/hello?foo=bar').send({ foo: 'bar' })
 
-    expect(standardRequest.pathname).toBe('/hello')
-    expect(standardRequest.query).toEqual(new URLSearchParams('foo=bar'))
+    expect(standardRequest.url.pathname).toEqual('/hello')
+    expect(standardRequest.url.search).toEqual('?foo=bar')
     expect(standardRequest.method).toBe('POST')
     expect(standardRequest.signal?.aborted).toBe(false)
   })

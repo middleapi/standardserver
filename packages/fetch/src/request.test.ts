@@ -1,15 +1,15 @@
 import type { StandardRequest } from '@standardserver/core'
+import * as Core from '@standardserver/core'
 import * as Body from './body'
 import * as Headers from './headers'
 import { toFetchRequest, toStandardLazyRequest } from './request'
-import * as Url from './url'
 
 const toStandardBodySpy = vi.spyOn(Body, 'toStandardBody')
 const toFetchBodySpy = vi.spyOn(Body, 'toFetchBody')
 const toStandardHeadersSpy = vi.spyOn(Headers, 'toStandardHeaders')
 const toFetchHeadersSpy = vi.spyOn(Headers, 'toFetchHeaders')
-const toStandardUrlSpy = vi.spyOn(Url, 'toStandardUrl')
-const toFetchUrlSpy = vi.spyOn(Url, 'toFetchUrl')
+const stringToUrlSpy = vi.spyOn(Core, 'stringToUrl')
+const urlToStringSpy = vi.spyOn(Core, 'urlToString')
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -27,14 +27,14 @@ describe('toStandardLazyRequest', () => {
 
     const standardRequest = toStandardLazyRequest(request)
 
-    expect(standardRequest).toEqual(expect.objectContaining(toStandardUrlSpy.mock.results[0]!.value))
+    expect(standardRequest).toEqual(expect.objectContaining(stringToUrlSpy.mock.results[0]!.value))
     expect(standardRequest.method).toBe('POST')
     expect(standardRequest.signal).toBe(request.signal)
     expect(standardRequest.headers).toEqual(toStandardHeadersSpy.mock.results[0]!.value)
     expect(standardRequest.body('json')).toBe(toStandardBodySpy.mock.results[0]!.value)
 
-    expect(toStandardUrlSpy).toBeCalledTimes(1)
-    expect(toStandardUrlSpy).toBeCalledWith(new URL(request.url))
+    expect(stringToUrlSpy).toBeCalledTimes(1)
+    expect(stringToUrlSpy).toBeCalledWith(request.url)
 
     expect(toStandardHeadersSpy).toBeCalledTimes(1)
     expect(toStandardHeadersSpy).toBeCalledWith(request.headers)
@@ -72,8 +72,7 @@ describe('toFetchRequest', () => {
     const controller = new AbortController()
 
     const standardRequest: StandardRequest = {
-      origin: 'https://example.com',
-      pathname: '/path/to/resource',
+      url: new URL('https://example.com'),
       method: 'POST',
       signal: controller.signal,
       headers: {
@@ -84,12 +83,12 @@ describe('toFetchRequest', () => {
 
     const options = { body: { eventIterator: { keepAliveComment: 'test' } } }
     const fetchRequest = toFetchRequest(standardRequest, options)
-    expect(fetchRequest.url).toEqual(toFetchUrlSpy.mock.results[0]!.value)
+    expect(fetchRequest.url).toEqual(urlToStringSpy.mock.results[0]!.value)
     expect(fetchRequest.method).toEqual(standardRequest.method)
     expect(fetchRequest.headers).toEqual(toFetchBodySpy.mock.results[0]!.value[1])
 
-    expect(toFetchUrlSpy).toHaveBeenCalledTimes(1)
-    expect(toFetchUrlSpy).toHaveBeenCalledWith(standardRequest)
+    expect(urlToStringSpy).toHaveBeenCalledTimes(1)
+    expect(urlToStringSpy).toHaveBeenCalledWith(standardRequest.url)
 
     expect(toFetchHeadersSpy).toHaveBeenCalledTimes(1)
     expect(toFetchHeadersSpy).toHaveBeenCalledWith(standardRequest.headers)
@@ -108,8 +107,7 @@ describe('toFetchRequest', () => {
 
   it('with empty body', async () => {
     const standardRequest: StandardRequest = {
-      origin: 'https://example.com',
-      pathname: '/path/to/resource',
+      url: new URL('https://example.com'),
       method: 'POST',
       headers: {},
       body: undefined,

@@ -1,5 +1,6 @@
 import type { ClientServerTest } from './client-server'
-import { toFetchBody, toFetchHeaders, toFetchResponse, toFetchUrl, toStandardLazyRequest, toStandardLazyResponse } from '@standardserver/fetch'
+import { urlToString } from '@standardserver/core'
+import { toFetchBody, toFetchHeaders, toFetchResponse, toStandardLazyRequest, toStandardLazyResponse } from '@standardserver/fetch'
 
 import { serve } from 'srvx/node'
 
@@ -42,10 +43,7 @@ export function createNodeSrvxClientServerTest(): ClientServerTest {
 
       headers.set('id', id)
 
-      const response = await fetch(toFetchUrl({
-        ...standardRequest,
-        origin: `http://localhost:${port}`,
-      }), {
+      const response = await fetch(`http://localhost:${port}${urlToString(standardRequest.url)}`, {
         method: standardRequest.method,
         signal: standardRequest.signal ?? null,
         headers,
