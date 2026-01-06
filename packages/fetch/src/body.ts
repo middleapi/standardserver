@@ -1,4 +1,4 @@
-import type { StandardBody, StandardBodyHint } from '@standardserver/core'
+import type { StandardBody, StandardBodyHint, StandardHeaders } from '@standardserver/core'
 import type { ToEventStreamOptions } from './event-stream'
 import { generateContentDisposition, getFilenameFromContentDisposition } from '@standardserver/core'
 import { isAsyncIteratorObject, parseEmptyableJSON, stringifyJSON } from '@standardserver/shared'
@@ -85,68 +85,56 @@ export interface ToFetchBodyOptions {
  */
 export function toFetchBody(
   body: StandardBody,
-  headers: Headers,
+  headers: StandardHeaders,
   options: ToFetchBodyOptions = {},
 ): [
   body: undefined | string | FormData | URLSearchParams | Blob | ReadableStream<Uint8Array<ArrayBuffer>>,
-  headers: Headers,
+  headers: StandardHeaders,
 ] {
-  headers = new Headers(headers) // clone
-  headers.delete('standard-server')
-
-  if (body instanceof ReadableStream) {
-    headers.set('standard-server', 'octet-stream' satisfies StandardBodyHint)
-    return [body, headers]
-  }
-
-  const contentDisposition = headers.get('content-disposition')
-  headers.delete('content-type')
-  headers.delete('content-length')
-  headers.delete('content-disposition')
+  headers = { ...headers }
 
   if (body === undefined) {
-    headers.set('standard-server', 'none' satisfies StandardBodyHint)
+    headers['standard-server'] = 'none' satisfies StandardBodyHint
     return [undefined, headers]
   }
 
-  if (body instanceof Blob) {
-    headers.set('standard-server', 'file' satisfies StandardBodyHint) // file is a blob, but blob is not a file
-    headers.set('content-type', body.type)
+  if (body instanceof ReadableStream) {
+    headers['standard-server'] = 'octet-stream' satisfies StandardBodyHint
+    headers['content-type'] ??= 'application/octet-stream'
+    return [body, headers]
+  }
 
-    if (contentDisposition === null) {
-      headers.set('content-disposition', generateContentDisposition(body instanceof File ? body.name : 'blob'))
-    }
-    else {
-      headers.set('content-disposition', contentDisposition)
-    }
+  if (body instanceof Blob) {
+    headers['standard-server'] = 'file' satisfies StandardBodyHint // file is a blob, but blob is not a file
+    headers['content-type'] ??= body.type
+    headers['content-disposition'] ??= generateContentDisposition(body instanceof File ? body.name : 'blob')
 
     // BunS3 can use NaN for the size
     if (Number.isNaN(body.size)) {
       return [body.stream(), headers]
     }
 
-    headers.set('content-length', body.size.toString())
+    headers['content-length'] ??= body.size.toString()
     return [body, headers]
   }
 
   if (body instanceof FormData) {
-    headers.set('standard-server', 'form-data' satisfies StandardBodyHint)
+    headers['standard-server'] = 'form-data' satisfies StandardBodyHint
     return [body, headers]
   }
 
   if (body instanceof URLSearchParams) {
-    headers.set('standard-server', 'url-search-params' satisfies StandardBodyHint)
+    headers['standard-server'] = 'url-search-params' satisfies StandardBodyHint
     return [body, headers]
   }
 
   if (isAsyncIteratorObject(body)) {
-    headers.set('standard-server', 'event-stream' satisfies StandardBodyHint)
-    headers.set('content-type', 'text/event-stream')
-
+    headers['standard-server'] = 'event-stream' satisfies StandardBodyHint
+    headers['content-type'] ??= 'text/event-stream'
     return [toEventStream(body, options.eventIterator), headers]
   }
 
-  headers.set('standard-server', 'json' satisfies StandardBodyHint)
-  headers.set('content-type', 'application/json')
+  headers['standard-server'] = 'json' satisfies StandardBodyHint
+  headers['content-type'] ??= 'application/json'
   return [stringifyJSON(body), headers]
 }

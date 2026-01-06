@@ -2,6 +2,7 @@ import * as StandardServerModule from '@standardserver/core'
 import { isAsyncIteratorObject } from '@standardserver/shared'
 import { toFetchBody, toStandardBody } from './body'
 import * as EventIteratorModule from './event-stream'
+import { toFetchHeaders } from './headers'
 
 const generateContentDispositionSpy = vi.spyOn(StandardServerModule, 'generateContentDisposition')
 const getFilenameFromContentDispositionSpy = vi.spyOn(StandardServerModule, 'getFilenameFromContentDisposition')
@@ -371,28 +372,25 @@ describe('toStandardBody', () => {
 })
 
 describe('toFetchBody', () => {
-  const baseHeaders = new Headers({
-    'content-type': 'application/json',
+  const baseHeaders = {
     'x-custom-header': 'custom-value',
-  })
+  }
 
   it('undefined', () => {
-    const base = new Headers(baseHeaders)
-    const [body, headers] = toFetchBody(undefined, base, {})
+    const [body, headers] = toFetchBody(undefined, baseHeaders, {})
 
     expect(body).toBe(undefined)
-    expect(Object.fromEntries(headers)).toEqual({
+    expect(headers).toEqual({
       'x-custom-header': 'custom-value',
       'standard-server': 'none',
     })
   })
 
   it('json', () => {
-    const base = new Headers(baseHeaders)
-    const [body, headers] = toFetchBody({ foo: 'bar' }, base, {})
+    const [body, headers] = toFetchBody({ foo: 'bar' }, baseHeaders, {})
 
     expect(body).toBe('{"foo":"bar"}')
-    expect(Object.fromEntries(headers)).toEqual({
+    expect(headers).toEqual({
       'content-type': 'application/json',
       'x-custom-header': 'custom-value',
       'standard-server': 'json',
@@ -400,43 +398,40 @@ describe('toFetchBody', () => {
   })
 
   it('form-data', () => {
-    const base = new Headers(baseHeaders)
     const form = new FormData()
     form.append('foo', 'bar')
     form.append('bar', 'baz')
 
-    const [body, headers] = toFetchBody(form, base, {})
+    const [body, headers] = toFetchBody(form, baseHeaders, {})
 
     expect(body).toBe(form)
-    expect(Object.fromEntries(headers)).toEqual({
+    expect(headers).toEqual({
       'x-custom-header': 'custom-value',
       'standard-server': 'form-data',
     })
   })
 
   it('url-search-params', async () => {
-    const base = new Headers(baseHeaders)
     const query = new URLSearchParams('foo=bar&bar=baz')
 
-    const [body, headers] = toFetchBody(query, base, {})
+    const [body, headers] = toFetchBody(query, baseHeaders, {})
 
     expect(body).toBe(query)
-    expect(Object.fromEntries(headers)).toEqual({
+    expect(headers).toEqual({
       'x-custom-header': 'custom-value',
       'standard-server': 'url-search-params',
     })
   })
 
   it('blob', () => {
-    const base = new Headers(baseHeaders)
     const blob = new Blob(['foo'], { type: 'application/pdf' })
 
     generateContentDispositionSpy.mockReturnValue('__mocked__')
 
-    const [body, headers] = toFetchBody(blob, base, {})
+    const [body, headers] = toFetchBody(blob, baseHeaders, {})
 
     expect(body).toBe(blob)
-    expect(Object.fromEntries(headers)).toEqual({
+    expect(headers).toEqual({
       'content-disposition': '__mocked__',
       'content-length': '3',
       'content-type': 'application/pdf',
@@ -449,15 +444,14 @@ describe('toFetchBody', () => {
   })
 
   it('file', () => {
-    const base = new Headers(baseHeaders)
     const blob = new File(['foo'], 'foo.pdf', { type: 'application/pdf' })
 
     generateContentDispositionSpy.mockReturnValue('__mocked__')
 
-    const [body, headers] = toFetchBody(blob, base, {})
+    const [body, headers] = toFetchBody(blob, baseHeaders, {})
 
     expect(body).toBe(blob)
-    expect(Object.fromEntries(headers)).toEqual({
+    expect(headers).toEqual({
       'content-disposition': '__mocked__',
       'content-length': '3',
       'content-type': 'application/pdf',
@@ -469,18 +463,14 @@ describe('toFetchBody', () => {
     expect(generateContentDispositionSpy).toHaveBeenCalledWith('foo.pdf')
   })
 
-  it('file with content-disposition', () => {
-    const base = new Headers(baseHeaders)
-    base.set('content-disposition', 'attachment; filename="foo.pdf"')
+  it('file with existing content-disposition header', () => {
     const blob = new File(['foo'], 'foo.pdf', { type: 'application/pdf' })
 
-    getFilenameFromContentDispositionSpy.mockReturnValue('foo.pdf')
-
-    const [body, headers] = toFetchBody(blob, base, {})
+    const [body, headers] = toFetchBody(blob, { ...baseHeaders, 'content-disposition': 'attachment' }, {})
 
     expect(body).toBe(blob)
-    expect(Object.fromEntries(headers)).toEqual({
-      'content-disposition': 'attachment; filename="foo.pdf"',
+    expect(headers).toEqual({
+      'content-disposition': 'attachment',
       'content-length': '3',
       'content-type': 'application/pdf',
       'x-custom-header': 'custom-value',
@@ -490,30 +480,16 @@ describe('toFetchBody', () => {
     expect(generateContentDispositionSpy).toHaveBeenCalledTimes(0)
   })
 
-  it('file with existing content-disposition', () => {
-    const base = new Headers(baseHeaders)
-    base.set('content-disposition', 'attachment;') // Missing filename
-    const blob = new File(['foo'], 'foo.pdf', { type: 'application/pdf' })
-
-    const [body, headers] = toFetchBody(blob, base, {})
-
-    expect(body).toBe(blob)
-    // Should imply it generated a new content-disposition because the existing one failed to Parse filename
-    expect(generateContentDispositionSpy).toHaveBeenCalledTimes(0)
-    expect(headers.get('content-disposition')).toBe('attachment;')
-  })
-
   it('file with size=nan', () => {
     // BunS3 is a File instance but has an unknown size (NaN), so to support it we should return a stream in this case.
-    const base = new Headers(baseHeaders)
     const file = new File(['foo'], 'foo.pdf', { type: 'application/pdf' })
     Object.defineProperty(file, 'size', { value: Number.NaN })
 
     generateContentDispositionSpy.mockReturnValue('__mocked__')
-    const [body, headers] = toFetchBody(file, base, {})
+    const [body, headers] = toFetchBody(file, baseHeaders, {})
 
     expect(body).toBeInstanceOf(ReadableStream)
-    expect(Object.fromEntries(headers)).toEqual({
+    expect(headers).toEqual({
       'content-disposition': '__mocked__',
       'content-type': 'application/pdf',
       'x-custom-header': 'custom-value',
@@ -521,19 +497,18 @@ describe('toFetchBody', () => {
     })
   })
 
-  it('async generator', async () => {
+  it('event stream', async () => {
     async function* gen() {
       yield 123
       return 456
     }
     const options = { eventIterator: { keepAliveEnabled: false } }
-    const base = new Headers(baseHeaders)
-    const [body, headers] = toFetchBody(gen(), base, options)
+    const [body, headers] = toFetchBody(gen(), baseHeaders, options)
 
     expect(toEventStreamSpy).toHaveBeenCalledWith(gen(), options.eventIterator)
 
     expect(body).toBeInstanceOf(ReadableStream)
-    expect(Object.fromEntries(headers)).toEqual({
+    expect(headers).toEqual({
       'content-type': 'text/event-stream',
       'x-custom-header': 'custom-value',
       'standard-server': 'event-stream',
@@ -546,21 +521,118 @@ describe('toFetchBody', () => {
     expect(await reader.read()).toEqual({ done: false, value: 'event: close\ndata: 456\n\n' })
   })
 
-  it('octet-stream', async () => {
+  it('octet stream', async () => {
     const stream = new ReadableStream({
       start(controller) {
-        controller.enqueue(new Uint8Array([1, 2, 3]))
+        controller.enqueue(new TextEncoder().encode('order1'))
+        controller.enqueue(new TextEncoder().encode('order2'))
+        controller.enqueue(new TextEncoder().encode('order3'))
         controller.close()
       },
     })
-    const base = new Headers(baseHeaders)
-    const [body, headers] = toFetchBody(stream, base, {})
+    const [body, headers] = toFetchBody(stream, baseHeaders, {})
 
     expect(body).toBe(stream)
-    expect(Object.fromEntries(headers)).toEqual({
-      'content-type': 'application/json',
+    expect(headers).toEqual({
+      'content-type': 'application/octet-stream',
       'x-custom-header': 'custom-value',
       'standard-server': 'octet-stream',
     })
+
+    const reader = (body as ReadableStream).pipeThrough(new TextDecoderStream()).getReader()
+
+    expect(await reader.read()).toEqual({ done: false, value: 'order1' })
+    expect(await reader.read()).toEqual({ done: false, value: 'order2' })
+    expect(await reader.read()).toEqual({ done: false, value: 'order3' })
+    expect(await reader.read()).toEqual({ done: true })
   })
+})
+
+/**
+ * These tests ensure that even in environments where the client or server cannot access
+ * the 'standard-server' header, the body can be parsed correctly (in case content headers are not touched).
+ * We not expect body can parse correctly in most cases, but >= 90% of the time it should work.
+ */
+it.each([
+  {
+    name: 'none',
+    createBody: () => undefined,
+  },
+  {
+    name: 'json',
+    createBody: () => ({ foo: 'bar' }),
+  },
+  {
+    name: 'form-data',
+    createBody: () => {
+      const form = new FormData()
+      form.append('foo', 'bar')
+      form.append('bar', 'baz')
+      form.append('file', new File(['foo'], 'foo.pdf', { type: 'application/pdf' }))
+      return form
+    },
+  },
+  {
+    name: 'url-search-params',
+    createBody: () => new URLSearchParams('foo=bar&bar=baz'),
+  },
+  {
+    name: 'blob',
+    createBody: () => new Blob(['foo'], { type: 'application/pdf' }),
+    assertBody: async (blob: any) => {
+      expect(blob).toBeInstanceOf(Blob)
+      expect(blob.type).toBe('application/pdf')
+      expect(blob.size).toBe(3)
+    },
+  },
+  {
+    name: 'file',
+    createBody: () => new File(['foo'], 'foo.pdf', { type: 'application/pdf' }),
+  },
+  {
+    name: 'event-stream',
+    createBody: async function* gen() {
+      yield 'order 1'
+      yield { order: 2 }
+      return { order: 3 }
+    },
+    assertBody: async (iterator: any) => {
+      expect(iterator).toSatisfy(isAsyncIteratorObject)
+
+      await expect(iterator.next()).resolves.toEqual({ value: 'order 1', done: false })
+      await expect(iterator.next()).resolves.toEqual({ value: { order: 2 }, done: false })
+      await expect(iterator.next()).resolves.toEqual({ value: { order: 3 }, done: true })
+    },
+  },
+  {
+    name: 'octet-stream',
+    createBody: () => new ReadableStream({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode('order1'))
+        controller.enqueue(new TextEncoder().encode('order2'))
+        controller.enqueue(new TextEncoder().encode('order3'))
+        controller.close()
+      },
+    }),
+    assertBody: async (iterator: any) => {
+      expect(iterator).toBeInstanceOf(ReadableStream)
+      const reader = iterator.getReader()
+      await expect(reader.read()).resolves.toEqual({ value: new TextEncoder().encode('order1'), done: false })
+      await expect(reader.read()).resolves.toEqual({ value: new TextEncoder().encode('order2'), done: false })
+      await expect(reader.read()).resolves.toEqual({ value: new TextEncoder().encode('order3'), done: false })
+      await expect(reader.read()).resolves.toEqual({ value: undefined, done: true })
+    },
+  },
+])('toFetchBody + toStandardBody without standard-server header: $name', async ({ name, createBody, assertBody }) => {
+  const [body, headers] = toFetchBody(createBody(), {})
+  const standardBody = await toStandardBody(new Response(body, {
+    headers: toFetchHeaders({ ...headers, 'standard-server': undefined }), // delete standard-server header
+  }))
+
+  if (assertBody) {
+    await assertBody(standardBody)
+  }
+  else {
+    expect(standardBody).toEqual(createBody())
+  }
 })

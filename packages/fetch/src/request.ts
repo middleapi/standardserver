@@ -36,11 +36,11 @@ export interface ToFetchRequestOptions {
  * Convert a standard request to a fetch request.
  */
 export function toFetchRequest(request: StandardRequest, options: ToFetchRequestOptions = {}): Request {
-  const [body, headers] = toFetchBody(request.body, toFetchHeaders(request.headers), options.body)
+  const [body, standardHeaders] = toFetchBody(request.body, request.headers, options.body)
 
   return new Request(urlToString(request.url), {
     method: request.method,
-    headers,
+    headers: toFetchHeaders(standardHeaders),
     body: body ?? null, // null = empty body
     signal: request.signal ?? null,
   })

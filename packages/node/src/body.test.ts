@@ -358,7 +358,6 @@ describe('toStandardBody', () => {
 
 describe('toNodeHttpBody', () => {
   const baseHeaders = {
-    'content-type': 'application/json',
     'x-custom-header': 'custom-value',
   }
 
@@ -394,7 +393,8 @@ describe('toNodeHttpBody', () => {
     expect(headers).toEqual({
       'x-custom-header': 'custom-value',
       'standard-server': 'form-data',
-      'content-type': expect.stringMatching(/multipart\/form-data; .+/),
+      'content-length': expect.any(String),
+      'content-type': expect.stringMatching(/multipart\/form-data;.+/),
     })
 
     const response = new Response(body, {
@@ -475,7 +475,7 @@ describe('toNodeHttpBody', () => {
     expect(await resBlob.text()).toBe('foo')
   })
 
-  it('file with content-disposition', async () => {
+  it('file with existing content-disposition headers', async () => {
     const headersBase = { ...baseHeaders, 'content-disposition': 'attachment; filename="foo.pdf"' }
     const blob = new File(['foo'], 'foo.pdf', { type: 'application/pdf' })
 
@@ -522,7 +522,7 @@ describe('toNodeHttpBody', () => {
     expect(generateContentDispositionSpy).toHaveBeenCalledWith('foo.pdf')
   })
 
-  it('async generator', async () => {
+  it('event stream', async () => {
     async function* gen() {
       yield 123
       return 456
@@ -545,6 +545,32 @@ describe('toNodeHttpBody', () => {
     expect(await reader.read()).toEqual({ done: false, value: ': \n\n' })
     expect(await reader.read()).toEqual({ done: false, value: 'event: message\ndata: 123\n\n' })
     expect(await reader.read()).toEqual({ done: false, value: 'event: close\ndata: 456\n\n' })
+    expect(await reader.read()).toEqual({ done: true })
+  })
+
+  it('octet stream', async () => {
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode('order1'))
+        controller.enqueue(new TextEncoder().encode('order2'))
+        controller.enqueue(new TextEncoder().encode('order3'))
+        controller.close()
+      },
+    })
+    const [body, headers] = await toNodeHttpBody(stream, baseHeaders)
+
+    expect(body).toBeInstanceOf(Readable)
+    expect(headers).toEqual({
+      'content-type': 'application/octet-stream',
+      'x-custom-header': 'custom-value',
+      'standard-server': 'octet-stream',
+    })
+
+    const reader = Readable.toWeb((body as Readable)).pipeThrough(new TextDecoderStream()).getReader()
+
+    expect(await reader.read()).toEqual({ done: false, value: 'order1' })
+    expect(await reader.read()).toEqual({ done: false, value: 'order2' })
+    expect(await reader.read()).toEqual({ done: false, value: 'order3' })
     expect(await reader.read()).toEqual({ done: true })
   })
 })

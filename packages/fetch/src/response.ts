@@ -14,8 +14,11 @@ export function toFetchResponse(
   standardResponse: StandardResponse,
   options: ToFetchResponseOptions = {},
 ): Response {
-  const [body, headers] = toFetchBody(standardResponse.body, toFetchHeaders(standardResponse.headers), options.body)
-  const response = new Response(body, { headers, status: standardResponse.status })
+  const [body, standardHeaders] = toFetchBody(standardResponse.body, standardResponse.headers, options.body)
+  const response = new Response(body, {
+    headers: toFetchHeaders(standardHeaders),
+    status: standardResponse.status,
+  })
 
   // not sure why, but some tests (@hono/node-server) fail without pre-accessing body
   void response.body

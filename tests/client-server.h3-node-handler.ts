@@ -39,14 +39,14 @@ export function createH3NodeHandlerClientServerTest(): ClientServerTest {
     const id = crypto.randomUUID()
 
     try {
-      const [body, headers] = toFetchBody(standardRequest.body, toFetchHeaders(standardRequest.headers))
+      const [body, standardHeaders] = toFetchBody(standardRequest.body, standardRequest.headers)
 
-      headers.set('id', id)
+      standardHeaders.id = id
 
       const response = await fetch(`http://localhost:${port}${urlToString(standardRequest.url)}`, {
         method: standardRequest.method,
         signal: standardRequest.signal ?? null,
-        headers,
+        headers: toFetchHeaders(standardHeaders),
         body: body ?? null,
         duplex: 'half',
       })

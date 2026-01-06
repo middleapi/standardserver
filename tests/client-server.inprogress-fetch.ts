@@ -7,7 +7,7 @@ export function createInprogressFetchClientServerTest(): ClientServerTest {
   })
 
   const request: ClientServerTest['request'] = vi.fn(async (standardRequest) => {
-    const [body, headers] = toFetchBody(standardRequest.body, toFetchHeaders(standardRequest.headers))
+    const [body, standardHeaders] = toFetchBody(standardRequest.body, standardRequest.headers)
 
     return toStandardLazyResponse(
       toFetchResponse(
@@ -16,7 +16,7 @@ export function createInprogressFetchClientServerTest(): ClientServerTest {
             new Request(standardRequest.url, {
               method: standardRequest.method,
               signal: standardRequest.signal ?? null,
-              headers,
+              headers: toFetchHeaders(standardHeaders),
               body: body ?? null, // null = empty body
               duplex: 'half',
             }),

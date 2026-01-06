@@ -97,37 +97,26 @@ export async function toNodeHttpBody(
   headers: StandardHeaders,
 ]> {
   headers = { ...headers } // copy
-  headers['standard-server'] = undefined
-
-  if (body instanceof ReadableStream) {
-    headers['standard-server'] = 'octet-stream' satisfies StandardBodyHint
-    return [Readable.fromWeb(body), headers]
-  }
-
-  const contentDisposition = flattenStandardHeader(headers['content-disposition'])
-  headers['content-type'] = undefined
-  headers['content-length'] = undefined
-  headers['content-disposition'] = undefined
 
   if (body === undefined) {
     headers['standard-server'] = 'none' satisfies StandardBodyHint
     return [undefined, headers]
   }
 
+  if (body instanceof ReadableStream) {
+    headers['standard-server'] = 'octet-stream' satisfies StandardBodyHint
+    headers['content-type'] ??= 'application/octet-stream'
+    return [Readable.fromWeb(body), headers]
+  }
+
   if (body instanceof Blob) {
     headers['standard-server'] = 'file' satisfies StandardBodyHint
-    headers['content-type'] = body.type
-
-    if (contentDisposition === undefined || getFilenameFromContentDisposition(contentDisposition) === undefined) {
-      headers['content-disposition'] = generateContentDisposition(body instanceof File ? body.name : 'blob')
-    }
-    else {
-      headers['content-disposition'] = contentDisposition
-    }
+    headers['content-type'] ??= body.type
+    headers['content-disposition'] ??= generateContentDisposition(body instanceof File ? body.name : 'blob')
 
     // BunS3 can use NaN for the size
     if (!Number.isNaN(body.size)) {
-      headers['content-length'] = body.size.toString()
+      headers['content-length'] ??= body.size.toString()
     }
 
     return [Readable.fromWeb(body.stream()), headers]
@@ -138,28 +127,28 @@ export async function toNodeHttpBody(
     // some formdata parser require content-length, so we need load the blob first
     const blob = await response.blob()
     headers['standard-server'] = 'form-data' satisfies StandardBodyHint
-    headers['content-type'] = blob.type
-    headers['content-length'] = blob.size.toString()
+    headers['content-type'] ??= blob.type
+    headers['content-length'] ??= blob.size.toString()
 
     return [Readable.fromWeb(blob.stream()), headers]
   }
 
   if (body instanceof URLSearchParams) {
     headers['standard-server'] = 'url-search-params' satisfies StandardBodyHint
-    headers['content-type'] = 'application/x-www-form-urlencoded'
+    headers['content-type'] ??= 'application/x-www-form-urlencoded'
 
     return [body.toString(), headers]
   }
 
   if (isAsyncIteratorObject(body)) {
     headers['standard-server'] = 'event-stream' satisfies StandardBodyHint
-    headers['content-type'] = 'text/event-stream'
+    headers['content-type'] ??= 'text/event-stream'
 
     return [toEventStream(body, options.eventIterator), headers]
   }
 
   headers['standard-server'] = 'json' satisfies StandardBodyHint
-  headers['content-type'] = 'application/json'
+  headers['content-type'] ??= 'application/json'
 
   return [stringifyJSON(body), headers]
 }
