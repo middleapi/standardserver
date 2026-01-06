@@ -1,4 +1,5 @@
 import type { StandardResponse } from '@standardserver/core'
+import type { ServerResponse } from 'node:http'
 import type { ToNodeHttpBodyOptions } from './body'
 import type { NodeHttpResponse } from './types'
 import { toNodeHttpBody } from './body'
@@ -10,16 +11,16 @@ export interface SendStandardResponseOptions {
   body?: ToNodeHttpBodyOptions
 }
 
-export function sendStandardResponse(
+export async function sendStandardResponse(
   res: NodeHttpResponse,
   standardResponse: StandardResponse,
   options: SendStandardResponseOptions = {},
 ): Promise<void> {
+  const [resBody, resHeaders] = await toNodeHttpBody(standardResponse.body, standardResponse.headers, options.body)
+
   return new Promise((resolve, reject) => {
     res.once('error', reject)
     res.once('close', resolve)
-
-    const [resBody, resHeaders] = toNodeHttpBody(standardResponse.body, standardResponse.headers, options.body)
 
     // DON'T use `res.writeHead` because it will make the response is chunked
     // while we only need chunked if the response body is stream
@@ -39,6 +40,10 @@ export function sendStandardResponse(
       res.end(resBody)
     }
     else {
+      // res.statusCode ignored when piping Readable.fromWeb() in h3 fromNodeHandler
+      // https://github.com/h3js/h3/issues/1272
+      ;(res as ServerResponse).writeHead(standardResponse.status)
+
       res.once('close', () => {
         if (!resBody.closed) {
           resBody.destroy(res.errored ?? undefined)
