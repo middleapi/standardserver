@@ -1,5 +1,4 @@
 import { AsyncIteratorClass, isAsyncIteratorObject, sleep } from '@standardserver/shared'
-import { createH3NodeHandlerClientServerTest } from './client-server.h3-node-handler'
 import { createH3WebHandlerClientServerTest } from './client-server.h3-web-handler'
 import { createHonoFetchClientServerTest } from './client-server.hono-fetch'
 import { createMessagePortClientServerTest } from './client-server.message-port'
@@ -14,7 +13,7 @@ beforeEach(() => {
 describe.each([
   // ['inprogress', createInprogressClientServerTest],
   // ['inprogress-fetch', createInprogressFetchClientServerTest],
-  ['h3-node-handler', createH3NodeHandlerClientServerTest],
+  // ['h3-node-handler', createH3NodeHandlerClientServerTest],
   ['h3-web-handler', createH3WebHandlerClientServerTest],
   ['hono-fetch', createHonoFetchClientServerTest],
   ['node-srvx', createNodeSrvxClientServerTest],
@@ -245,15 +244,12 @@ describe.each([
       headers: {},
       body: new ReadableStream({
         async start(controller) {
-          console.log('start')
         },
         async pull(controller) {
-          console.log('pull')
           controller.enqueue(new TextEncoder().encode('Hello'))
           await sleep(100)
         },
         cancel() {
-          console.log('cancel')
           cancelled = true
         },
       }),

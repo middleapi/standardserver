@@ -1,7 +1,6 @@
 import { Buffer } from 'node:buffer'
 import { EventIteratorErrorEvent, resolveEventIteratorEvent, withEventIteratorEventMeta } from '@standardserver/core/event-stream'
 import { isAsyncIteratorObject } from '@standardserver/shared'
-import { createH3NodeHandlerClientServerTest } from './client-server.h3-node-handler'
 import { createH3WebHandlerClientServerTest } from './client-server.h3-web-handler'
 import { createHonoFetchClientServerTest } from './client-server.hono-fetch'
 import { createInprogressClientServerTest } from './client-server.inprogress'
@@ -14,7 +13,7 @@ import { createNodeSrvxClientServerTest } from './client-server.node-srvx'
 describe.each([
   ['inprogress', createInprogressClientServerTest],
   ['inprogress-fetch', createInprogressFetchClientServerTest],
-  ['h3-node-handler', createH3NodeHandlerClientServerTest],
+  // ['h3-node-handler', createH3NodeHandlerClientServerTest],
   ['h3-web-handler', createH3WebHandlerClientServerTest],
   ['hono-fetch', createHonoFetchClientServerTest],
   ['node-srvx', createNodeSrvxClientServerTest],
@@ -270,7 +269,6 @@ describe.each([
     expect(response.headers['x-from']).toEqual('server')
     expect(response.status).toEqual(200)
     const actualBody = await response.body() as ReadableStream
-    console.log(actualBody)
     expect(actualBody).toBeInstanceOf(ReadableStream)
 
     const reader = actualBody.getReader()

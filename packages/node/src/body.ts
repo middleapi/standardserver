@@ -88,14 +88,14 @@ export interface ToNodeHttpBodyOptions {
   eventIterator?: ToEventStreamOptions
 }
 
-export function toNodeHttpBody(
+export async function toNodeHttpBody(
   body: StandardBody,
   headers: StandardHeaders,
   options: ToNodeHttpBodyOptions = {},
-): [
+): Promise<[
   body: Readable | undefined | string,
   headers: StandardHeaders,
-] {
+]> {
   headers = { ...headers } // copy
   headers['standard-server'] = undefined
 
@@ -135,10 +135,13 @@ export function toNodeHttpBody(
 
   if (body instanceof FormData) {
     const response = new Response(body)
+    // some formdata parser require content-length, so we need load the blob first
+    const blob = await response.blob()
     headers['standard-server'] = 'form-data' satisfies StandardBodyHint
-    headers['content-type'] = response.headers.get('content-type')!
+    headers['content-type'] = blob.type
+    headers['content-length'] = blob.size.toString()
 
-    return [Readable.fromWeb(response.body!), headers]
+    return [Readable.fromWeb(blob.stream()), headers]
   }
 
   if (body instanceof URLSearchParams) {
