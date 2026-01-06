@@ -1,3 +1,4 @@
+import { stringToUrl } from '@standardserver/core'
 import { AsyncIteratorClass, isAsyncIteratorObject, sleep } from '@standardserver/shared'
 import { createH3WebHandlerClientServerTest } from './client-server.h3-web-handler'
 import { createHonoFetchClientServerTest } from './client-server.hono-fetch'
@@ -31,7 +32,7 @@ describe.each([
       headers: {},
       body: undefined,
       method: 'GET',
-      pathname: '/',
+      url: stringToUrl('/'),
       signal: abortController.signal,
     })).rejects.toThrow(abortController.signal.reason)
 
@@ -61,7 +62,7 @@ describe.each([
       headers: {},
       body: undefined,
       method: 'GET',
-      pathname: '/',
+      url: stringToUrl('/'),
       signal: abortController.signal,
     })
 
@@ -108,7 +109,7 @@ describe.each([
       headers: {},
       body: undefined,
       method: 'GET',
-      pathname: '/',
+      url: stringToUrl('/'),
     })
 
     const actualBody = await response.body() as AsyncGenerator
@@ -157,7 +158,7 @@ describe.each([
       headers: {},
       body: undefined,
       method: 'GET',
-      pathname: '/',
+      url: stringToUrl('/'),
     })
 
     const actualBody = await response.body() as ReadableStream
@@ -207,7 +208,7 @@ describe.each([
         },
       ),
       method: 'POST',
-      pathname: '/',
+      url: stringToUrl('/'),
       signal: abortController.signal,
     })
 
@@ -254,7 +255,7 @@ describe.each([
         },
       }),
       method: 'POST',
-      pathname: '/',
+      url: stringToUrl('/'),
       signal: abortController.signal,
     })
 
@@ -299,7 +300,7 @@ describe.each([
       headers: {},
       body: null,
       method: 'POST',
-      pathname: '/',
+      url: stringToUrl('/'),
       signal: controller.signal,
     })
 
@@ -345,7 +346,7 @@ describe.each([
       headers: {},
       body: null,
       method: 'POST',
-      pathname: '/',
+      url: stringToUrl('/'),
       signal: controller.signal,
     })
 

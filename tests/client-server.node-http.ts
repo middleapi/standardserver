@@ -1,7 +1,8 @@
 import type { AddressInfo } from 'node:net'
 import type { ClientServerTest } from './client-server'
 import * as http from 'node:http'
-import { toFetchBody, toFetchHeaders, toFetchUrl, toStandardLazyResponse } from '@standardserver/fetch'
+import { urlToString } from '@standardserver/core'
+import { toFetchBody, toFetchHeaders, toStandardLazyResponse } from '@standardserver/fetch'
 import { sendStandardResponse, toStandardLazyRequest } from '@standardserver/node'
 
 export function createNodeHttpClientServerTest(): ClientServerTest {
@@ -41,10 +42,7 @@ export function createNodeHttpClientServerTest(): ClientServerTest {
 
       headers.set('id', id)
 
-      const response = await fetch(toFetchUrl({
-        ...standardRequest,
-        origin: `http://localhost:${addressInfo.port}`,
-      }), {
+      const response = await fetch(`http://localhost:${addressInfo.port}${urlToString(standardRequest.url)}`, {
         method: standardRequest.method,
         headers,
         body: body ?? null,

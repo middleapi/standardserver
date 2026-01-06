@@ -1,5 +1,6 @@
 import type { ClientServerTest } from './client-server'
-import { toFetchBody, toFetchHeaders, toFetchResponse, toFetchUrl, toStandardLazyRequest, toStandardLazyResponse } from '@standardserver/fetch'
+import { urlToString } from '@standardserver/core'
+import { toFetchBody, toFetchHeaders, toFetchResponse, toStandardLazyRequest, toStandardLazyResponse } from '@standardserver/fetch'
 import { fromWebHandler, H3, serve } from 'h3'
 
 export function createH3WebHandlerClientServerTest(): ClientServerTest {
@@ -42,10 +43,7 @@ export function createH3WebHandlerClientServerTest(): ClientServerTest {
 
       headers.set('id', id)
 
-      const response = await fetch(toFetchUrl({
-        ...standardRequest,
-        origin: `http://localhost:${port}`,
-      }), {
+      const response = await fetch(`http://localhost:${port}${urlToString(standardRequest.url)}`, {
         method: standardRequest.method,
         signal: standardRequest.signal ?? null,
         headers,

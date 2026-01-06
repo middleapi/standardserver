@@ -1,15 +1,15 @@
 import type { StandardLazyRequest, StandardRequest } from '@standardserver/core'
 import type { ToFetchBodyOptions } from './body'
+import { stringToUrl, urlToString } from '@standardserver/core'
 import { toFetchBody, toStandardBody } from './body'
 import { toFetchHeaders, toStandardHeaders } from './headers'
-import { toFetchUrl, toStandardUrl } from './url'
 
 /**
  * Convert a fetch request to a standard request.
  */
 export function toStandardLazyRequest(request: Request): StandardLazyRequest {
   return {
-    ...toStandardUrl(new URL(request.url)),
+    url: stringToUrl(request.url),
     method: request.method,
     get headers() {
       // lazy headers to improve performance
@@ -38,7 +38,7 @@ export interface ToFetchRequestOptions {
 export function toFetchRequest(request: StandardRequest, options: ToFetchRequestOptions = {}): Request {
   const [body, headers] = toFetchBody(request.body, toFetchHeaders(request.headers), options.body)
 
-  return new Request(toFetchUrl(request), {
+  return new Request(urlToString(request.url), {
     method: request.method,
     headers,
     body: body ?? null, // null = empty body

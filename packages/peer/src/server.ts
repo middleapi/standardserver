@@ -1,7 +1,7 @@
 import type { StandardBodyHint, StandardRequest, StandardResponse } from '@standardserver/core'
 import type { AsyncIdQueueCloseOptions } from '@standardserver/shared'
 import type { PeerAbortMessage, PeerEventStreamMessage, PeerOctetStreamMessage, PeerRequestMessage, PeerResponseMessage } from './types'
-import { generateContentDisposition } from '@standardserver/core'
+import { generateContentDisposition, stringToUrl } from '@standardserver/core'
 import { AbortError, AsyncIdQueue, isAsyncIteratorObject } from '@standardserver/shared'
 import { toStandardBody } from './body'
 import { sendEventIterator } from './event-stream'
@@ -81,7 +81,7 @@ export class ServerPeer {
     try {
       const request: StandardRequest = {
         ...message.json,
-        query: message.json.query !== undefined ? new URLSearchParams(message.json.query) : undefined,
+        url: stringToUrl(message.json.url),
         signal,
         body: await toStandardBody(
           message,

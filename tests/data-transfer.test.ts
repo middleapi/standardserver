@@ -1,4 +1,5 @@
 import { Buffer } from 'node:buffer'
+import { stringToUrl } from '@standardserver/core'
 import { EventIteratorErrorEvent, resolveEventIteratorEvent, withEventIteratorEventMeta } from '@standardserver/core/event-stream'
 import { isAsyncIteratorObject } from '@standardserver/shared'
 import { createH3WebHandlerClientServerTest } from './client-server.h3-web-handler'
@@ -43,13 +44,13 @@ describe.each([
   ])('buffered body %s', async (createBody) => {
     const method = Math.random() < 0.5 ? 'POST' : 'PATCH'
     const status = Math.random() < 0.5 ? 200 : 201
-    const pathname = Math.random() < 0.5 ? '/test' : '/test2'
+    const url = Math.random() < 0.5 ? stringToUrl('/test') : stringToUrl('/test2')
 
     clientServer.handler.mockImplementationOnce(async (request) => {
       expect(request.headers['x-from']).toEqual('client')
       expect(await request.body()).toEqual(createBody())
       expect(request.method).toEqual(method)
-      expect(request.pathname).toEqual(pathname)
+      expect(request.url.pathname).toEqual(url.pathname)
 
       return {
         headers: {
@@ -65,7 +66,7 @@ describe.each([
         'x-from': 'client',
       },
       method,
-      pathname,
+      url,
       body: createBody(),
     })
 
@@ -84,7 +85,7 @@ describe.each([
     clientServer.handler.mockImplementationOnce(async (request) => {
       expect(request.headers['x-from']).toEqual('client')
       expect(request.method).toEqual('DELETE')
-      expect(request.pathname).toEqual('/event-stream')
+      expect(request.url.pathname).toEqual('/event-stream')
 
       const actualBody = await request.body() as AsyncGenerator
       expect(actualBody).toSatisfy(isAsyncIteratorObject)
@@ -103,7 +104,7 @@ describe.each([
         'x-from': 'client',
       },
       method: 'DELETE',
-      pathname: '/event-stream',
+      url: stringToUrl('/event-stream'),
       body: generator(),
     })
 
@@ -155,7 +156,7 @@ describe.each([
     clientServer.handler.mockImplementationOnce(async (request) => {
       expect(request.headers['x-from']).toEqual('client')
       expect(request.method).toEqual('DELETE')
-      expect(request.pathname).toEqual('/event-stream')
+      expect(request.url.pathname).toEqual('/event-stream')
 
       const actualBody = await request.body() as AsyncGenerator
       expect(actualBody).toSatisfy(isAsyncIteratorObject)
@@ -174,7 +175,7 @@ describe.each([
         'x-from': 'client',
       },
       method: 'DELETE',
-      pathname: '/event-stream',
+      url: stringToUrl('/event-stream'),
       body: generator(),
     })
 
@@ -243,7 +244,7 @@ describe.each([
     clientServer.handler.mockImplementationOnce(async (request) => {
       expect(request.headers['x-from']).toEqual('client')
       expect(request.method).toEqual('POST')
-      expect(request.pathname).toEqual('/octet-stream')
+      expect(request.url.pathname).toEqual('/octet-stream')
 
       const actualBody = await request.body() as ReadableStream
       expect(actualBody).toBeInstanceOf(ReadableStream)
@@ -262,7 +263,7 @@ describe.each([
         'x-from': 'client',
       },
       method: 'POST',
-      pathname: '/octet-stream',
+      url: stringToUrl('/octet-stream'),
       body: createReadableStream(),
     })
 

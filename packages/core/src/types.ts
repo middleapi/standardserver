@@ -20,40 +20,19 @@ export type StandardBody
     | Blob // binary - file is also a blob (any content-type)
     | undefined // empty (any content-type)
 
-export interface StandardUrl {
-  /**
-   * @example 'https://example.com'
-   */
-  origin?: string | undefined
-  /**
-   * @example '/path/to/resource'
-   */
-  pathname: `/${string}`
-  /**
-   * @example new URLSearchParams('foo=bar&baz=qux')
-   */
-  query?: URLSearchParams | undefined
-  /**
-   * @example '#section', etc.
-   */
-  hash?: `#${string}` | undefined
-  /**
-   * @example 'user', etc.
-   * @deprecated Authentication credentials in URLs are deprecated and often ignored for security reasons.
-   */
-  username?: string | undefined
-  /**
-   * @example 'pass', etc.
-   * @deprecated Authentication credentials in URLs are deprecated and often ignored for security reasons.
-   */
-  password?: string | undefined
-}
-
-export interface StandardRequest extends StandardUrl {
+export interface StandardRequest {
   /**
    * @example 'GET', 'POST', etc.
    */
   method: string
+  /**
+   * @example new URL('https://example.com')
+   *
+   * If the request is not bound to a concrete network origin
+   * and is expected to be resolved by another layer,
+   * use `UNBOUND_ORIGIN` (`http://unbound.invalid`).
+   */
+  url: URL
   /**
    * @example { 'content-type': 'application/json' }
    */
