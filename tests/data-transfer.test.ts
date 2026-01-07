@@ -1,7 +1,6 @@
-import { Buffer } from 'node:buffer'
 import { stringToUrl } from '@standardserver/core'
 import { EventIteratorErrorEvent, resolveEventIteratorEvent, withEventIteratorEventMeta } from '@standardserver/core/event-stream'
-import { isAsyncIteratorObject } from '@standardserver/shared'
+import { isAsyncIteratorObject, sleep } from '@standardserver/shared'
 import { createH3WebHandlerClientServerTest } from './client-server.h3-web-handler'
 import { createHonoFetchClientServerTest } from './client-server.hono-fetch'
 import { createInprogressClientServerTest } from './client-server.inprogress'
@@ -75,61 +74,75 @@ describe.each([
     expect(await response.body()).toEqual(createBody())
   })
 
-  it('event stream', async () => {
-    const generator = async function* () {
-      yield 'order1'
-      yield withEventIteratorEventMeta({ order: 2 }, { id: 'id-2' })
-      return withEventIteratorEventMeta({ order: 3 }, { id: 'id-3' })
-    }
-
+  it('event stream in parallel', async () => {
     clientServer.handler.mockImplementationOnce(async (request) => {
       expect(request.headers['x-from']).toEqual('client')
       expect(request.method).toEqual('DELETE')
       expect(request.url.pathname).toEqual('/event-stream')
 
-      const actualBody = await request.body() as AsyncGenerator
-      expect(actualBody).toSatisfy(isAsyncIteratorObject)
+      const body = await request.body() as AsyncGenerator
+      expect(body).toSatisfy(isAsyncIteratorObject)
 
       return {
         headers: {
           'x-from': 'server',
         },
         status: 200,
-        body: actualBody,
+        body,
       }
     })
 
+    let start = Date.now()
     const response = await clientServer.request({
       headers: {
         'x-from': 'client',
       },
       method: 'DELETE',
       url: stringToUrl('/event-stream'),
-      body: generator(),
+      body: (async function* () {
+        await sleep(100)
+        yield 'order1'
+        await sleep(100)
+        yield withEventIteratorEventMeta({ order: 2 }, { id: 'id-2' })
+        await sleep(100)
+        return withEventIteratorEventMeta({ order: 3 }, { comments: ['order3'] })
+      }()),
     })
 
     expect(response.headers['x-from']).toEqual('server')
     expect(response.status).toEqual(200)
 
-    const actualBody = await response.body() as AsyncGenerator
-    expect(actualBody).toSatisfy(isAsyncIteratorObject)
-    const expectedBody = generator()
+    const body = await response.body() as AsyncGenerator
+    expect(body).toSatisfy(isAsyncIteratorObject)
 
-    while (true) {
-      const expected = await expectedBody.next()
-      const actual = await actualBody.next()
+    await expect(body.next()).resolves.toSatisfy((result) => {
+      expect(result.done).toBe(false)
+      const [data, meta] = resolveEventIteratorEvent(result.value)
+      expect(data).toEqual('order1')
+      expect(meta).toEqual(undefined)
+      return true
+    })
+    expect(Date.now() - start).toBeLessThan(200)
+    start = Date.now()
 
-      const [expectedData, expectedMeta] = resolveEventIteratorEvent(expected.value)
-      const [actualData, actualMeta] = resolveEventIteratorEvent(actual.value)
+    await expect(body.next()).resolves.toSatisfy((result) => {
+      expect(result.done).toBe(false)
+      const [data, meta] = resolveEventIteratorEvent(result.value)
+      expect(data).toEqual({ order: 2 })
+      expect(meta).toEqual({ id: 'id-2' })
+      return true
+    })
+    expect(Date.now() - start).toBeLessThan(200)
+    start = Date.now()
 
-      expect(actualData).toEqual(expectedData)
-      expect(actualMeta).toEqual(expectedMeta)
-      expect(actual.done).toEqual(expected.done)
-
-      if (expected.done) {
-        break
-      }
-    }
+    await expect(body.next()).resolves.toSatisfy((result) => {
+      expect(result.done).toBe(true)
+      const [data, meta] = resolveEventIteratorEvent(result.value)
+      expect(data).toEqual({ order: 3 })
+      expect(meta).toEqual({ comments: ['order3'] })
+      return true
+    })
+    expect(Date.now() - start).toBeLessThan(200)
 
     if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
       expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(4)
@@ -146,13 +159,7 @@ describe.each([
     }
   })
 
-  it('event stream with error event', async () => {
-    const generator = async function* () {
-      yield 'order1'
-      yield withEventIteratorEventMeta({ order: 2 }, { id: 'id-2' })
-      throw withEventIteratorEventMeta(new EventIteratorErrorEvent({ order: 3 }), { id: 'id-3' })
-    }
-
+  it('event stream with error event in parallel', async () => {
     clientServer.handler.mockImplementationOnce(async (request) => {
       expect(request.headers['x-from']).toEqual('client')
       expect(request.method).toEqual('DELETE')
@@ -170,42 +177,56 @@ describe.each([
       }
     })
 
+    let start = Date.now()
     const response = await clientServer.request({
       headers: {
         'x-from': 'client',
       },
       method: 'DELETE',
       url: stringToUrl('/event-stream'),
-      body: generator(),
+      body: (async function* () {
+        await sleep(100)
+        yield 'order1'
+        await sleep(100)
+        yield withEventIteratorEventMeta({ order: 2 }, { id: 'id-2' })
+        throw withEventIteratorEventMeta(new EventIteratorErrorEvent({ order: 3 }), { comments: ['order3'] })
+      }()),
     })
 
     expect(response.headers['x-from']).toEqual('server')
     expect(response.status).toEqual(200)
-    const actualBody = await response.body() as AsyncGenerator
-    const expectedBody = generator()
+    const body = await response.body() as AsyncGenerator
+    expect(body).toSatisfy(isAsyncIteratorObject)
 
-    expect(actualBody).toSatisfy(isAsyncIteratorObject)
+    await expect(body.next()).resolves.toSatisfy((result) => {
+      expect(result.done).toBe(false)
+      const [data, meta] = resolveEventIteratorEvent(result.value)
+      expect(data).toEqual('order1')
+      expect(meta).toEqual(undefined)
+      return true
+    })
+    expect(Date.now() - start).toBeLessThan(200)
+    start = Date.now()
 
-    try {
-      while (true) {
-        // actual MUST resolve before expected to assert the error
-        const actual = await actualBody.next()
-        const expected = await expectedBody.next()
+    await expect(body.next()).resolves.toSatisfy((result) => {
+      expect(result.done).toBe(false)
+      const [data, meta] = resolveEventIteratorEvent(result.value)
+      expect(data).toEqual({ order: 2 })
+      expect(meta).toEqual({ id: 'id-2' })
+      return true
+    })
+    expect(Date.now() - start).toBeLessThan(200)
+    start = Date.now()
 
-        const [expectedData, expectedMeta] = resolveEventIteratorEvent(expected.value)
-        const [actualData, actualMeta] = resolveEventIteratorEvent(actual.value)
-
-        expect(expectedData).toEqual(actualData)
-        expect(expectedMeta).toEqual(actualMeta)
-        expect(actual.done).toEqual(expected.done)
-      }
-    }
-    catch (error) {
+    await expect(body.next()).rejects.toSatisfy((error: EventIteratorErrorEvent) => {
       expect(error).toBeInstanceOf(EventIteratorErrorEvent)
-      const [err, errorMeta] = resolveEventIteratorEvent(error)
-      expect((err as any).data).toEqual({ order: 3 })
-      expect(errorMeta).toEqual({ id: 'id-3' })
-    }
+      const [err, errMeta] = resolveEventIteratorEvent(error)
+      expect(err.data).toEqual({ order: 3 })
+      expect(errMeta).toEqual({ comments: ['order3'] })
+      return true
+    })
+    expect(Date.now() - start).toBeLessThan(200)
+    start = Date.now()
 
     if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
       expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(4)
@@ -222,69 +243,66 @@ describe.each([
     }
   })
 
-  it('octet stream', async () => {
-    const parts = [
-      new TextEncoder().encode('part1'),
-      new TextEncoder().encode('part2'),
-      new TextEncoder().encode('part3'),
-    ]
-
-    const createReadableStream = () => {
-      return new ReadableStream({
-        start(controller) {
-          for (const part of parts) {
-            controller.enqueue(part)
-          }
-
-          controller.close()
-        },
-      })
-    }
-
+  it('octet stream in parallel', async () => {
     clientServer.handler.mockImplementationOnce(async (request) => {
       expect(request.headers['x-from']).toEqual('client')
       expect(request.method).toEqual('POST')
       expect(request.url.pathname).toEqual('/octet-stream')
 
-      const actualBody = await request.body() as ReadableStream
-      expect(actualBody).toBeInstanceOf(ReadableStream)
+      const body = await request.body() as ReadableStream
+      expect(body).toBeInstanceOf(ReadableStream)
 
       return {
         headers: {
           'x-from': 'server',
         },
         status: 200,
-        body: actualBody,
+        body,
       }
     })
 
+    let start = Date.now()
     const response = await clientServer.request({
       headers: {
         'x-from': 'client',
       },
       method: 'POST',
       url: stringToUrl('/octet-stream'),
-      body: createReadableStream(),
+      body: new ReadableStream({
+        async start(controller) {
+          // make sure each chunk is long enough to ensure client/server transfer separately
+          await sleep(100)
+          controller.enqueue(new TextEncoder().encode('chunk1'.repeat(10)))
+          await sleep(100)
+          controller.enqueue(new TextEncoder().encode('chunk2'.repeat(10)))
+          await sleep(100)
+          controller.enqueue(new TextEncoder().encode('chunk3'.repeat(10)))
+          await sleep(100)
+          controller.close()
+        },
+      }),
     })
 
     expect(response.headers['x-from']).toEqual('server')
     expect(response.status).toEqual(200)
-    const actualBody = await response.body() as ReadableStream
-    expect(actualBody).toBeInstanceOf(ReadableStream)
+    const body = await response.body() as ReadableStream
+    expect(body).toBeInstanceOf(ReadableStream)
+    const reader = body.getReader()
 
-    const reader = actualBody.getReader()
+    await expect(reader.read()).resolves.toEqual({ done: false, value: new TextEncoder().encode('chunk1'.repeat(10)) })
+    expect(Date.now() - start).toBeLessThan(200)
+    start = Date.now()
 
-    const expectedBuffer = Buffer.concat(parts)
-    let actualBuffer = Buffer.from([])
-    while (true) {
-      const actual = await reader.read()
-      if (actual.done) {
-        break
-      }
-      actualBuffer = Buffer.concat([actualBuffer, actual.value])
-    }
+    await expect(reader.read()).resolves.toEqual({ done: false, value: new TextEncoder().encode('chunk2'.repeat(10)) })
+    expect(Date.now() - start).toBeLessThan(200)
+    start = Date.now()
 
-    expect(actualBuffer).toEqual(expectedBuffer)
+    await expect(reader.read()).resolves.toEqual({ done: false, value: new TextEncoder().encode('chunk3'.repeat(10)) })
+    expect(Date.now() - start).toBeLessThan(200)
+    start = Date.now()
+
+    await expect(reader.read()).resolves.toEqual({ done: true, value: undefined })
+    expect(Date.now() - start).toBeLessThan(200)
 
     if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
       expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(5)
