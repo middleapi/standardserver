@@ -558,4 +558,248 @@ describe.each([
       expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'response' }))
     }
   })
+
+  it('error happen while sending request event stream', async () => {
+    let canceled = false
+    let serverSignal!: AbortSignal
+    let serverError!: unknown
+
+    clientServer.handler.mockImplementationOnce(async (request) => {
+      serverSignal = request.signal!
+
+      const body = await request.body() as AsyncGenerator
+      expect(body).toSatisfy(isAsyncIteratorObject)
+
+      await body.next()
+      try {
+        await body.next() // pull second chunk where error happen
+      }
+      catch (e) {
+        serverError = e
+      }
+
+      return {
+        headers: {},
+        status: 200,
+        body: 'Hello',
+      }
+    })
+
+    let times = 0
+    const responsePromise = clientServer.request({
+      headers: {},
+      body: new AsyncIteratorClass(
+        async () => {
+          await sleep(100)
+          times++
+
+          if (times === 2) {
+            // throw normal error not event iterator error
+            throw new Error('__TEST__')
+          }
+
+          return { done: false, value: 'Hello' }
+        },
+        async () => {
+          canceled = true
+        },
+      ),
+      method: 'POST',
+      url: stringToUrl('/'),
+    })
+
+    await expect(responsePromise).rejects.toThrow()
+
+    await sleep(100) // wait for server handle abort
+    expect(serverSignal.aborted).toBe(true)
+    expect(serverError).toBeInstanceOf(Error)
+
+    if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
+      expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(3)
+      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
+      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'event-stream' }))
+      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(3, expect.objectContaining({ kind: 'abort' }))
+
+      expect(clientServer.sendServerPeerMessage).toHaveBeenCalledTimes(0)
+    }
+  })
+
+  it('error happen while sending request octet stream', async () => {
+    let canceled = false
+    let serverSignal!: AbortSignal
+    let serverError!: unknown
+
+    clientServer.handler.mockImplementationOnce(async (request) => {
+      serverSignal = request.signal!
+
+      const body = await request.body() as ReadableStream
+      expect(body).toBeInstanceOf(ReadableStream)
+
+      const reader = body.getReader()
+      await reader.read()
+      try {
+        await reader.read() // pull second chunk where error happen
+      }
+      catch (e) {
+        serverError = e
+      }
+
+      return {
+        headers: {},
+        status: 200,
+        body: 'Hello',
+      }
+    })
+
+    let times = 0
+    const responsePromise = clientServer.request({
+      headers: {},
+      body: new ReadableStream({
+        pull: async (controller) => {
+          await sleep(100)
+          times++
+
+          if (times === 2) {
+            controller.error(new Error('__TEST__'))
+          }
+
+          controller.enqueue(new TextEncoder().encode('Hello'))
+        },
+        cancel: async () => {
+          canceled = true
+        },
+      }),
+      method: 'POST',
+      url: stringToUrl('/'),
+    })
+
+    await expect(responsePromise).rejects.toThrow()
+
+    await sleep(100) // wait for server handle abort
+    expect(serverSignal.aborted).toBe(true)
+    expect(serverError).toBeInstanceOf(Error)
+
+    if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
+      expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(3)
+      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
+      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'octet-stream' }))
+      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(3, expect.objectContaining({ kind: 'abort' }))
+
+      expect(clientServer.sendServerPeerMessage).toHaveBeenCalledTimes(0)
+    }
+  })
+
+  it('error happen while sending response event stream', async () => {
+    let canceled = false
+    let serverSignal!: AbortSignal
+    let times = 0
+
+    clientServer.handler.mockImplementationOnce(async (request) => {
+      serverSignal = request.signal!
+
+      return {
+        headers: {},
+        status: 200,
+        body: new AsyncIteratorClass(
+          async () => {
+            await sleep(100)
+            times++
+
+            if (times === 2) {
+            // throw normal error not event iterator error
+              throw new Error('__TEST__')
+            }
+
+            return { done: false, value: 'Hello' }
+          },
+          async () => {
+            canceled = true
+          },
+        ),
+      }
+    })
+
+    const response = await clientServer.request({
+      headers: {},
+      body: undefined,
+      method: 'POST',
+      url: stringToUrl('/'),
+    })
+
+    const body = await response.body() as AsyncGenerator
+    expect(body).toSatisfy(isAsyncIteratorObject)
+
+    await body.next()
+    await expect(body.next()).rejects.toBeInstanceOf(Error)
+
+    await sleep(100) // wait until serve handled error
+    expect(serverSignal.aborted).toBe(true)
+
+    if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
+      expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(1)
+      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
+
+      expect(clientServer.sendServerPeerMessage).toHaveBeenCalledTimes(3)
+      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'response' }))
+      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'event-stream' }))
+      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(3, expect.objectContaining({ kind: 'abort' }))
+    }
+  })
+
+  it('error happen while sending response octet stream', async () => {
+    let canceled = false
+    let serverSignal!: AbortSignal
+    let times = 0
+
+    clientServer.handler.mockImplementationOnce(async (request) => {
+      serverSignal = request.signal!
+
+      return {
+        headers: {},
+        status: 200,
+        body: new ReadableStream({
+          pull: async (controller) => {
+            await sleep(100)
+            times++
+
+            if (times === 2) {
+              controller.error(new Error('__TEST__'))
+            }
+
+            controller.enqueue(new TextEncoder().encode('Hello'))
+          },
+          cancel: async () => {
+            canceled = true
+          },
+        }),
+      }
+    })
+
+    const response = await clientServer.request({
+      headers: {},
+      body: undefined,
+      method: 'POST',
+      url: stringToUrl('/'),
+    })
+
+    const body = await response.body() as ReadableStream
+    expect(body).toBeInstanceOf(ReadableStream)
+
+    const reader = body.getReader()
+    await reader.read()
+    await expect(reader.read()).rejects.toBeInstanceOf(Error)
+
+    await sleep(100) // wait until serve handled error
+    expect(serverSignal.aborted).toBe(true)
+
+    if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
+      expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(1)
+      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
+
+      expect(clientServer.sendServerPeerMessage).toHaveBeenCalledTimes(3)
+      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'response' }))
+      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'octet-stream' }))
+      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(3, expect.objectContaining({ kind: 'abort' }))
+    }
+  })
 })
