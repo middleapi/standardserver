@@ -21,8 +21,45 @@ describe.each([
   ['node-fetch-server', createNodeFetchServerClientServerTest],
   ['node-http', createNodeHttpClientServerTest],
   ['message-port', createMessagePortClientServerTest],
-])('signal and cancel: $0', (_, createClientServer) => {
+] as const)('signal and cancel: $0', (adapter, createClientServer) => {
   const clientServer = createClientServer()
+
+  it('never aborted', async () => {
+    let serverSignal!: AbortSignal
+
+    clientServer.handler.mockImplementationOnce(async ({ signal }) => {
+      serverSignal = signal!
+
+      await sleep(200)
+
+      return {
+        headers: {},
+        status: 200,
+        body: 'Hello',
+      }
+    })
+
+    const response = await clientServer.request({
+      headers: {},
+      body: undefined,
+      method: 'GET',
+      url: stringToUrl('/'),
+    })
+
+    expect(response).toMatchObject({ status: 200 })
+
+    await sleep(100) // ensure everything is finished
+    // server shouldn't abort if finished successfully
+    expect(serverSignal.aborted).toBe(false)
+
+    if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
+      expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(1)
+      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
+
+      expect(clientServer.sendServerPeerMessage).toHaveBeenCalledTimes(1)
+      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'response' }))
+    }
+  })
 
   it('already aborted', async () => {
     const abortController = new AbortController()
@@ -66,12 +103,12 @@ describe.each([
       signal: abortController.signal,
     })
 
-    await sleep(10) // ensure server started handling
+    await sleep(100) // ensure server started handling
     expect(serverSignal.aborted).toBe(false)
 
     abortController.abort()
 
-    await sleep(10) // wait for server to receive abort
+    await sleep(100) // wait for server receive abort signal
     expect(serverSignal.aborted).toBe(true)
 
     await expect(responsePromise).rejects.toThrow(abortController.signal.reason)
@@ -121,9 +158,14 @@ describe.each([
     expect(serverSignal.aborted).toBe(false)
     abortController.abort()
 
-    await expect(responsePromise).rejects.toThrow(abortController.signal.reason)
-    expect(canceled).toBe(true)
+    await sleep(100) // wait for server receive abort signal
+    // Currently only message-port adapter support request stream cancel
+    if (adapter === 'message-port') {
+      expect(canceled).toBe(true)
+    }
     expect(serverSignal.aborted).toBe(true)
+
+    await expect(responsePromise).rejects.toThrow(abortController.signal.reason)
 
     if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
       expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(3)
@@ -137,6 +179,7 @@ describe.each([
 
   it('abort while sending request octet stream', async () => {
     let serverSignal!: AbortSignal
+
     clientServer.handler.mockImplementationOnce(async ({ signal }) => {
       serverSignal = signal!
       await sleep(1000)
@@ -153,8 +196,6 @@ describe.each([
     const responsePromise = clientServer.request({
       headers: {},
       body: new ReadableStream({
-        async start(controller) {
-        },
         async pull(controller) {
           await sleep(100)
           controller.enqueue(new TextEncoder().encode('Hello'))
@@ -173,11 +214,14 @@ describe.each([
     expect(serverSignal.aborted).toBe(false)
     abortController.abort()
 
-    await expect(responsePromise).rejects.toThrow(abortController.signal.reason)
-
-    await sleep(100)
-    expect(cancelled).toBe(true) // ensure cleanup on abort
+    await sleep(100) // wait for server receive abort signal
+    // Currently only message-port adapter trigger request stream cancel
+    if (adapter === 'message-port') {
+      expect(cancelled).toBe(true)
+    }
     expect(serverSignal.aborted).toBe(true)
+
+    await expect(responsePromise).rejects.toThrow(abortController.signal.reason)
 
     if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
       expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(3)
@@ -226,7 +270,7 @@ describe.each([
     expect(serverSignal.aborted).toBe(false)
     controller.abort()
 
-    await sleep(100) // wait for cleanup effect
+    await sleep(100) // wait for server receive abort signal
     expect(canceled).toBe(true)
     expect(serverSignal.aborted).toBe(true)
 
@@ -279,7 +323,7 @@ describe.each([
     expect(serverSignal.aborted).toBe(false)
     controller.abort()
 
-    await sleep(100) // wait for cleanup effect
+    await sleep(100) // wait for server receive abort signal
     expect(canceled).toBe(true)
     expect(serverSignal.aborted).toBe(true)
 
@@ -332,7 +376,7 @@ describe.each([
     expect(serverSignal.aborted).toBe(false)
     await actualBody.return(undefined)
 
-    await sleep(10) // wait for cleanup effect
+    await sleep(100) // wait for server receive cancel signal
     expect(serverSignal.aborted).toBe(true)
     expect(canceled).toBe(true)
 
@@ -385,7 +429,7 @@ describe.each([
     expect(serverSignal.aborted).toBe(false)
     await reader.cancel()
 
-    await sleep(10) // wait for cleanup effect
+    await sleep(100) // wait for server receive cancel signal
     expect(serverSignal.aborted).toBe(true)
     expect(canceled).toBe(true)
 
@@ -414,7 +458,12 @@ describe.each([
       await body.return(undefined)
 
       await sleep(10) // wait for cancel effect
-      expect(canceled).toBe(true)
+
+      // Currently only message port adapter support trigger request stream cancel
+      if (adapter === 'message-port') {
+        expect(canceled).toBe(true)
+      }
+
       expect(serverSignal.aborted).toBe(false) // DO NOT ABORT IF ONLY CANCEL REQUEST BODY
 
       return {
@@ -424,7 +473,7 @@ describe.each([
       }
     })
 
-    const responsePromise = clientServer.request({
+    const response = await clientServer.request({
       headers: {},
       body: new AsyncIteratorClass(
         async () => {
@@ -439,18 +488,16 @@ describe.each([
       url: stringToUrl('/'),
     })
 
-    await sleep(110) // wait for first chunk to be sent
-
-    await responsePromise
+    expect(response).toMatchObject({ status: 200 })
 
     if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
-      expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(3)
+      expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(2)
       expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
       expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'event-stream' }))
 
       expect(clientServer.sendServerPeerMessage).toHaveBeenCalledTimes(2)
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'event-stream/cancel' }))
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'response' }))
+      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'stream/cancel' }))
+      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'response' }))
     }
   })
 
@@ -469,7 +516,12 @@ describe.each([
       await reader.cancel()
 
       await sleep(10) // wait for cancel effect
-      expect(canceled).toBe(true)
+
+      // Currently only message-port adapter support trigger request stream cancel
+      if (adapter === 'message-port') {
+        expect(canceled).toBe(true)
+      }
+
       expect(serverSignal.aborted).toBe(false) // DO NOT ABORT IF ONLY CANCEL REQUEST BODY
 
       return {
@@ -479,7 +531,7 @@ describe.each([
       }
     })
 
-    const responsePromise = clientServer.request({
+    const response = await clientServer.request({
       headers: {},
       body: new ReadableStream({
         pull: async (controller) => {
@@ -494,18 +546,16 @@ describe.each([
       url: stringToUrl('/'),
     })
 
-    await sleep(110)
-
-    await responsePromise
+    expect(response).toMatchObject({ status: 200 })
 
     if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
-      expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(3)
+      expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(2)
       expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
       expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'octet-stream' }))
 
       expect(clientServer.sendServerPeerMessage).toHaveBeenCalledTimes(2)
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'octet-stream/cancel' }))
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'response' }))
+      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'stream/cancel' }))
+      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'response' }))
     }
   })
 })

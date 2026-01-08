@@ -18,13 +18,13 @@ export function toOctetStream(
           controller.enqueue(binary instanceof Uint8Array ? binary : new Uint8Array(await binary.arrayBuffer()))
         }
 
-        if (json.end) {
+        if (json.close) {
           await cleanup(true)
           controller.close()
         }
       }
       catch (err) {
-        await cleanup(false)
+        await cleanup(true)
         controller.error(err)
       }
     },
@@ -35,76 +35,50 @@ export function toOctetStream(
 }
 
 /**
- * Consumes an AsyncIterator of binary chunks and forwards its output as peer octet-stream messages.
- * Iterator completion and abort signals are mapped explicitly.
+ * Transmits binary chunks to a peer octet-stream.
  */
-export async function sendOctetStream(
-  stream: ReadableStream<Uint8Array<ArrayBuffer>>,
-  messageId: string,
-  signal: AbortSignal | undefined,
-  send: (message: PeerOctetStreamMessage) => Promise<void>,
-): Promise<void> {
-  signal?.throwIfAborted()
+export class OctetStreamTransmitter {
+  private isCompleted = false
+  private readonly reader: ReadableStreamDefaultReader<Uint8Array<ArrayBuffer>>
 
-  const reader = stream.getReader()
+  constructor(
+    stream: ReadableStream<Uint8Array<ArrayBuffer>>,
+    private readonly messageId: string,
+    private readonly send: (message: PeerOctetStreamMessage) => Promise<void>,
+  ) {
+    this.reader = stream.getReader()
+  }
 
-  let completed = false
-
-  const handleAbort = async () => {
-    if (!completed) {
-      completed = true
-      await reader.cancel?.()
+  async cancel(): Promise<void> {
+    if (!this.isCompleted) {
+      this.isCompleted = true
+      await this.reader.cancel()
     }
   }
 
-  signal?.addEventListener('abort', handleAbort, { once: true })
+  async transmit(): Promise<void> {
+    while (true) {
+      const { done, value } = await this.reader.read()
 
-  while (true) {
-    let binary: Uint8Array<ArrayBuffer> | undefined
-    let done: boolean
-
-    try {
-      const result = await reader.read()
-
-      binary = result.value
-      done = result.done
+      if (!this.isCompleted) {
+        try {
+          await this.send({
+            json: { close: done },
+            binary: value,
+            kind: 'octet-stream',
+            id: this.messageId,
+          })
+        }
+        catch (err) {
+          await this.cancel()
+          throw err
+        }
+      }
 
       if (done) {
-        completed = true
-        signal?.removeEventListener('abort', handleAbort)
+        this.isCompleted = true
+        break
       }
-    }
-    catch (err) {
-      if (!completed) {
-        completed = true
-        signal?.removeEventListener('abort', handleAbort)
-      }
-
-      throw err
-    }
-
-    try {
-      if (!signal?.aborted) {
-        await send({
-          json: { end: done ? true : undefined },
-          binary,
-          kind: 'octet-stream',
-          id: messageId,
-        })
-      }
-    }
-    catch (err) {
-      if (!completed) {
-        completed = true
-        signal?.removeEventListener('abort', handleAbort)
-        await reader.cancel?.()
-      }
-
-      throw err
-    }
-
-    if (completed) {
-      return
     }
   }
 }

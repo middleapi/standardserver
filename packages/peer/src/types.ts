@@ -145,13 +145,35 @@ export interface PeerOctetStreamMessage extends PeerMessage {
      *
      * @default false
      */
-    end?: boolean | undefined
+    close: boolean
   }
 
   /**
    * Binary payload.
    *
-   * SHOULD always be present even if `json.end` is `true`.
+   * SHOULD always be present even if `json.close` is `true`.
    */
   binary?: Uint8Array<ArrayBuffer> | Blob | undefined
+}
+
+/**
+ * Indicates that an octet-stream/event-stream should be cancelled.
+ *
+ * - **Server → Client**: Server no longer needs more octet-stream/event-stream messages.
+ */
+export interface PeerStreamCancelMessage extends PeerMessage {
+  /**
+   * The kind of the message.
+   */
+  kind: 'stream/cancel'
+
+  /**
+   * This message does not have a JSON payload.
+   */
+  json?: undefined
+
+  /**
+   * This message does not have a binary payload.
+   */
+  binary?: undefined
 }

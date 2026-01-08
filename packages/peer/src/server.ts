@@ -1,12 +1,19 @@
 import type { StandardBodyHint, StandardRequest, StandardResponse } from '@standardserver/core'
 import type { AsyncIdQueueCloseOptions } from '@standardserver/shared'
-import type { PeerAbortMessage, PeerEventStreamMessage, PeerOctetStreamMessage, PeerRequestMessage, PeerResponseMessage } from './types'
+import type {
+  PeerAbortMessage,
+  PeerEventStreamMessage,
+  PeerOctetStreamMessage,
+  PeerRequestMessage,
+  PeerResponseMessage,
+  PeerStreamCancelMessage,
+} from './types'
 import { generateContentDisposition, stringToUrl } from '@standardserver/core'
 import { AbortError, AsyncIdQueue, isAsyncIteratorObject } from '@standardserver/shared'
 import { toStandardBody } from './body'
-import { sendEventIterator } from './event-stream'
+import { EventStreamTransmitter } from './event-stream'
 import { HibernationEventIterator } from './hibernation'
-import { sendOctetStream } from './octet-stream'
+import { OctetStreamTransmitter } from './octet-stream'
 
 export interface ServerPeerCloseOptions extends AsyncIdQueueCloseOptions {}
 
@@ -17,17 +24,22 @@ export class ServerPeer {
   private readonly eventStreamMessageQueue = new AsyncIdQueue<PeerEventStreamMessage>()
   private readonly octetStreamMessageQueue = new AsyncIdQueue<PeerOctetStreamMessage>()
 
+  private readonly eventStreamTransmitters = new Map<string, EventStreamTransmitter>()
+  private readonly octetStreamTransmitters = new Map<string, OctetStreamTransmitter>()
+
   /**
    * Map of abort controllers for each request
    */
-  private readonly controller = new Map<string, AbortController>()
+  private readonly requestController = new Map<string, AbortController>()
 
   constructor(
-    private readonly send: (message: PeerResponseMessage | PeerAbortMessage | PeerOctetStreamMessage | PeerEventStreamMessage) => Promise<void>,
+    private readonly send: (
+      message: PeerResponseMessage | PeerAbortMessage | PeerOctetStreamMessage | PeerEventStreamMessage | PeerStreamCancelMessage,
+    ) => Promise<void>,
   ) {
     this.send = async (message) => {
       // only send message if still open
-      if (this.controller.has(message.id)) {
+      if (this.requestController.has(message.id)) {
         await send(message)
       }
     }
@@ -39,15 +51,9 @@ export class ServerPeer {
   get size(): number {
     return this.eventStreamMessageQueue.length
       + this.octetStreamMessageQueue.length
-      + this.controller.size
-  }
-
-  private open(id: string): AbortSignal {
-    this.eventStreamMessageQueue.open(id)
-    this.octetStreamMessageQueue.open(id)
-    const controller = new AbortController()
-    this.controller.set(id, controller)
-    return controller.signal
+      + this.requestController.size
+      + this.eventStreamTransmitters.size
+      + this.octetStreamTransmitters.size
   }
 
   /**
@@ -58,7 +64,7 @@ export class ServerPeer {
     handleRequest: (request: StandardRequest) => Promise<StandardResponse>,
   ): Promise<void> {
     if (message.kind === 'abort') {
-      this.close({ id: message.id, reason: new AbortError('Client aborted the request') })
+      await this.close({ id: message.id, reason: new AbortError('Client peer aborted the request') })
       return
     }
 
@@ -76,7 +82,11 @@ export class ServerPeer {
       return
     }
 
-    const signal = this.open(message.id)
+    this.eventStreamMessageQueue.open(message.id)
+    this.octetStreamMessageQueue.open(message.id)
+    const controller = new AbortController()
+    this.requestController.set(message.id, controller)
+    const signal = controller.signal
 
     try {
       const request: StandardRequest = {
@@ -87,10 +97,15 @@ export class ServerPeer {
           message,
           this.eventStreamMessageQueue,
           this.octetStreamMessageQueue,
-          async () => {
+          async (isCompleted) => {
             // Stop buffering incoming messages in memory without aborting the request.
             this.eventStreamMessageQueue.close({ id: message.id })
             this.octetStreamMessageQueue.close({ id: message.id })
+
+            if (!isCompleted) {
+              // let client know that we no longer need stream messages
+              await this.send({ id: message.id, kind: 'stream/cancel' })
+            }
           },
         ),
       }
@@ -155,44 +170,60 @@ export class ServerPeer {
           response.body.hibernationCallback?.(message.id)
         }
         else {
-          const iterator = response.body
-          await sendEventIterator(iterator, message.id, signal, this.send)
+          const transmitter = new EventStreamTransmitter(response.body, message.id, this.send)
+          this.eventStreamTransmitters.set(message.id, transmitter)
+          await transmitter.transmit()
         }
       }
       else if (response.body instanceof ReadableStream) {
-        await sendOctetStream(response.body, message.id, signal, this.send)
+        const transmitter = new OctetStreamTransmitter(response.body, message.id, this.send)
+        this.octetStreamTransmitters.set(message.id, transmitter)
+        await transmitter.transmit()
       }
 
       // close without aborting, because the request is finished successfully
-      this.controller.delete(message.id)
-      this.close({ id: message.id })
+      this.requestController.delete(message.id)
+      await this.close({ id: message.id })
     }
     catch (reason) {
-      try {
-        // there error while handling or sending response
-      // so we need let client know by sending abort message
-        await this.send({ id: message.id, kind: 'abort' })
-      }
-      finally {
-        // error may be from this.send so we need finally to always close
-        this.close({ id: message.id, reason })
-      }
+      await Promise.all([
+        this.send({ id: message.id, kind: 'abort' }), // let client know there problem while response
+        this.close({ id: message.id, reason }),
+      ])
 
       throw reason
     }
   }
 
-  close(options: ServerPeerCloseOptions = {}): void {
-    if (options.id === undefined) {
-      this.controller.forEach(c => c.abort(options.reason))
-      this.controller.clear()
-    }
-    else {
-      this.controller.get(options.id)?.abort(options.reason)
-      this.controller.delete(options.id)
-    }
+  async close(options: ServerPeerCloseOptions = {}): Promise<void> {
+    const promises: (Promise<void> | undefined)[] = []
 
     this.eventStreamMessageQueue.close(options)
     this.octetStreamMessageQueue.close(options)
+
+    if (options.id === undefined) {
+      this.eventStreamTransmitters.forEach(t => promises.push(t.cancel()))
+      this.octetStreamTransmitters.forEach(t => promises.push(t.cancel()))
+
+      this.eventStreamTransmitters.clear()
+      this.octetStreamTransmitters.clear()
+
+      this.requestController.forEach(c => c.abort(options.reason))
+      this.requestController.clear()
+    }
+    else {
+      promises.push(
+        this.eventStreamTransmitters.get(options.id)?.cancel(),
+        this.octetStreamTransmitters.get(options.id)?.cancel(),
+      )
+
+      this.eventStreamTransmitters.delete(options.id)
+      this.octetStreamTransmitters.delete(options.id)
+
+      this.requestController.get(options.id)?.abort(options.reason)
+      this.requestController.delete(options.id)
+    }
+
+    await Promise.all(promises)
   }
 }

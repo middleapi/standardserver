@@ -53,84 +53,75 @@ export function toEventIterator(
 }
 
 /**
- * Consumes an AsyncIterator and forwards its output as peer event-stream messages.
- * Iterator completion, error events, and abort signals are mapped explicitly.
+ * Transmits events to a peer event-stream.
  */
-export async function sendEventIterator(
-  iterator: AsyncIterator<unknown>,
-  messageId: string,
-  signal: AbortSignal | undefined,
-  send: (message: PeerEventStreamMessage) => Promise<void>,
-): Promise<void> {
-  signal?.throwIfAborted()
+export class EventStreamTransmitter {
+  private isCompleted = false
 
-  let completed = false
+  constructor(
+    private readonly iterator: AsyncIterator<unknown>,
+    private readonly messageId: string,
+    private readonly send: (message: PeerEventStreamMessage) => Promise<void>,
+  ) {}
 
-  const handleAbort = async () => {
-    if (!completed) {
-      completed = true
-      await iterator.return?.()
+  async cancel(): Promise<void> {
+    if (!this.isCompleted) {
+      this.isCompleted = true
+      await this.iterator.return?.()
     }
   }
 
-  signal?.addEventListener('abort', handleAbort, { once: true })
+  async transmit(): Promise<void> {
+    while (true) {
+      const json: PeerEventStreamMessage['json'] = await (async () => {
+        try {
+          const { value, done } = await this.iterator.next()
+          const [data, meta] = resolveEventIteratorEvent(value)
 
-  while (true) {
-    const json: PeerEventStreamMessage['json'] = await (async () => {
-      try {
-        const { value, done } = await iterator.next()
-        const [data, meta] = resolveEventIteratorEvent(value)
-
-        if (done) {
-          completed = true
-          signal?.removeEventListener('abort', handleAbort)
-        }
-
-        return {
-          ...meta,
-          event: done ? 'close' : 'message',
-          data,
-        }
-      }
-      catch (err) {
-        completed = true
-        signal?.removeEventListener('abort', handleAbort)
-
-        /**
-         * Error events are part of the protocol and should not be treated
-         * as iterator failures.
-         */
-        if (err instanceof EventIteratorErrorEvent) {
-          const [resolvedError, meta] = resolveEventIteratorEvent(err)
+          if (done) {
+            this.isCompleted = true
+          }
 
           return {
             ...meta,
-            event: 'error',
-            data: resolvedError.data,
+            event: done ? 'close' : 'message',
+            data,
           }
         }
+        catch (err) {
+          this.isCompleted = true
 
-        throw err
+          /**
+           * Error events are part of the protocol and should not be treated
+           * as iterator failures.
+           */
+          if (err instanceof EventIteratorErrorEvent) {
+            const [resolvedError, meta] = resolveEventIteratorEvent(err)
+
+            return {
+              ...meta,
+              event: 'error',
+              data: resolvedError.data,
+            }
+          }
+
+          throw err
+        }
+      })()
+
+      if (!this.isCompleted) {
+        try {
+          await this.send({ json, kind: 'event-stream', id: this.messageId })
+        }
+        catch (err) {
+          await this.cancel()
+          throw err
+        }
       }
-    })()
 
-    try {
-      if (!signal?.aborted) {
-        await send({ json, kind: 'event-stream', id: messageId })
+      if (this.isCompleted) {
+        return
       }
-    }
-    catch (err) {
-      if (!completed) {
-        completed = true
-        signal?.removeEventListener('abort', handleAbort)
-        await iterator.return?.()
-      }
-
-      throw err
-    }
-
-    if (completed) {
-      return
     }
   }
 }
