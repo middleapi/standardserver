@@ -30,19 +30,13 @@ export class ServerPeer {
   /**
    * Map of abort controllers for each request
    */
-  private readonly requestController = new Map<string, AbortController>()
+  private readonly controller = new Map<string, AbortController>()
 
   constructor(
     private readonly send: (
       message: PeerResponseMessage | PeerAbortMessage | PeerOctetStreamMessage | PeerEventStreamMessage | PeerStreamCancelMessage,
     ) => Promise<void>,
   ) {
-    this.send = async (message) => {
-      // only send message if still open
-      if (this.requestController.has(message.id)) {
-        await send(message)
-      }
-    }
   }
 
   /**
@@ -51,7 +45,7 @@ export class ServerPeer {
   get size(): number {
     return this.eventStreamMessageQueue.length
       + this.octetStreamMessageQueue.length
-      + this.requestController.size
+      + this.controller.size
       + this.eventStreamTransmitters.size
       + this.octetStreamTransmitters.size
   }
@@ -85,7 +79,7 @@ export class ServerPeer {
     this.eventStreamMessageQueue.open(message.id)
     this.octetStreamMessageQueue.open(message.id)
     const controller = new AbortController()
-    this.requestController.set(message.id, controller)
+    this.controller.set(message.id, controller)
     const signal = controller.signal
 
     try {
@@ -102,7 +96,10 @@ export class ServerPeer {
             this.eventStreamMessageQueue.close({ id: message.id })
             this.octetStreamMessageQueue.close({ id: message.id })
 
-            if (!isCompleted) {
+            /**
+             * We don't need to send stream cancel message if request was closed or aborted
+             */
+            if (!isCompleted && this.controller.has(message.id)) {
               // let client know that we no longer need stream messages
               await this.send({ id: message.id, kind: 'stream/cancel' })
             }
@@ -182,12 +179,15 @@ export class ServerPeer {
       }
 
       // close without aborting, because the request is finished successfully
-      this.requestController.delete(message.id)
+      this.controller.delete(message.id)
       await this.close({ id: message.id })
     }
     catch (reason) {
       await Promise.all([
-        this.send({ id: message.id, kind: 'abort' }), // let client know there problem while response
+        /**
+         * Do not need to send abort message if request was closed or aborted
+         */
+        this.controller.has(message.id) ? this.send({ id: message.id, kind: 'abort' }) : undefined,
         this.close({ id: message.id, reason }),
       ])
 
@@ -208,8 +208,8 @@ export class ServerPeer {
       this.eventStreamTransmitters.clear()
       this.octetStreamTransmitters.clear()
 
-      this.requestController.forEach(c => c.abort(options.reason))
-      this.requestController.clear()
+      this.controller.forEach(c => c.abort(options.reason))
+      this.controller.clear()
     }
     else {
       promises.push(
@@ -220,8 +220,8 @@ export class ServerPeer {
       this.eventStreamTransmitters.delete(options.id)
       this.octetStreamTransmitters.delete(options.id)
 
-      this.requestController.get(options.id)?.abort(options.reason)
-      this.requestController.delete(options.id)
+      this.controller.get(options.id)?.abort(options.reason)
+      this.controller.delete(options.id)
     }
 
     await Promise.all(promises)

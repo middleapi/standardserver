@@ -136,16 +136,21 @@ describe.each([
     })
 
     let canceled = false
+    let times = 0
+    const start = Date.now()
     const abortController = new AbortController()
     const responsePromise = clientServer.request({
       headers: {},
       body: new AsyncIteratorClass(
         async () => {
-          await sleep(100)
+          times += 1
+          await sleep(times === 1 ? 100 : 1000)
           return { done: false, value: 'Hello' }
         },
-        async () => {
-          canceled = true
+        async (completed) => {
+          if (!completed) {
+            canceled = true
+          }
         },
       ),
       method: 'POST',
@@ -164,6 +169,8 @@ describe.each([
       expect(canceled).toBe(true)
     }
     expect(serverSignal.aborted).toBe(true)
+    expect(times).toBe(2) // the second chunk is being pulled
+    expect(Date.now() - start).toBeLessThan(300) // cancelled in parallel without waiting for the second chunk
 
     await expect(responsePromise).rejects.toThrow(abortController.signal.reason)
 
@@ -191,13 +198,16 @@ describe.each([
       }
     })
 
+    const start = Date.now()
     let cancelled = false
+    let times = 0
     const abortController = new AbortController()
     const responsePromise = clientServer.request({
       headers: {},
       body: new ReadableStream({
         async pull(controller) {
-          await sleep(100)
+          times += 1
+          await sleep(times === 1 ? 100 : 1000)
           controller.enqueue(new TextEncoder().encode('Hello'))
         },
         cancel() {
@@ -220,6 +230,8 @@ describe.each([
       expect(cancelled).toBe(true)
     }
     expect(serverSignal.aborted).toBe(true)
+    expect(times).toBe(2) // the second chunk is being pulled
+    expect(Date.now() - start).toBeLessThan(300) // cancelled in parallel without waiting for the second chunk
 
     await expect(responsePromise).rejects.toThrow(abortController.signal.reason)
 
@@ -236,6 +248,7 @@ describe.each([
   it('abort while sending response event stream', async () => {
     let canceled = false
     let serverSignal!: AbortSignal
+    let times = 0
     clientServer.handler.mockImplementationOnce(async ({ signal }) => {
       serverSignal = signal!
 
@@ -244,16 +257,20 @@ describe.each([
         status: 200,
         body: new AsyncIteratorClass(
           async () => {
-            await sleep(100)
+            times += 1
+            await sleep(times === 1 ? 100 : 1000)
             return { done: false, value: 'Hello' }
           },
-          async () => {
-            canceled = true
+          async (completed) => {
+            if (!completed) {
+              canceled = true
+            }
           },
         ),
       }
     })
 
+    const start = Date.now()
     const controller = new AbortController()
     const response = await clientServer.request({
       headers: {},
@@ -273,6 +290,8 @@ describe.each([
     await sleep(100) // wait for server receive abort signal
     expect(canceled).toBe(true)
     expect(serverSignal.aborted).toBe(true)
+    expect(times).toBe(2) // the second chunk is being pulled
+    expect(Date.now() - start).toBeLessThan(300) // cancelled in parallel without waiting for the second chunk
 
     if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
       expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(2)
@@ -288,6 +307,7 @@ describe.each([
   it('abort while sending response octet stream', async () => {
     let canceled = false
     let serverSignal!: AbortSignal
+    let times = 0
     clientServer.handler.mockImplementationOnce(async ({ signal }) => {
       serverSignal = signal!
 
@@ -296,7 +316,8 @@ describe.each([
         status: 200,
         body: new ReadableStream({
           async pull(controller) {
-            await sleep(100)
+            times += 1
+            await sleep(times === 1 ? 100 : 1000)
             controller.enqueue(new TextEncoder().encode('Hello'))
           },
           cancel() {
@@ -306,6 +327,7 @@ describe.each([
       }
     })
 
+    const start = Date.now()
     const controller = new AbortController()
     const response = await clientServer.request({
       headers: {},
@@ -326,6 +348,8 @@ describe.each([
     await sleep(100) // wait for server receive abort signal
     expect(canceled).toBe(true)
     expect(serverSignal.aborted).toBe(true)
+    expect(times).toBe(2) // the second chunk is being pulled
+    expect(Date.now() - start).toBeLessThan(300) // cancelled in parallel without waiting for the second chunk
 
     if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
       expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(2)
@@ -341,7 +365,7 @@ describe.each([
   it('cancel unfinished response event stream', async () => {
     let serverSignal!: AbortSignal
     let canceled = false
-
+    let times = 0
     clientServer.handler.mockImplementationOnce(async ({ signal }) => {
       serverSignal = signal!
 
@@ -350,16 +374,20 @@ describe.each([
         status: 200,
         body: new AsyncIteratorClass(
           async () => {
-            await sleep(100)
+            times += 1
+            await sleep(times === 1 ? 100 : 1000)
             return { done: false, value: 'Hello' }
           },
-          async () => {
-            canceled = true
+          async (completed) => {
+            if (!completed) {
+              canceled = true
+            }
           },
         ),
       }
     })
 
+    const start = Date.now()
     const response = await clientServer.request({
       headers: {},
       body: undefined,
@@ -379,6 +407,8 @@ describe.each([
     await sleep(100) // wait for server receive cancel signal
     expect(serverSignal.aborted).toBe(true)
     expect(canceled).toBe(true)
+    expect(times).toBe(2) // the second chunk is being pulled
+    expect(Date.now() - start).toBeLessThan(300) // cancelled in parallel without waiting for the second chunk
 
     if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
       expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(2)
@@ -394,7 +424,7 @@ describe.each([
   it('cancel unfinished response octet stream', async () => {
     let serverSignal!: AbortSignal
     let canceled = false
-
+    let times = 0
     clientServer.handler.mockImplementationOnce(async ({ signal }) => {
       serverSignal = signal!
 
@@ -403,7 +433,8 @@ describe.each([
         status: 200,
         body: new ReadableStream({
           async pull(controller) {
-            await sleep(100)
+            times += 1
+            await sleep(times === 1 ? 100 : 1000)
             controller.enqueue(new TextEncoder().encode('Hello'))
           },
           cancel() {
@@ -413,6 +444,7 @@ describe.each([
       }
     })
 
+    const start = Date.now()
     const response = await clientServer.request({
       headers: {},
       body: undefined,
@@ -432,6 +464,8 @@ describe.each([
     await sleep(100) // wait for server receive cancel signal
     expect(serverSignal.aborted).toBe(true)
     expect(canceled).toBe(true)
+    expect(times).toBe(2) // the second chunk is being pulled
+    expect(Date.now() - start).toBeLessThan(300) // cancelled in parallel without waiting for the second chunk
 
     if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
       expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(2)
@@ -445,7 +479,6 @@ describe.each([
   })
 
   it('cancel unfinished request event stream', async () => {
-    let canceled = false
     let serverSignal!: AbortSignal
 
     clientServer.handler.mockImplementationOnce(async (request) => {
@@ -457,15 +490,6 @@ describe.each([
       await body.next() // wait for first chunk
       await body.return(undefined)
 
-      await sleep(10) // wait for cancel effect
-
-      // Currently only message port adapter support trigger request stream cancel
-      if (adapter === 'message-port') {
-        expect(canceled).toBe(true)
-      }
-
-      expect(serverSignal.aborted).toBe(false) // DO NOT ABORT IF ONLY CANCEL REQUEST BODY
-
       return {
         headers: {},
         status: 200,
@@ -473,15 +497,21 @@ describe.each([
       }
     })
 
+    let canceled = false
+    let times = 0
+    const start = Date.now()
     const response = await clientServer.request({
       headers: {},
       body: new AsyncIteratorClass(
         async () => {
-          await sleep(100)
+          times += 1
+          await sleep(times === 1 ? 100 : 1000)
           return { done: false, value: 'Hello' }
         },
-        async () => {
-          canceled = true
+        async (completed) => {
+          if (!completed) {
+            canceled = true
+          }
         },
       ),
       method: 'POST',
@@ -489,6 +519,12 @@ describe.each([
     })
 
     expect(response).toMatchObject({ status: 200 })
+
+    // Currently only message port adapter support trigger request stream cancel
+    expect(canceled).toBe(adapter === 'message-port')
+    expect(serverSignal.aborted).toBe(false) // DO NOT ABORT IF ONLY CANCEL REQUEST BODY
+    expect(times).toBe(2) // the second chunk is being pulled
+    expect(Date.now() - start).toBeLessThan(300) // cancelled in parallel without waiting for the second chunk
 
     if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
       expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(2)
@@ -502,7 +538,6 @@ describe.each([
   })
 
   it('cancel unfinished request octet stream', async () => {
-    let canceled = false
     let serverSignal!: AbortSignal
 
     clientServer.handler.mockImplementationOnce(async (request) => {
@@ -515,15 +550,6 @@ describe.each([
       await reader.read() // wait for first chunk
       await reader.cancel()
 
-      await sleep(10) // wait for cancel effect
-
-      // Currently only message-port adapter support trigger request stream cancel
-      if (adapter === 'message-port') {
-        expect(canceled).toBe(true)
-      }
-
-      expect(serverSignal.aborted).toBe(false) // DO NOT ABORT IF ONLY CANCEL REQUEST BODY
-
       return {
         headers: {},
         status: 200,
@@ -531,11 +557,15 @@ describe.each([
       }
     })
 
+    let canceled = false
+    let times = 0
+    const start = Date.now()
     const response = await clientServer.request({
       headers: {},
       body: new ReadableStream({
         pull: async (controller) => {
-          await sleep(100)
+          times += 1
+          await sleep(times === 1 ? 100 : 1000)
           controller.enqueue(new TextEncoder().encode('Hello'))
         },
         cancel: async () => {
@@ -547,6 +577,12 @@ describe.each([
     })
 
     expect(response).toMatchObject({ status: 200 })
+
+    // Currently only message-port adapter support trigger request stream cancel
+    expect(canceled).toBe(adapter === 'message-port')
+    expect(serverSignal.aborted).toBe(false) // DO NOT ABORT IF ONLY CANCEL REQUEST BODY
+    expect(times).toBe(2) // the second chunk is being pulled
+    expect(Date.now() - start).toBeLessThan(300) // cancelled in parallel without waiting for the second chunk
 
     if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
       expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(2)
@@ -560,9 +596,9 @@ describe.each([
   })
 
   it('error happen while sending request event stream', async () => {
-    let canceled = false
     let serverSignal!: AbortSignal
     let serverError!: unknown
+    let canceled = false
 
     clientServer.handler.mockImplementationOnce(async (request) => {
       serverSignal = request.signal!
@@ -590,18 +626,21 @@ describe.each([
       headers: {},
       body: new AsyncIteratorClass(
         async () => {
-          await sleep(100)
           times++
 
-          if (times === 2) {
+          await sleep(100)
+
+          if (times !== 1) {
             // throw normal error not event iterator error
             throw new Error('__TEST__')
           }
 
           return { done: false, value: 'Hello' }
         },
-        async () => {
-          canceled = true
+        async (completed) => {
+          if (!completed) {
+            canceled = true
+          }
         },
       ),
       method: 'POST',
@@ -613,6 +652,8 @@ describe.each([
     await sleep(100) // wait for server handle abort
     expect(serverSignal.aborted).toBe(true)
     expect(serverError).toBeInstanceOf(Error)
+    expect(times).toBe(2) // stop at second chunk
+    expect(canceled).toBe(false) // don't need cancel if error happen
 
     if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
       expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(3)
@@ -625,8 +666,8 @@ describe.each([
   })
 
   it('error happen while sending request octet stream', async () => {
-    let canceled = false
     let serverSignal!: AbortSignal
+    let canceled = false
     let serverError!: unknown
 
     clientServer.handler.mockImplementationOnce(async (request) => {
@@ -656,10 +697,10 @@ describe.each([
       headers: {},
       body: new ReadableStream({
         pull: async (controller) => {
+          times += 1
           await sleep(100)
-          times++
 
-          if (times === 2) {
+          if (times !== 1) {
             controller.error(new Error('__TEST__'))
           }
 
@@ -678,6 +719,8 @@ describe.each([
     await sleep(100) // wait for server handle abort
     expect(serverSignal.aborted).toBe(true)
     expect(serverError).toBeInstanceOf(Error)
+    expect(times).toBe(2) // stop at second chunk
+    expect(canceled).toBe(false) // don't need cancel if error happen
 
     if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
       expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(3)
@@ -702,18 +745,20 @@ describe.each([
         status: 200,
         body: new AsyncIteratorClass(
           async () => {
+            times += 1
             await sleep(100)
-            times++
 
-            if (times === 2) {
+            if (times !== 1) {
             // throw normal error not event iterator error
               throw new Error('__TEST__')
             }
 
             return { done: false, value: 'Hello' }
           },
-          async () => {
-            canceled = true
+          async (completed) => {
+            if (!completed) {
+              canceled = true
+            }
           },
         ),
       }
@@ -734,6 +779,8 @@ describe.each([
 
     await sleep(100) // wait until serve handled error
     expect(serverSignal.aborted).toBe(true)
+    expect(times).toBe(2) // stop at second chunk
+    expect(canceled).toBe(false) // don't need cancel if error happen
 
     if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
       expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(1)
@@ -759,8 +806,8 @@ describe.each([
         status: 200,
         body: new ReadableStream({
           pull: async (controller) => {
+            times += 1
             await sleep(100)
-            times++
 
             if (times === 2) {
               controller.error(new Error('__TEST__'))
@@ -791,6 +838,8 @@ describe.each([
 
     await sleep(100) // wait until serve handled error
     expect(serverSignal.aborted).toBe(true)
+    expect(times).toBe(2) // stop at second chunk
+    expect(canceled).toBe(false) // don't need cancel if error happen
 
     if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
       expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(1)

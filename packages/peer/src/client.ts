@@ -66,7 +66,13 @@ export class ClientPeer {
     let abortListener: () => Promise<void>
     signal?.addEventListener('abort', abortListener = async () => {
       await Promise.all([
-        this.send({ id, kind: 'abort' }), // let server know request was aborted
+        /**
+         * Let server know request was aborted
+         *
+         * We don't need to check if is there any abort message already sent
+         * since this listener is removed when the request is closed.
+         */
+        this.send({ id, kind: 'abort' }),
         this.close({ id, reason: signal.reason }),
       ])
     })
@@ -139,12 +145,14 @@ export class ClientPeer {
          * Do not await here; we don't want it to block response processing.
          */
         void transmitter.transmit().catch(async (reason) => {
-          try {
-            await this.send({ id, kind: 'abort' })
-          }
-          finally {
-            this.close({ id, reason })
-          }
+          await Promise.all([
+            /**
+             * We don't need to send abort message if transmitter was cancelled
+             * or request was aborted
+             */
+            this.requestEventStreamTransmitters.has(id) ? this.send({ id, kind: 'abort' }) : undefined,
+            this.close({ id, reason }),
+          ])
         })
       }
       else if (request.body instanceof ReadableStream) {
@@ -155,12 +163,14 @@ export class ClientPeer {
          * Do not await here; we don't want it to block response processing.
          */
         void transmitter.transmit().catch(async (reason) => {
-          try {
-            await this.send({ id, kind: 'abort' })
-          }
-          finally {
-            this.close({ id, reason })
-          }
+          await Promise.all([
+            /**
+             * We don't need to send abort message if transmitter was cancelled
+             * or request was aborted
+             */
+            this.requestOctetStreamTransmitters.has(id) ? this.send({ id, kind: 'abort' }) : undefined,
+            this.close({ id, reason }),
+          ])
         })
       }
       const peerResponseMessage = await this.responseMessageQueue.pull(id)
@@ -172,20 +182,22 @@ export class ClientPeer {
           this.eventStreamMessageQueue,
           this.octetStreamMessageQueue,
           async (isCompleted) => {
-            try {
-              if (!isCompleted) {
-                await this.send({ id, kind: 'abort' })
-              }
-            }
-            finally {
-              this.close({ id })
-            }
+            await Promise.all([
+              /**
+               * We don't need to send abort message if completed
+               * or request was aborted
+               */
+              !isCompleted && (this.eventStreamMessageQueue.isOpen(id) || this.octetStreamMessageQueue.isOpen(id))
+                ? this.send({ id, kind: 'abort' })
+                : undefined,
+              this.close({ id }),
+            ])
           },
         ),
       }
     }
     catch (reason) {
-      this.close({ id, reason })
+      await this.close({ id, reason })
       throw reason
     }
   }
