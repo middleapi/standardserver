@@ -1,4 +1,4 @@
-import { stringToUrl } from '@standardserver/core'
+import type { StandardUrl } from '@standardserver/core'
 import { EventIteratorErrorEvent, resolveEventIteratorEvent, withEventIteratorEventMeta } from '@standardserver/core/event-stream'
 import { isAsyncIteratorObject, sleep } from '@standardserver/shared'
 import { createH3WebHandlerClientServerTest } from './client-server.h3-web-handler'
@@ -43,13 +43,13 @@ describe.each([
   ])('buffered body %s', async (createBody) => {
     const method = Math.random() < 0.5 ? 'POST' : 'PATCH'
     const status = Math.random() < 0.5 ? 200 : 201
-    const url = Math.random() < 0.5 ? stringToUrl('/test') : stringToUrl('/test2')
+    const url: StandardUrl = Math.random() < 0.5 ? '/test' : '/test2?query=1'
 
     clientServer.handler.mockImplementationOnce(async (request) => {
       expect(request.headers['x-from']).toEqual('client')
-      expect(await request.body()).toEqual(createBody())
+      expect(await request.resolveBody()).toEqual(createBody())
       expect(request.method).toEqual(method)
-      expect(request.url.pathname).toEqual(url.pathname)
+      expect(request.url).toEqual(url)
 
       return {
         headers: {
@@ -71,16 +71,16 @@ describe.each([
 
     expect(response.headers['x-from']).toEqual('server')
     expect(response.status).toEqual(status)
-    expect(await response.body()).toEqual(createBody())
+    expect(await response.resolveBody()).toEqual(createBody())
   })
 
   it('event stream in parallel', async () => {
     clientServer.handler.mockImplementationOnce(async (request) => {
       expect(request.headers['x-from']).toEqual('client')
       expect(request.method).toEqual('DELETE')
-      expect(request.url.pathname).toEqual('/event-stream')
+      expect(request.url).toEqual('/event-stream')
 
-      const body = await request.body() as AsyncGenerator
+      const body = await request.resolveBody() as AsyncGenerator
       expect(body).toSatisfy(isAsyncIteratorObject)
 
       return {
@@ -98,7 +98,7 @@ describe.each([
         'x-from': 'client',
       },
       method: 'DELETE',
-      url: stringToUrl('/event-stream'),
+      url: '/event-stream',
       body: (async function* () {
         await sleep(100)
         yield 'order1'
@@ -112,7 +112,7 @@ describe.each([
     expect(response.headers['x-from']).toEqual('server')
     expect(response.status).toEqual(200)
 
-    const body = await response.body() as AsyncGenerator
+    const body = await response.resolveBody() as AsyncGenerator
     expect(body).toSatisfy(isAsyncIteratorObject)
 
     await expect(body.next()).resolves.toSatisfy((result) => {
@@ -163,9 +163,9 @@ describe.each([
     clientServer.handler.mockImplementationOnce(async (request) => {
       expect(request.headers['x-from']).toEqual('client')
       expect(request.method).toEqual('DELETE')
-      expect(request.url.pathname).toEqual('/event-stream')
+      expect(request.url).toEqual('/event-stream')
 
-      const actualBody = await request.body() as AsyncGenerator
+      const actualBody = await request.resolveBody() as AsyncGenerator
       expect(actualBody).toSatisfy(isAsyncIteratorObject)
 
       return {
@@ -183,7 +183,7 @@ describe.each([
         'x-from': 'client',
       },
       method: 'DELETE',
-      url: stringToUrl('/event-stream'),
+      url: '/event-stream',
       body: (async function* () {
         await sleep(100)
         yield 'order1'
@@ -195,7 +195,7 @@ describe.each([
 
     expect(response.headers['x-from']).toEqual('server')
     expect(response.status).toEqual(200)
-    const body = await response.body() as AsyncGenerator
+    const body = await response.resolveBody() as AsyncGenerator
     expect(body).toSatisfy(isAsyncIteratorObject)
 
     await expect(body.next()).resolves.toSatisfy((result) => {
@@ -247,9 +247,9 @@ describe.each([
     clientServer.handler.mockImplementationOnce(async (request) => {
       expect(request.headers['x-from']).toEqual('client')
       expect(request.method).toEqual('POST')
-      expect(request.url.pathname).toEqual('/octet-stream')
+      expect(request.url).toEqual('/octet-stream')
 
-      const body = await request.body() as ReadableStream
+      const body = await request.resolveBody() as ReadableStream
       expect(body).toBeInstanceOf(ReadableStream)
 
       return {
@@ -267,7 +267,7 @@ describe.each([
         'x-from': 'client',
       },
       method: 'POST',
-      url: stringToUrl('/octet-stream'),
+      url: '/octet-stream',
       body: new ReadableStream({
         async start(controller) {
           // make sure each chunk is long enough to ensure client/server transfer separately
@@ -285,7 +285,7 @@ describe.each([
 
     expect(response.headers['x-from']).toEqual('server')
     expect(response.status).toEqual(200)
-    const body = await response.body() as ReadableStream
+    const body = await response.resolveBody() as ReadableStream
     expect(body).toBeInstanceOf(ReadableStream)
     const reader = body.getReader()
 

@@ -45,12 +45,7 @@ export interface PeerRequestMessage extends PeerMessage {
   /**
    * The actual content of the message. The structure depends on the `kind`.
    */
-  json: Omit<StandardRequest, 'signal' | 'url'> & {
-    /**
-     * Serialized URL.
-     */
-    url: string
-  }
+  json: Omit<StandardRequest, 'signal'>
 }
 
 /**

@@ -30,7 +30,7 @@ export function toStandardLazyResponse(
   response: Response,
 ): StandardLazyResponse {
   return {
-    body: hint => toStandardBody(response, { hint }),
+    resolveBody: hint => toStandardBody(response, { hint }),
     status: response.status,
     get headers() {
       // lazy headers to improve performance

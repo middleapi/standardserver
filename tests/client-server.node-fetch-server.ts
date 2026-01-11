@@ -2,7 +2,6 @@ import type { AddressInfo } from 'node:net'
 import type { ClientServerTest } from './client-server'
 import * as http from 'node:http'
 import { createRequestListener } from '@remix-run/node-fetch-server'
-import { urlToString } from '@standardserver/core'
 import { toFetchBody, toFetchHeaders, toFetchResponse, toStandardLazyRequest, toStandardLazyResponse } from '@standardserver/fetch'
 
 export function createNodeFetchServerClientServerTest(): ClientServerTest {
@@ -43,7 +42,7 @@ export function createNodeFetchServerClientServerTest(): ClientServerTest {
 
       standardHeaders.id = id
 
-      const response = await fetch(`http://localhost:${addressInfo.port}${urlToString(standardRequest.url)}`, {
+      const response = await fetch(`http://localhost:${addressInfo.port}${standardRequest.url}`, {
         method: standardRequest.method,
         headers: toFetchHeaders(standardHeaders),
         body: body ?? null,

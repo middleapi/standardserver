@@ -8,7 +8,7 @@ import type {
   PeerResponseMessage,
   PeerStreamCancelMessage,
 } from './types'
-import { generateContentDisposition, stringToUrl } from '@standardserver/core'
+import { generateContentDisposition } from '@standardserver/core'
 import { AbortError, AsyncIdQueue, isAsyncIteratorObject } from '@standardserver/shared'
 import { toStandardBody } from './body'
 import { EventStreamTransmitter } from './event-stream'
@@ -85,7 +85,6 @@ export class ServerPeer {
     try {
       const request: StandardRequest = {
         ...message.json,
-        url: stringToUrl(message.json.url),
         signal,
         body: await toStandardBody(
           message,

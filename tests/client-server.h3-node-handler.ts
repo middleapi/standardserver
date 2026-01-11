@@ -1,5 +1,4 @@
 import type { ClientServerTest } from './client-server'
-import { urlToString } from '@standardserver/core'
 import { toFetchBody, toFetchHeaders, toStandardLazyResponse } from '@standardserver/fetch'
 import { sendStandardResponse, toStandardLazyRequest } from '@standardserver/node'
 import { fromNodeHandler, H3, serve } from 'h3'
@@ -43,7 +42,7 @@ export function createH3NodeHandlerClientServerTest(): ClientServerTest {
 
       standardHeaders.id = id
 
-      const response = await fetch(`http://localhost:${port}${urlToString(standardRequest.url)}`, {
+      const response = await fetch(`http://localhost:${port}${standardRequest.url}`, {
         method: standardRequest.method,
         signal: standardRequest.signal ?? null,
         headers: toFetchHeaders(standardHeaders),

@@ -21,7 +21,7 @@ describe('toStandardLazyRequest', () => {
         standardRequest = toStandardLazyRequest(req, res)
         expect(toStandardBodySpy).not.toBeCalled()
 
-        const body = standardRequest.body('json')
+        const body = standardRequest.resolveBody('json')
         expect(body).toBe(toStandardBodySpy.mock.results[0]!.value)
         await body // ensure body is load before sending response
         expect(standardRequest.headers).toBe(req.headers)
@@ -38,8 +38,7 @@ describe('toStandardLazyRequest', () => {
       }
     }).post('/hello?foo=bar').send({ foo: 'bar' })
 
-    expect(standardRequest.url.pathname).toEqual('/hello')
-    expect(standardRequest.url.search).toEqual('?foo=bar')
+    expect(standardRequest.url).toEqual('/hello?foo=bar')
     expect(standardRequest.method).toBe('POST')
     expect(standardRequest.signal?.aborted).toBe(false)
   })

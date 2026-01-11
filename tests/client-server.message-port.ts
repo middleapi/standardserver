@@ -37,14 +37,14 @@ export function createMessagePortClientServerTest(): ClientServerTest {
   const serverPeer = new ServerPeer(sendServerPeerMessage)
   port2.addEventListener('message', async (event) => {
     await serverPeer.message(decodePeerMessage(event.data) as any, async (request) => {
-      return handler({ ...request, body: async () => request.body })
+      return handler({ ...request, resolveBody: async () => request.body })
     })
   })
   port2.start()
 
   const request: ClientServerTest['request'] = vi.fn(async (standardRequest) => {
     const response = await clientPeer.request(standardRequest)
-    return { ...response, body: async () => response.body }
+    return { ...response, resolveBody: async () => response.body }
   })
 
   afterEach(() => {

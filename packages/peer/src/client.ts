@@ -1,7 +1,7 @@
 import type { StandardBodyHint, StandardRequest, StandardResponse } from '@standardserver/core'
 import type { AsyncIdQueueCloseOptions } from '@standardserver/shared'
 import type { PeerAbortMessage, PeerEventStreamMessage, PeerOctetStreamMessage, PeerRequestMessage, PeerResponseMessage, PeerStreamCancelMessage } from './types'
-import { generateContentDisposition, urlToString } from '@standardserver/core'
+import { generateContentDisposition } from '@standardserver/core'
 import { AbortError, AsyncIdQueue, isAsyncIteratorObject, SequentialIdGenerator } from '@standardserver/shared'
 import { toStandardBody } from './body'
 import { EventStreamTransmitter } from './event-stream'
@@ -97,7 +97,6 @@ export class ClientPeer {
         json: {
           ...{ ...request, signal: undefined }, // clone and remove signal from request
           headers: { ...request.headers }, // clone headers
-          url: urlToString(request.url),
         },
       }
 

@@ -13,7 +13,7 @@ export function createInprogressFetchClientServerTest(): ClientServerTest {
       toFetchResponse(
         await handler(
           toStandardLazyRequest(
-            new Request(standardRequest.url, {
+            new Request(`http://localhost${standardRequest.url}`, {
               method: standardRequest.method,
               signal: standardRequest.signal ?? null,
               headers: toFetchHeaders(standardHeaders),

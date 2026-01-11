@@ -1,4 +1,3 @@
-import { stringToUrl } from '@standardserver/core'
 import { AsyncIteratorClass, isAsyncIteratorObject, sleep } from '@standardserver/shared'
 import { createH3WebHandlerClientServerTest } from './client-server.h3-web-handler'
 import { createHonoFetchClientServerTest } from './client-server.hono-fetch'
@@ -43,7 +42,7 @@ describe.each([
       headers: {},
       body: undefined,
       method: 'GET',
-      url: stringToUrl('/'),
+      url: '/',
     })
 
     expect(response).toMatchObject({ status: 200 })
@@ -69,7 +68,7 @@ describe.each([
       headers: {},
       body: undefined,
       method: 'GET',
-      url: stringToUrl('/'),
+      url: '/',
       signal: abortController.signal,
     })).rejects.toThrow(abortController.signal.reason)
 
@@ -99,7 +98,7 @@ describe.each([
       headers: {},
       body: undefined,
       method: 'GET',
-      url: stringToUrl('/'),
+      url: '/',
       signal: abortController.signal,
     })
 
@@ -154,7 +153,7 @@ describe.each([
         },
       ),
       method: 'POST',
-      url: stringToUrl('/'),
+      url: '/',
       signal: abortController.signal,
     })
 
@@ -215,7 +214,7 @@ describe.each([
         },
       }),
       method: 'POST',
-      url: stringToUrl('/'),
+      url: '/',
       signal: abortController.signal,
     })
 
@@ -276,11 +275,11 @@ describe.each([
       headers: {},
       body: null,
       method: 'POST',
-      url: stringToUrl('/'),
+      url: '/',
       signal: controller.signal,
     })
 
-    const actualBody = await response.body() as AsyncGenerator
+    const actualBody = await response.resolveBody() as AsyncGenerator
     expect(actualBody).toSatisfy(isAsyncIteratorObject)
     await actualBody.next()
 
@@ -333,11 +332,11 @@ describe.each([
       headers: {},
       body: null,
       method: 'POST',
-      url: stringToUrl('/'),
+      url: '/',
       signal: controller.signal,
     })
 
-    const actualBody = await response.body() as ReadableStream
+    const actualBody = await response.resolveBody() as ReadableStream
     expect(actualBody).toBeInstanceOf(ReadableStream)
     const reader = actualBody.getReader()
     await reader.read()
@@ -392,10 +391,10 @@ describe.each([
       headers: {},
       body: undefined,
       method: 'GET',
-      url: stringToUrl('/'),
+      url: '/',
     })
 
-    const actualBody = await response.body() as AsyncGenerator
+    const actualBody = await response.resolveBody() as AsyncGenerator
     expect(actualBody).toSatisfy(isAsyncIteratorObject)
 
     await actualBody.next() // wait for first chunk
@@ -449,10 +448,10 @@ describe.each([
       headers: {},
       body: undefined,
       method: 'GET',
-      url: stringToUrl('/'),
+      url: '/',
     })
 
-    const body = await response.body() as ReadableStream
+    const body = await response.resolveBody() as ReadableStream
     expect(body).toBeInstanceOf(ReadableStream)
     const reader = body.getReader()
 
@@ -484,7 +483,7 @@ describe.each([
     clientServer.handler.mockImplementationOnce(async (request) => {
       serverSignal = request.signal!
 
-      const body = await request.body() as AsyncGenerator
+      const body = await request.resolveBody() as AsyncGenerator
       expect(body).toSatisfy(isAsyncIteratorObject)
 
       await body.next() // wait for first chunk
@@ -515,7 +514,7 @@ describe.each([
         },
       ),
       method: 'POST',
-      url: stringToUrl('/'),
+      url: '/',
     })
 
     expect(response).toMatchObject({ status: 200 })
@@ -543,7 +542,7 @@ describe.each([
     clientServer.handler.mockImplementationOnce(async (request) => {
       serverSignal = request.signal!
 
-      const body = await request.body() as ReadableStream
+      const body = await request.resolveBody() as ReadableStream
       expect(body).toBeInstanceOf(ReadableStream)
 
       const reader = body.getReader()
@@ -573,7 +572,7 @@ describe.each([
         },
       }),
       method: 'POST',
-      url: stringToUrl('/'),
+      url: '/',
     })
 
     expect(response).toMatchObject({ status: 200 })
@@ -603,7 +602,7 @@ describe.each([
     clientServer.handler.mockImplementationOnce(async (request) => {
       serverSignal = request.signal!
 
-      const body = await request.body() as AsyncGenerator
+      const body = await request.resolveBody() as AsyncGenerator
       expect(body).toSatisfy(isAsyncIteratorObject)
 
       await body.next()
@@ -644,7 +643,7 @@ describe.each([
         },
       ),
       method: 'POST',
-      url: stringToUrl('/'),
+      url: '/',
     })
 
     await expect(responsePromise).rejects.toThrow()
@@ -673,7 +672,7 @@ describe.each([
     clientServer.handler.mockImplementationOnce(async (request) => {
       serverSignal = request.signal!
 
-      const body = await request.body() as ReadableStream
+      const body = await request.resolveBody() as ReadableStream
       expect(body).toBeInstanceOf(ReadableStream)
 
       const reader = body.getReader()
@@ -711,7 +710,7 @@ describe.each([
         },
       }),
       method: 'POST',
-      url: stringToUrl('/'),
+      url: '/',
     })
 
     await expect(responsePromise).rejects.toThrow()
@@ -768,10 +767,10 @@ describe.each([
       headers: {},
       body: undefined,
       method: 'POST',
-      url: stringToUrl('/'),
+      url: '/',
     })
 
-    const body = await response.body() as AsyncGenerator
+    const body = await response.resolveBody() as AsyncGenerator
     expect(body).toSatisfy(isAsyncIteratorObject)
 
     await body.next()
@@ -826,10 +825,10 @@ describe.each([
       headers: {},
       body: undefined,
       method: 'POST',
-      url: stringToUrl('/'),
+      url: '/',
     })
 
-    const body = await response.body() as ReadableStream
+    const body = await response.resolveBody() as ReadableStream
     expect(body).toBeInstanceOf(ReadableStream)
 
     const reader = body.getReader()

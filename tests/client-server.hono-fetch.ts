@@ -1,7 +1,6 @@
 import type { AddressInfo } from 'node:net'
 import type { ClientServerTest } from './client-server'
 import { serve } from '@hono/node-server'
-import { urlToString } from '@standardserver/core'
 import { toFetchBody, toFetchHeaders, toFetchResponse, toStandardLazyRequest, toStandardLazyResponse } from '@standardserver/fetch'
 
 export function createHonoFetchClientServerTest(): ClientServerTest {
@@ -43,7 +42,7 @@ export function createHonoFetchClientServerTest(): ClientServerTest {
 
       standardHeaders.id = id
 
-      const response = await fetch(`http://localhost:${addressInfo.port}${urlToString(standardRequest.url)}`, {
+      const response = await fetch(`http://localhost:${addressInfo.port}${standardRequest.url}`, {
         method: standardRequest.method,
         signal: standardRequest.signal ?? null,
         headers: toFetchHeaders(standardHeaders),

@@ -1,3 +1,7 @@
+export type StandardMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'OPTIONS' | 'HEAD' | (string & {})
+
+export type StandardUrl = `/${string}` | `/${string}?${string}` | `/${string}#${string}` | `/${string}?${string}#${string}`
+
 export interface StandardHeaders {
   [key: string]: string | string[] | undefined
 }
@@ -24,15 +28,11 @@ export interface StandardRequest {
   /**
    * @example 'GET', 'POST', etc.
    */
-  method: string
+  method: StandardMethod
   /**
-   * @example new URL('https://example.com')
-   *
-   * If the request is not bound to a concrete network origin
-   * and is expected to be resolved by another layer,
-   * use `UNBOUND_ORIGIN` (`http://unbound.invalid`).
+   * @example `/example`, `/example?query=param#fragment`
    */
-  url: URL
+  url: StandardUrl
   /**
    * @example { 'content-type': 'application/json' }
    */
@@ -49,9 +49,14 @@ export interface StandardRequest {
 
 export interface StandardLazyRequest extends Omit<StandardRequest, 'body'> {
   /**
-   * The lazy-body has been parsed based on the content headers.
+   * Lazily resolves the body.
+   *
+   * The body is parsed on first call based on the `Content-Type` header
+   * or the provided hint.
+   *
+   * Calling this method may consume the underlying stream.
    */
-  body: (hint?: StandardBodyHint | undefined) => Promise<StandardBody>
+  resolveBody: (hint?: StandardBodyHint | undefined) => Promise<StandardBody>
 }
 
 export interface StandardResponse {
@@ -71,7 +76,12 @@ export interface StandardResponse {
 
 export interface StandardLazyResponse extends Omit<StandardResponse, 'body'> {
   /**
-   * The lazy-body has been parsed based on the content headers.
+   * Lazily resolves the body.
+   *
+   * The body is parsed on first call based on the `Content-Type` header
+   * or the provided hint.
+   *
+   * Calling this method may consume the underlying stream.
    */
-  body: (hint?: StandardBodyHint | undefined) => Promise<StandardBody>
+  resolveBody: (hint?: StandardBodyHint | undefined) => Promise<StandardBody>
 }

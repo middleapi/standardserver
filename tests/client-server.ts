@@ -1,5 +1,5 @@
 import type { StandardLazyRequest, StandardLazyResponse, StandardRequest, StandardResponse } from '@standardserver/core'
-import type { PeerAbortMessage, PeerEventStreamMessage, PeerOctetStreamMessage, PeerRequestMessage, PeerResponseMessage } from '@standardserver/peer'
+import type { PeerAbortMessage, PeerEventStreamMessage, PeerOctetStreamMessage, PeerRequestMessage, PeerResponseMessage, PeerStreamCancelMessage } from '@standardserver/peer'
 import type { Mock } from 'vitest'
 
 export interface ClientServerTest {
@@ -8,5 +8,5 @@ export interface ClientServerTest {
 
   /** Only available in peer adapter */
   sendClientPeerMessage?: Mock<(message: PeerRequestMessage | PeerAbortMessage | PeerEventStreamMessage | PeerOctetStreamMessage) => Promise<void>>
-  sendServerPeerMessage?: Mock<(message: PeerResponseMessage | PeerAbortMessage | PeerEventStreamMessage | PeerOctetStreamMessage) => Promise<void>>
+  sendServerPeerMessage?: Mock<(message: PeerResponseMessage | PeerAbortMessage | PeerEventStreamMessage | PeerOctetStreamMessage | PeerStreamCancelMessage) => Promise<void>>
 }

@@ -1,15 +1,16 @@
-import type { StandardLazyRequest, StandardRequest } from '@standardserver/core'
-import type { ToFetchBodyOptions } from './body'
-import { stringToUrl, urlToString } from '@standardserver/core'
-import { toFetchBody, toStandardBody } from './body'
-import { toFetchHeaders, toStandardHeaders } from './headers'
+import type { StandardLazyRequest } from '@standardserver/core'
+import { toStandardBody } from './body'
+import { toStandardHeaders } from './headers'
+import { toStandardUrl } from './url'
 
 /**
  * Convert a fetch request to a standard request.
  */
 export function toStandardLazyRequest(request: Request): StandardLazyRequest {
+  const url = new URL(request.url)
+
   return {
-    url: stringToUrl(request.url),
+    url: toStandardUrl(url),
     method: request.method,
     get headers() {
       // lazy headers to improve performance
@@ -20,28 +21,7 @@ export function toStandardLazyRequest(request: Request): StandardLazyRequest {
     set headers(value) {
       Object.defineProperty(this, 'headers', { value, writable: true })
     },
-    body: hint => toStandardBody(request, { hint }),
+    resolveBody: hint => toStandardBody(request, { hint }),
     signal: request.signal,
   }
-}
-
-export interface ToFetchRequestOptions {
-  /**
-   * Options for body conversion, like event iterator options, etc.
-   */
-  body?: ToFetchBodyOptions
-}
-
-/**
- * Convert a standard request to a fetch request.
- */
-export function toFetchRequest(request: StandardRequest, options: ToFetchRequestOptions = {}): Request {
-  const [body, standardHeaders] = toFetchBody(request.body, request.headers, options.body)
-
-  return new Request(urlToString(request.url), {
-    method: request.method,
-    headers: toFetchHeaders(standardHeaders),
-    body: body ?? null, // null = empty body
-    signal: request.signal ?? null,
-  })
 }

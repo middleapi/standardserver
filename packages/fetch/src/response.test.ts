@@ -26,14 +26,14 @@ describe('toFetchResponse', () => {
     const fetchResponse = toFetchResponse(standardResponse, options)
 
     expect(fetchResponse.status).toBe(206)
-    expect(fetchResponse.headers).toEqual(toFetchBodySpy.mock.results[0]!.value[1])
+    expect(fetchResponse.headers).toEqual(toFetchHeadersSpy.mock.results[0]!.value)
     expect(await fetchResponse.text()).toEqual(toFetchBodySpy.mock.results[0]!.value[0])
 
-    expect(toFetchHeadersSpy).toBeCalledTimes(1)
-    expect(toFetchHeadersSpy).toBeCalledWith(standardResponse.headers)
-
     expect(toFetchBodySpy).toBeCalledTimes(1)
-    expect(toFetchBodySpy).toBeCalledWith(standardResponse.body, toFetchHeadersSpy.mock.results[0]!.value, options.body)
+    expect(toFetchBodySpy).toBeCalledWith(standardResponse.body, standardResponse.headers, options.body)
+
+    expect(toFetchHeadersSpy).toBeCalledTimes(1)
+    expect(toFetchHeadersSpy).toBeCalledWith(toFetchBodySpy.mock.results[0]!.value[1])
   })
 })
 
@@ -55,7 +55,7 @@ describe('toStandardLazyResponse', () => {
     expect(toStandardHeadersSpy).toBeCalledTimes(1)
     expect(toStandardHeadersSpy).toBeCalledWith(response.headers)
 
-    expect(lazyResponse.body('json')).toBe(toStandardBodySpy.mock.results[0]!.value)
+    expect(lazyResponse.resolveBody('json')).toBe(toStandardBodySpy.mock.results[0]!.value)
     expect(toStandardBodySpy).toBeCalledTimes(1)
     expect(toStandardBodySpy).toBeCalledWith(response, { hint: 'json' })
   })
@@ -96,12 +96,12 @@ describe('toStandardLazyResponse', () => {
 
     expect(toStandardBodySpy).toBeCalledTimes(0)
     const overrideBody = () => Promise.resolve('1')
-    lazyResponse.body = overrideBody
-    expect(lazyResponse.body).toBe(overrideBody)
+    lazyResponse.resolveBody = overrideBody
+    expect(lazyResponse.resolveBody).toBe(overrideBody)
     expect(toStandardBodySpy).toBeCalledTimes(0)
 
     const lazyResponse2 = toStandardLazyResponse(response)
-    expect(await lazyResponse2.body()).toEqual(await toStandardBodySpy.mock.results[0]!.value)
+    expect(await lazyResponse2.resolveBody()).toEqual(await toStandardBodySpy.mock.results[0]!.value)
     expect(toStandardBodySpy).toBeCalledTimes(1)
   })
 })
