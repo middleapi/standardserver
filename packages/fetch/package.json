@@ -33,6 +33,6 @@
     "@standardserver/shared": "workspace:*"
   },
   "devDependencies": {
-    "@hono/node-server": "^1.19.7"
+    "@hono/node-server": "^1.19.8"
   }
 }
