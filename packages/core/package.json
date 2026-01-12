@@ -17,9 +17,9 @@
         "default": "./dist/index.mjs"
       },
       "./event-stream": {
-        "types": "./dist/event-stream.d.mts",
-        "import": "./dist/event-stream.mjs",
-        "default": "./dist/event-stream.mjs"
+        "types": "./dist/event-stream/index.d.mts",
+        "import": "./dist/event-stream/index.mjs",
+        "default": "./dist/event-stream/index.mjs"
       }
     }
   },
