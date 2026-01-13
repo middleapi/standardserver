@@ -1,4 +1,4 @@
-import type { StandardBodyHint, StandardRequest, StandardResponse } from '@standardserver/core'
+import type { StandardRequest, StandardResponse } from '@standardserver/core'
 import type { AsyncIdQueueCloseOptions } from '@standardserver/shared'
 import type {
   PeerAbortMessage,
@@ -8,9 +8,8 @@ import type {
   PeerResponseMessage,
   PeerStreamCancelMessage,
 } from './types'
-import { generateContentDisposition } from '@standardserver/core'
 import { AbortError, AsyncIdQueue, isAsyncIteratorObject } from '@standardserver/shared'
-import { toStandardBody } from './body'
+import { encodeAtomicStandardBody, toStandardBody } from './body'
 import { EventStreamTransmitter } from './event-stream'
 import { HibernationEventIterator } from './hibernation'
 import { OctetStreamTransmitter } from './octet-stream'
@@ -113,50 +112,29 @@ export class ServerPeer {
         return
       }
 
+      const [jsonBody, headers, binary] = await encodeAtomicStandardBody(response.body, response.headers)
+
+      // signal can abort during encode
+      if (signal.aborted) {
+        return
+      }
+
       const responseMessage: PeerResponseMessage = {
         id: message.id,
         kind: 'response',
         json: {
-          ...{ ...response, signal: undefined }, // clone and remove signal from request
-          headers: { ...response.headers }, // clone headers
+          ...response,
+          headers,
+          body: jsonBody,
+          ...{ signal: undefined }, // remove signal from request
         },
+        binary,
       }
 
-      if (response.body instanceof ReadableStream) {
-        responseMessage.json.body = undefined
-        responseMessage.json.headers['standard-server'] = 'octet-stream' satisfies StandardBodyHint
-      }
-      else if (isAsyncIteratorObject(response.body)) {
-        responseMessage.json.body = undefined
-        responseMessage.json.headers['standard-server'] = 'event-stream' satisfies StandardBodyHint
-      }
-      else if (response.body instanceof FormData) {
-        const res = new Response(response.body)
-        responseMessage.binary = await res.blob()
-        responseMessage.json.body = undefined
-        responseMessage.json.headers['standard-server'] = 'form-data' satisfies StandardBodyHint
-        responseMessage.json.headers['content-type'] = res.headers.get('content-type') ?? undefined
-      }
-      else if (response.body instanceof Blob) {
-        responseMessage.binary = response.body
-        responseMessage.json.body = undefined
-        responseMessage.json.headers['standard-server'] = 'file' satisfies StandardBodyHint
-        responseMessage.json.headers['content-disposition'] = generateContentDisposition(response.body instanceof File ? response.body.name : 'blob')
-        responseMessage.json.headers['content-type'] = response.body.type
-      }
-      else if (response.body instanceof URLSearchParams) {
-        responseMessage.json.body = response.body.toString()
-        responseMessage.json.headers['standard-server'] = 'url-search-params' satisfies StandardBodyHint
-      }
-
-      if (signal.aborted) {
-        return
-      }
-      /**
-       * We should send response message before event iterator messages,
-       * so the server can recognize them as part of the response.
-       */
+      // PeerResponseMessage must be sent before stream messages
       await this.send(responseMessage)
+
+      // signal can abort during send response message
       if (signal.aborted) {
         return
       }

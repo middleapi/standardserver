@@ -1,9 +1,8 @@
-import type { StandardBodyHint, StandardRequest, StandardResponse } from '@standardserver/core'
+import type { StandardRequest, StandardResponse } from '@standardserver/core'
 import type { AsyncIdQueueCloseOptions } from '@standardserver/shared'
 import type { PeerAbortMessage, PeerEventStreamMessage, PeerOctetStreamMessage, PeerRequestMessage, PeerResponseMessage, PeerStreamCancelMessage } from './types'
-import { generateContentDisposition } from '@standardserver/core'
 import { AbortError, AsyncIdQueue, isAsyncIteratorObject, SequentialIdGenerator } from '@standardserver/shared'
-import { toStandardBody } from './body'
+import { encodeAtomicStandardBody, toStandardBody } from './body'
 import { EventStreamTransmitter } from './event-stream'
 import { OctetStreamTransmitter } from './octet-stream'
 
@@ -91,58 +90,34 @@ export class ClientPeer {
     this.cleanupFns.set(id, cleanupFns)
 
     try {
+      const [jsonBody, headers, binary] = await encodeAtomicStandardBody(request.body, request.headers)
+
+      // signal can be aborted during encode
+      signal?.throwIfAborted()
+
       const requestMessage: PeerRequestMessage = {
         id,
         kind: 'request',
         json: {
-          ...{ ...request, signal: undefined }, // clone and remove signal from request
-          headers: { ...request.headers }, // clone headers
+          ...request,
+          headers,
+          body: jsonBody,
+          ...{ signal: undefined }, // remove signal from request
         },
+        binary,
       }
 
-      if (request.body instanceof ReadableStream) {
-        requestMessage.json.body = undefined
-        requestMessage.json.headers['standard-server'] = 'octet-stream' satisfies StandardBodyHint
-      }
-      else if (isAsyncIteratorObject(request.body)) {
-        requestMessage.json.body = undefined
-        requestMessage.json.headers['standard-server'] = 'event-stream' satisfies StandardBodyHint
-      }
-      else if (request.body instanceof FormData) {
-        const res = new Response(request.body)
-        requestMessage.binary = await res.blob()
-        requestMessage.json.body = undefined
-        requestMessage.json.headers['standard-server'] = 'form-data' satisfies StandardBodyHint
-        requestMessage.json.headers['content-type'] = res.headers.get('content-type') ?? undefined
-      }
-      else if (request.body instanceof Blob) {
-        requestMessage.binary = request.body
-        requestMessage.json.body = undefined
-        requestMessage.json.headers['standard-server'] = 'file' satisfies StandardBodyHint
-        requestMessage.json.headers['content-disposition'] = generateContentDisposition(request.body instanceof File ? request.body.name : 'blob')
-        requestMessage.json.headers['content-type'] = request.body.type
-      }
-      else if (request.body instanceof URLSearchParams) {
-        requestMessage.json.body = request.body.toString()
-        requestMessage.json.headers['standard-server'] = 'url-search-params' satisfies StandardBodyHint
-      }
-
-      signal?.throwIfAborted()
-      /**
-       * We must ensure the request is sent before send any additional messages,
-       * such as event iterator messages, signal messages, etc.
-       * Otherwise, the server may not recognize them as part of the request.
-       */
+      // PeerRequestMessage must be sent before stream messages
       await this.send(requestMessage)
+
+      // signal can be aborted after sending request message
       signal?.throwIfAborted()
 
       if (isAsyncIteratorObject(request.body)) {
         const transmitter = new EventStreamTransmitter(request.body, id, this.send)
         this.requestEventStreamTransmitters.set(id, transmitter)
 
-        /**
-         * Do not await here; we don't want it to block response processing.
-         */
+        // Do not await here; we don't want it to block response processing.
         void transmitter.transmit().catch(async (reason) => {
           await Promise.all([
             /**
@@ -158,9 +133,7 @@ export class ClientPeer {
         const transmitter = new OctetStreamTransmitter(request.body, id, this.send)
         this.requestOctetStreamTransmitters.set(id, transmitter)
 
-        /**
-         * Do not await here; we don't want it to block response processing.
-         */
+        // Do not await here; we don't want it to block response processing.
         void transmitter.transmit().catch(async (reason) => {
           await Promise.all([
             /**

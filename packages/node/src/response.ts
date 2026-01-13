@@ -1,5 +1,4 @@
 import type { StandardResponse } from '@standardserver/core'
-import type { ServerResponse } from 'node:http'
 import type { ToNodeHttpBodyOptions } from './body'
 import type { NodeHttpResponse } from './types'
 import { toNodeHttpBody } from './body'
@@ -22,7 +21,7 @@ export async function sendStandardResponse(
     res.once('error', reject)
     res.once('close', resolve)
 
-    // DON'T use `res.writeHead` because it will make the response is chunked
+    // DON'T use `res.writeHead` because it send response immediately in chunked mode
     // while we only need chunked if the response body is stream
     res.statusCode = standardResponse.status
     for (const key in resHeaders) {
@@ -40,10 +39,6 @@ export async function sendStandardResponse(
       res.end(resBody)
     }
     else {
-      // res.statusCode ignored when piping Readable.fromWeb() in h3 fromNodeHandler
-      // https://github.com/h3js/h3/issues/1272
-      ;(res as ServerResponse).writeHead(standardResponse.status)
-
       res.once('close', () => {
         if (!resBody.closed) {
           resBody.destroy(res.errored ?? undefined)
