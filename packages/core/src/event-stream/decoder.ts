@@ -76,8 +76,6 @@ export class EventStreamDecoder {
       const message = decodeEventStreamMessage(`${encoded}\n\n`)
       this.onEvent(message)
     }
-
-    this.incomplete = ''
   }
 
   end(): void {
