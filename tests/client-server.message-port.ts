@@ -2,8 +2,10 @@ import type { PeerMessage } from '@standardserver/peer'
 import type { ClientServerTest } from './client-server'
 import { ClientPeer, decodePeerMessage, encodePeerMessage, ServerPeer } from '@standardserver/peer'
 
+const prefix = '__PREFIX__'
+
 async function randomEncodePeerMessage(message: PeerMessage) {
-  let encoded = await encodePeerMessage(message)
+  let encoded = await encodePeerMessage(message, { prefix })
 
   /**
    * In some env when you send string but on server you might receive buffer,
@@ -24,7 +26,18 @@ export function createMessagePortClientServerTest(): ClientServerTest {
   })
   const clientPeer = new ClientPeer(sendClientPeerMessage)
   port1.addEventListener('message', async (event) => {
-    await clientPeer.message(decodePeerMessage(event.data) as any)
+    try {
+      const { matched, message } = decodePeerMessage(event.data, { prefix })
+
+      if (!matched) {
+        return
+      }
+
+      await clientPeer.message(message as any)
+    }
+    catch (e) {
+      console.error(e)
+    }
   })
   port1.start()
 
@@ -36,7 +49,13 @@ export function createMessagePortClientServerTest(): ClientServerTest {
   })
   const serverPeer = new ServerPeer(sendServerPeerMessage)
   port2.addEventListener('message', async (event) => {
-    await serverPeer.message(decodePeerMessage(event.data) as any, async (request) => {
+    const { matched, message } = decodePeerMessage(event.data, { prefix })
+
+    if (!matched) {
+      return
+    }
+
+    await serverPeer.message(message as any, async (request) => {
       return handler({ ...request, resolveBody: async () => request.body })
     })
   })
