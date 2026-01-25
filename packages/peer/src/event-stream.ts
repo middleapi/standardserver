@@ -2,7 +2,7 @@ import type { AsyncCleanupFn } from '@standardserver/shared'
 import type { PeerEventStreamMessage } from './types'
 import {
   EventIteratorErrorEvent,
-  resolveEventIteratorEvent,
+  unwrapEventIteratorEvent,
   withEventIteratorEventMeta,
 } from '@standardserver/core/event-stream'
 import { AsyncIteratorClass, isTypescriptObject } from '@standardserver/shared'
@@ -87,7 +87,7 @@ export class EventStreamTransmitter {
           this.isCompleted = true
         }
 
-        const [data, meta] = resolveEventIteratorEvent(item.value)
+        const [data, meta] = unwrapEventIteratorEvent(item.value)
         json = { ...meta, event: item.done ? 'close' : 'message', data }
       }
       catch (err) {
@@ -103,7 +103,7 @@ export class EventStreamTransmitter {
 
           this.isCompleted = true
 
-          const [resolvedError, meta] = resolveEventIteratorEvent(err)
+          const [resolvedError, meta] = unwrapEventIteratorEvent(err)
           json = { ...meta, event: 'error', data: resolvedError.data }
         }
         else {

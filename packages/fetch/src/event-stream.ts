@@ -1,4 +1,4 @@
-import { encodeEventStreamMessage, EventIteratorErrorEvent, EventStreamDecoderStream, getEventIteratorEventMeta, resolveEventIteratorEvent, withEventIteratorEventMeta } from '@standardserver/core/event-stream'
+import { encodeEventStreamMessage, EventIteratorErrorEvent, EventStreamDecoderStream, getEventIteratorEventMeta, unwrapEventIteratorEvent, withEventIteratorEventMeta } from '@standardserver/core/event-stream'
 import { AbortError, AsyncIteratorClass, isTypescriptObject, parseEmptyableJSON, stringifyJSON } from '@standardserver/shared'
 
 export function toEventIterator(
@@ -164,7 +164,7 @@ export function toEventStream(
           return
         }
 
-        const [data, meta] = resolveEventIteratorEvent(result.value)
+        const [data, meta] = unwrapEventIteratorEvent(result.value)
 
         if (alwaysSendCloseEvent || !result.done || data !== undefined || meta !== undefined) {
           const event = result.done ? 'close' : 'message'

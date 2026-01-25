@@ -1,4 +1,4 @@
-import { getEventIteratorEventMeta, resolveEventIteratorEvent, withEventIteratorEventMeta } from './meta'
+import { getEventIteratorEventMeta, unwrapEventIteratorEvent, withEventIteratorEventMeta } from './meta'
 
 it('get/withEventIteratorEventMeta', () => {
   const data = { value: 123, meta: undefined }
@@ -37,18 +37,18 @@ it('getEventIteratorEventMeta remove unknown meta', () => {
   expect(getEventIteratorEventMeta(applied)).toEqual({ id: '123' })
 })
 
-describe('resolveEventIteratorEvent', () => {
+describe('unwrapEventIteratorEvent', () => {
   it('non-object', () => {
-    expect(resolveEventIteratorEvent(1)).toEqual([1, undefined])
-    expect(resolveEventIteratorEvent('1')).toEqual(['1', undefined])
-    expect(resolveEventIteratorEvent(true)).toEqual([true, undefined])
-    expect(resolveEventIteratorEvent(null)).toEqual([null, undefined])
-    expect(resolveEventIteratorEvent(undefined)).toEqual([undefined, undefined])
+    expect(unwrapEventIteratorEvent(1)).toEqual([1, undefined])
+    expect(unwrapEventIteratorEvent('1')).toEqual(['1', undefined])
+    expect(unwrapEventIteratorEvent(true)).toEqual([true, undefined])
+    expect(unwrapEventIteratorEvent(null)).toEqual([null, undefined])
+    expect(unwrapEventIteratorEvent(undefined)).toEqual([undefined, undefined])
   })
 
   it('object without events', () => {
     const data = { value: 123, meta: undefined }
-    const [resolvedData, resolvedMeta] = resolveEventIteratorEvent(data)
+    const [resolvedData, resolvedMeta] = unwrapEventIteratorEvent(data)
     expect(resolvedData).toBe(data)
     expect(resolvedMeta).toBe(undefined)
   })
@@ -57,7 +57,7 @@ describe('resolveEventIteratorEvent', () => {
     const data = { value: 123, meta: undefined }
     const meta = { id: '123' }
     const applied = withEventIteratorEventMeta(data, meta)
-    const [resolvedData, resolvedMeta] = resolveEventIteratorEvent(applied)
+    const [resolvedData, resolvedMeta] = unwrapEventIteratorEvent(applied)
     expect(resolvedData).toBe(data)
     expect(resolvedMeta).toEqual(meta)
   })
