@@ -26,6 +26,10 @@ export default antfu({
         name: 'decodeURIComponent',
         message: 'decodeURIComponent can throw an error, use tryDecodeURIComponent instead',
       },
+      {
+        name: ['Reflect', 'get'],
+        message: 'Use getOrBind instead',
+      },
     ],
   },
 }, {

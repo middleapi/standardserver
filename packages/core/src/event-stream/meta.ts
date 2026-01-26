@@ -58,8 +58,8 @@ export function unwrapEventIteratorEvent<T>(container: T): [data: T, meta: Event
     return [container, undefined]
   }
 
-  const meta = Reflect.get(container, EVENT_ITERATOR_EVENT_META_SYMBOL) as EventStreamMessageMeta | undefined
-  const target = Reflect.get(container, EVENT_ITERATOR_EVENT_SOURCE_SYMBOL) as T ?? container
+  const meta = (container as Record<symbol, unknown>)[EVENT_ITERATOR_EVENT_META_SYMBOL] as EventStreamMessageMeta | undefined
+  const target = (container as Record<symbol, unknown>)[EVENT_ITERATOR_EVENT_SOURCE_SYMBOL] as T ?? container
 
   return [target, meta]
 }
@@ -72,5 +72,5 @@ export function getEventIteratorEventMeta(container: unknown): EventStreamMessag
     return undefined
   }
 
-  return Reflect.get(container, EVENT_ITERATOR_EVENT_META_SYMBOL) as EventStreamMessageMeta | undefined
+  return (container as Record<symbol, unknown>)[EVENT_ITERATOR_EVENT_META_SYMBOL] as EventStreamMessageMeta | undefined
 }
