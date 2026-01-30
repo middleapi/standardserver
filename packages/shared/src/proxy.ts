@@ -1,11 +1,24 @@
 // eslint-disable-next-line ts/no-unsafe-function-type
 const GET_OR_BIND_CACHE = new WeakMap<Function, WeakMap<object, Function>>()
 
-export function getOrBind<T extends object, K extends PropertyKey>(target: T, property: K): K extends keyof T ? T[K] : unknown {
+export interface GetOrBindOptions {
+  /**
+   * Whether to bind the function to the target before returning it.
+   *
+   * @default true
+   */
+  bind?: boolean
+}
+
+export function getOrBind<T extends object, K extends PropertyKey>(
+  target: T,
+  property: K,
+  { bind = true }: GetOrBindOptions = {},
+): K extends keyof T ? T[K] : unknown {
   // eslint-disable-next-line ban/ban
   const value = Reflect.get(target, property)
 
-  if (typeof value !== 'function') {
+  if (!bind || typeof value !== 'function') {
     return value
   }
 

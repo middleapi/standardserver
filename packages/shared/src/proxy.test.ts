@@ -98,4 +98,13 @@ describe('getOrBind', () => {
     expect(bound()).toBe('target')
     expect(getOrBind(target, 'dynamicFn')).toBe(bound)
   })
+
+  it('we can disable binding', () => {
+    const target = {
+      method() {},
+    }
+
+    const bound = getOrBind(target, 'method', { bind: false })
+    expect(bound).toBe(target.method)
+  })
 })
