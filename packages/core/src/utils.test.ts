@@ -1,4 +1,4 @@
-import { flattenStandardHeader, generateContentDisposition, getFilenameFromContentDisposition, mergeStandardHeaders } from './utils'
+import { flattenStandardHeader, generateContentDisposition, getFilenameFromContentDisposition, mergeStandardHeaders, parseStandardUrl } from './utils'
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -47,4 +47,86 @@ it('flattenStandardHeader', () => {
   expect(flattenStandardHeader([])).toEqual(undefined)
   expect(flattenStandardHeader('a')).toEqual('a')
   expect(flattenStandardHeader(undefined)).toEqual(undefined)
+})
+
+describe('parseStandardUrl', () => {
+  it('should parse pathname only', () => {
+    expect(parseStandardUrl('/')).toEqual([
+      '/',
+      undefined,
+      undefined,
+    ])
+
+    expect(parseStandardUrl('/users/123/profile')).toEqual([
+      '/users/123/profile',
+      undefined,
+      undefined,
+    ])
+  })
+
+  it('should parse pathname with search params', () => {
+    expect(parseStandardUrl('/search?q=test&page=2')).toEqual([
+      '/search',
+      '?q=test&page=2',
+      undefined,
+    ])
+  })
+
+  it('should parse pathname with hash', () => {
+    expect(parseStandardUrl('/docs#intro')).toEqual([
+      '/docs',
+      undefined,
+      '#intro',
+    ])
+  })
+
+  it('should parse pathname with search and hash', () => {
+    expect(parseStandardUrl('/products?category=electronics#reviews')).toEqual([
+      '/products',
+      '?category=electronics',
+      '#reviews',
+    ])
+  })
+
+  it('should handle hash before search (hash takes priority)', () => {
+    expect(parseStandardUrl('/page#section?query=1')).toEqual([
+      '/page',
+      undefined,
+      '#section?query=1',
+    ])
+  })
+
+  it('should handle multiple question marks and hashes', () => {
+    expect(parseStandardUrl('/page?q=1?extra=2')).toEqual([
+      '/page',
+      '?q=1?extra=2',
+      undefined,
+    ])
+
+    expect(parseStandardUrl('/page#hash#another')).toEqual([
+      '/page',
+      undefined,
+      '#hash#another',
+    ])
+
+    expect(parseStandardUrl('/page?q=1?x=2#sec#sub')).toEqual([
+      '/page',
+      '?q=1?x=2',
+      '#sec#sub',
+    ])
+
+    expect(parseStandardUrl('/page#sec?q=1#sub?x=2')).toEqual([
+      '/page',
+      undefined,
+      '#sec?q=1#sub?x=2',
+    ])
+  })
+
+  it('should handle empty search and hash markers', () => {
+    expect(parseStandardUrl('/page?#')).toEqual([
+      '/page',
+      '?',
+      '#',
+    ])
+  })
 })

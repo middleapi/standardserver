@@ -1,4 +1,4 @@
-import type { StandardHeaders } from './types'
+import type { StandardHeaders, StandardUrl } from './types'
 import { toArray, tryDecodeURIComponent } from '@standardserver/shared'
 
 export function generateContentDisposition(filename: string): string {
@@ -58,4 +58,23 @@ export function mergeStandardHeaders(a: StandardHeaders, b: StandardHeaders): St
   }
 
   return merged
+}
+
+export function parseStandardUrl(url: StandardUrl): [
+  pathname: `/${string}`,
+  search: `?${string}` | undefined,
+  hash: `#${string}` | undefined,
+] {
+  const hashStart = url.indexOf('#')
+  const searchStart = url.indexOf('?')
+
+  const hasSearchBeforeHash = searchStart !== -1 && (hashStart === -1 || searchStart < hashStart)
+  const pathnameEnd = hasSearchBeforeHash ? searchStart : hashStart !== -1 ? hashStart : url.length
+  const searchEnd = hashStart !== -1 ? hashStart : url.length
+
+  const pathname = url.slice(0, pathnameEnd) as `/${string}`
+  const search = hasSearchBeforeHash ? url.slice(searchStart, searchEnd) as `?${string}` : undefined
+  const hash = hashStart !== -1 ? url.slice(hashStart) as `#${string}` : undefined
+
+  return [pathname, search, hash]
 }
