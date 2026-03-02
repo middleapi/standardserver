@@ -5,6 +5,7 @@ import { createMessagePortClientServerTest } from './client-server.message-port'
 import { createNodeFetchServerClientServerTest } from './client-server.node-fetch-server'
 import { createNodeHttpClientServerTest } from './client-server.node-http'
 import { createNodeSrvxClientServerTest } from './client-server.node-srvx'
+import { createNodeWsClientServerTest } from './client-server.node-ws'
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -20,8 +21,10 @@ describe.each([
   ['node-fetch-server', createNodeFetchServerClientServerTest],
   ['node-http', createNodeHttpClientServerTest],
   ['message-port', createMessagePortClientServerTest],
-] as const)('signal and cancel: $0', (adapter, createClientServer) => {
+  ['node-ws', createNodeWsClientServerTest],
+] as const)('signal and cancel: $0', async (adapter, createClientServer) => {
   const clientServer = createClientServer()
+  await sleep(100) // ensure everything is ready
 
   it('never aborted', async () => {
     let serverSignal!: AbortSignal
@@ -163,8 +166,8 @@ describe.each([
     abortController.abort()
 
     await sleep(100) // wait for server receive abort signal
-    // Currently only message-port adapter support request stream cancel
-    if (adapter === 'message-port') {
+    // Currently only message-port and node-ws adapters support request stream cancel
+    if (adapter === 'message-port' || adapter === 'node-ws') {
       expect(canceled).toBe(true)
     }
     expect(serverSignal.aborted).toBe(true)
@@ -224,8 +227,8 @@ describe.each([
     abortController.abort()
 
     await sleep(100) // wait for server receive abort signal
-    // Currently only message-port adapter trigger request stream cancel
-    if (adapter === 'message-port') {
+    // Currently only message-port and node-ws adapters trigger request stream cancel
+    if (adapter === 'message-port' || adapter === 'node-ws') {
       expect(cancelled).toBe(true)
     }
     expect(serverSignal.aborted).toBe(true)
@@ -519,8 +522,8 @@ describe.each([
 
     expect(response).toMatchObject({ status: 200 })
 
-    // Currently only message port adapter support trigger request stream cancel
-    expect(canceled).toBe(adapter === 'message-port')
+    // Currently only message port and node-ws adapters support trigger request stream cancel
+    expect(canceled).toBe(adapter === 'message-port' || adapter === 'node-ws')
     expect(serverSignal.aborted).toBe(false) // DO NOT ABORT IF ONLY CANCEL REQUEST BODY
     expect(times).toBe(2) // the second chunk is being pulled
     expect(Date.now() - start).toBeLessThan(300) // cancelled in parallel without waiting for the second chunk
@@ -577,8 +580,8 @@ describe.each([
 
     expect(response).toMatchObject({ status: 200 })
 
-    // Currently only message-port adapter support trigger request stream cancel
-    expect(canceled).toBe(adapter === 'message-port')
+    // Currently only message-port and node-ws adapters support trigger request stream cancel
+    expect(canceled).toBe(adapter === 'message-port' || adapter === 'node-ws')
     expect(serverSignal.aborted).toBe(false) // DO NOT ABORT IF ONLY CANCEL REQUEST BODY
     expect(times).toBe(2) // the second chunk is being pulled
     expect(Date.now() - start).toBeLessThan(300) // cancelled in parallel without waiting for the second chunk
@@ -664,7 +667,14 @@ describe.each([
     }
   })
 
-  it('error happen while sending request octet stream', async () => {
+  it('error happen while sending request octet stream', async ({ onTestFinished }) => {
+    const unhandledRejection = vi.fn()
+    process.on('unhandledRejection', unhandledRejection)
+
+    onTestFinished(() => {
+      process.off('unhandledRejection', unhandledRejection)
+    })
+
     let serverSignal!: AbortSignal
     let canceled = false
     let serverError!: unknown
@@ -691,21 +701,24 @@ describe.each([
       }
     })
 
+    const error = new Error('__TEST__')
     let times = 0
     const responsePromise = clientServer.request({
       headers: {},
       body: new ReadableStream({
         pull: async (controller) => {
+          console.log('pull request octet stream', times)
           times += 1
           await sleep(100)
 
           if (times !== 1) {
-            controller.error(new Error('__TEST__'))
+            controller.error(error)
           }
 
           controller.enqueue(new TextEncoder().encode('Hello'))
         },
-        cancel: async () => {
+        cancel: async (reason) => {
+          console.log('cancel request octet stream', reason)
           canceled = true
         },
       }),
@@ -720,6 +733,13 @@ describe.each([
     expect(serverError).toBeInstanceOf(Error)
     expect(times).toBe(2) // stop at second chunk
     expect(canceled).toBe(false) // don't need cancel if error happen
+
+    if (adapter === 'message-port' || adapter === 'node-ws') {
+    // If the readable stream has already errored before cancel is called,
+    // cancel() will throw, so an unhandledRejection is expected.
+      expect(unhandledRejection).toHaveBeenCalledTimes(1)
+      expect(unhandledRejection).toHaveBeenNthCalledWith(1, error, expect.anything())
+    }
 
     if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
       expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(3)

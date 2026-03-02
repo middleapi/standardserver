@@ -23,6 +23,7 @@
     "@standardserver/peer": "workspace:*",
     "@standardserver/shared": "workspace:*",
     "@types/node": "^25.0.3",
+    "@types/ws": "^8.18.1",
     "@vitest/coverage-v8": "^4.0.16",
     "eslint": "^9.39.2",
     "eslint-plugin-ban": "^2.0.0",
@@ -34,7 +35,8 @@
     "srvx": "^0.10.0",
     "typescript": "^5.9.3",
     "unbuild": "^3.6.1",
-    "vitest": "^4.0.16"
+    "vitest": "^4.0.16",
+    "ws": "^8.19.0"
   },
   "simple-git-hooks": {
     "pre-commit": "pnpm lint-staged"
