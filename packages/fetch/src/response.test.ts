@@ -22,7 +22,7 @@ describe('toFetchResponse', () => {
       status: 206,
     }
 
-    const options = { body: { eventIterator: { keepAliveEnabled: true } } }
+    const options = { body: { eventStream: { keepAliveEnabled: true } } }
     const fetchResponse = toFetchResponse(standardResponse, options)
 
     expect(fetchResponse.status).toBe(206)

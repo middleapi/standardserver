@@ -502,10 +502,10 @@ describe('toFetchBody', () => {
       yield 123
       return 456
     }
-    const options = { eventIterator: { keepAliveEnabled: false } }
+    const options = { eventStream: { keepAliveEnabled: false } }
     const [body, headers] = toFetchBody(gen(), baseHeaders, options)
 
-    expect(toEventStreamSpy).toHaveBeenCalledWith(gen(), options.eventIterator)
+    expect(toEventStreamSpy).toHaveBeenCalledWith(gen(), options.eventStream)
 
     expect(body).toBeInstanceOf(ReadableStream)
     expect(headers).toEqual({

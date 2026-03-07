@@ -527,11 +527,11 @@ describe('toNodeHttpBody', () => {
       yield 123
       return 456
     }
-    const options = { eventIterator: { keepAliveEnabled: true } }
+    const options = { eventStream: { keepAliveEnabled: true } }
     const iterator = gen()
     const [body, headers] = await toNodeHttpBody(iterator, baseHeaders, options)
 
-    expect(toEventStreamSpy).toHaveBeenCalledWith(iterator, options.eventIterator)
+    expect(toEventStreamSpy).toHaveBeenCalledWith(iterator, options.eventStream)
 
     expect(body).toBeInstanceOf(Readable)
     expect(headers).toEqual({

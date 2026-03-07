@@ -75,9 +75,9 @@ export async function toStandardBody(re: Request | Response, options?: ToStandar
 
 export interface ToFetchBodyOptions {
   /**
-   * Options for the event iterator, like keep-alive settings, initial comment, etc.
+   * Options for the event stream, like keep-alive settings, initial comment, etc.
    */
-  eventIterator?: ToEventStreamOptions
+  eventStream?: ToEventStreamOptions
 }
 
 /**
@@ -131,7 +131,7 @@ export function toFetchBody(
   if (isAsyncIteratorObject(body)) {
     headers['standard-server'] = 'event-stream' satisfies StandardBodyHint
     headers['content-type'] ??= 'text/event-stream'
-    return [toEventStream(body, options.eventIterator), headers]
+    return [toEventStream(body, options.eventStream), headers]
   }
 
   headers['standard-server'] = 'json' satisfies StandardBodyHint

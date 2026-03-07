@@ -83,9 +83,9 @@ export async function toStandardBody(
 
 export interface ToNodeHttpBodyOptions {
   /**
-   * Options for the event iterator, like keep-alive settings, initial comment, etc.
+   * Options for the event stream, like keep-alive settings, initial comment, etc.
    */
-  eventIterator?: ToEventStreamOptions
+  eventStream?: ToEventStreamOptions
 }
 
 export async function toNodeHttpBody(
@@ -144,7 +144,7 @@ export async function toNodeHttpBody(
     headers['standard-server'] = 'event-stream' satisfies StandardBodyHint
     headers['content-type'] ??= 'text/event-stream'
 
-    return [toEventStream(body, options.eventIterator), headers]
+    return [toEventStream(body, options.eventStream), headers]
   }
 
   headers['standard-server'] = 'json' satisfies StandardBodyHint
