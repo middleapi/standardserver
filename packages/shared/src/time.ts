@@ -1,6 +1,32 @@
+export interface SleepOptions {
+  signal?: AbortSignal | undefined
+}
+
 /**
  * sleep for a specified amount of time
  */
-export function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms))
+export function sleep(ms: number, { signal }: SleepOptions = {}): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(signal.reason)
+      return
+    }
+
+    let abortListener: (() => void) | null = null
+
+    const timeout = setTimeout(() => {
+      if (abortListener) {
+        signal?.removeEventListener('abort', abortListener)
+      }
+
+      resolve()
+    }, ms)
+
+    if (signal) {
+      signal.addEventListener('abort', abortListener = () => {
+        clearTimeout(timeout)
+        reject(signal?.reason)
+      }, { once: true })
+    }
+  })
 }
