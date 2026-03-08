@@ -1,7 +1,7 @@
 {
   "name": "@standardserver/peer",
   "type": "module",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "license": "MIT",
   "homepage": "https://standardserver.dev",
   "repository": {
