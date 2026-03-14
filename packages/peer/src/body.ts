@@ -1,31 +1,31 @@
 import type { StandardBody, StandardBodyHint, StandardHeaders } from '@standardserver/core'
-import type { AsyncCleanupFn, AsyncIdQueue } from '@standardserver/shared'
+import type { AsyncCleanupFn } from '@standardserver/shared'
 import type { PeerEventStreamMessage, PeerOctetStreamMessage, PeerRequestMessage, PeerResponseMessage } from './types'
 import { flattenStandardHeader, generateContentDisposition, getFilenameFromContentDisposition } from '@standardserver/core'
-import { isAsyncIteratorObject } from '@standardserver/shared'
+import { isAsyncIteratorObject, Queue } from '@standardserver/shared'
 import { toEventIterator } from './event-stream'
 import { toOctetStream } from './octet-stream'
 
+export interface ToStandardBodyResult {
+  body: StandardBody
+  eventStreamMessageQueue?: Queue<PeerEventStreamMessage>
+  octetStreamMessageQueue?: Queue<PeerOctetStreamMessage>
+}
+
 export async function toStandardBody(
   message: PeerRequestMessage | PeerResponseMessage,
-  eventStreamMessageQueue: AsyncIdQueue<PeerEventStreamMessage>,
-  octetStreamMessageQueue: AsyncIdQueue<PeerOctetStreamMessage>,
   cleanup: AsyncCleanupFn,
-): Promise<StandardBody> {
+): Promise<ToStandardBodyResult> {
   const bodyHint = flattenStandardHeader(message.json.headers['standard-server'])
 
   if (bodyHint === 'event-stream' satisfies StandardBodyHint) {
-    return toEventIterator(
-      () => eventStreamMessageQueue.pull(message.id),
-      cleanup,
-    )
+    const eventStreamMessageQueue = new Queue<PeerEventStreamMessage>()
+    return { body: toEventIterator(eventStreamMessageQueue, cleanup), eventStreamMessageQueue }
   }
 
   if (bodyHint === 'octet-stream' satisfies StandardBodyHint) {
-    return toOctetStream(
-      () => octetStreamMessageQueue.pull(message.id),
-      cleanup,
-    )
+    const octetStreamMessageQueue = new Queue<PeerOctetStreamMessage>()
+    return { body: toOctetStream(octetStreamMessageQueue, cleanup), octetStreamMessageQueue }
   }
 
   try {
@@ -35,9 +35,10 @@ export async function toStandardBody(
         ? getFilenameFromContentDisposition(contentDisposition)
         : 'undefined'
 
-      return new File(message.binary ? [message.binary] : [], filename ?? 'blob', {
+      const body = new File(message.binary ? [message.binary] : [], filename ?? 'blob', {
         type: flattenStandardHeader(message.json.headers['content-type']) ?? 'application/octet-stream',
       })
+      return { body }
     }
 
     if (bodyHint === 'form-data' satisfies StandardBodyHint) {
@@ -47,15 +48,15 @@ export async function toStandardBody(
         },
       })
 
-      const fromData = await res.formData()
-      return fromData
+      const body = await res.formData()
+      return { body }
     }
 
     if (bodyHint === 'url-search-params' satisfies StandardBodyHint && typeof message.json.body === 'string') {
-      return new URLSearchParams(message.json.body)
+      return { body: new URLSearchParams(message.json.body) }
     }
 
-    return message.json.body
+    return { body: message.json.body }
   }
   finally {
     // The body is fully loaded, so we can clean up immediately.

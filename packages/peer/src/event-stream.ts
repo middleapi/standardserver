@@ -1,4 +1,4 @@
-import type { AsyncCleanupFn } from '@standardserver/shared'
+import type { AsyncCleanupFn, Queue } from '@standardserver/shared'
 import type { PeerEventStreamMessage } from './types'
 import {
   EventIteratorErrorEvent,
@@ -12,12 +12,12 @@ import { AsyncIteratorClass, isTypescriptObject } from '@standardserver/shared'
  * The iterator yields normal events, throws error events, and completes on done.
  */
 export function toEventIterator(
-  pull: () => Promise<PeerEventStreamMessage>,
+  queue: Queue<PeerEventStreamMessage>,
   cleanup: AsyncCleanupFn,
 ): AsyncIteratorClass<unknown> {
   return new AsyncIteratorClass(async () => {
     while (true) {
-      const { json } = await pull()
+      const { json } = await queue.pull()
 
       switch (json.event) {
         case 'message': {

@@ -1,34 +1,24 @@
 import type { StandardRequest, StandardResponse } from '@standardserver/core'
-import type { AsyncIdQueueCloseOptions } from '@standardserver/shared'
+import type { Queue } from '@standardserver/shared'
 import type { PeerAbortMessage, PeerEventStreamMessage, PeerOctetStreamMessage, PeerRequestMessage, PeerResponseMessage, PeerStreamCancelMessage } from './types'
-import { AbortError, AsyncIdQueue, isAsyncIteratorObject, SequentialIdGenerator } from '@standardserver/shared'
+import { AbortError, isAsyncIteratorObject, SequentialIdGenerator } from '@standardserver/shared'
 import { encodeAtomicStandardBody, toStandardBody } from './body'
 import { EventStreamTransmitter } from './event-stream'
 import { OctetStreamTransmitter } from './octet-stream'
 
-export interface ClientPeerCloseOptions extends AsyncIdQueueCloseOptions {}
+interface ClientPeerRequestStateInternal {
+  resolve?: ((response: StandardResponse) => void) | undefined
+  reject?: ((reason: unknown) => void) | undefined
+  eventStreamMessageQueue?: Queue<PeerEventStreamMessage> | undefined
+  octetStreamMessageQueue?: Queue<PeerOctetStreamMessage> | undefined
+  eventStreamTransmitter?: EventStreamTransmitter | undefined
+  octetStreamTransmitter?: OctetStreamTransmitter | undefined
+  cleanupFns?: (() => void)[] | undefined
+}
 
 export class ClientPeer {
   private readonly idGenerator = new SequentialIdGenerator()
-
-  /**
-   * Messages waiting to be processed
-   */
-  private readonly responseMessageQueue = new AsyncIdQueue<PeerResponseMessage>()
-  private readonly eventStreamMessageQueue = new AsyncIdQueue<PeerEventStreamMessage>()
-  private readonly octetStreamMessageQueue = new AsyncIdQueue<PeerOctetStreamMessage>()
-
-  /**
-   * Transmitters for event streams and octet streams
-   * Should be cancelled when needed
-   */
-  private readonly requestEventStreamTransmitters = new Map<string, EventStreamTransmitter>()
-  private readonly requestOctetStreamTransmitters = new Map<string, OctetStreamTransmitter>()
-
-  /**
-   * Cleanup functions invoked when the request/response is completed
-   */
-  private readonly cleanupFns = new Map<string, (() => void)[]>()
+  private readonly requests = new Map<string, ClientPeerRequestStateInternal>()
 
   constructor(
     private readonly send: (
@@ -41,12 +31,7 @@ export class ClientPeer {
    * Use to measure resources usage
    */
   get size(): number {
-    return this.responseMessageQueue.length
-      + this.eventStreamMessageQueue.length
-      + this.octetStreamMessageQueue.length
-      + this.requestEventStreamTransmitters.size
-      + this.requestOctetStreamTransmitters.size
-      + this.cleanupFns.size
+    return this.requests.size
   }
 
   /**
@@ -57,37 +42,21 @@ export class ClientPeer {
     signal?.throwIfAborted()
 
     const id = this.idGenerator.generate()
-
-    this.eventStreamMessageQueue.open(id)
-    this.octetStreamMessageQueue.open(id)
-    this.responseMessageQueue.open(id)
+    const state: ClientPeerRequestStateInternal = {}
+    this.requests.set(id, state)
 
     let abortListener: () => Promise<void>
-    signal?.addEventListener('abort', abortListener = async () => {
-      await Promise.all([
-        /**
-         * Let server know request was aborted
-         *
-         * We don't need to check if is there any abort message already sent
-         * since this listener is removed when the request is closed.
-         */
-        this.send({ id, kind: 'abort' }),
-        this.close({ id, reason: signal.reason }),
-      ])
+    signal?.addEventListener('abort', abortListener = () => this.abortById(id, signal.reason))
+    /**
+     * Make sure to remove the abort listener when the request/response is closed.
+     * Since a signal can be reused for multiple requests, if each request
+     * adds listeners without removing them, it can lead to excessive memory usage
+     * until the signal is garbage collected.
+     */
+    state.cleanupFns ??= []
+    state.cleanupFns.push(() => {
+      signal?.removeEventListener('abort', abortListener)
     })
-
-    const cleanupFns: (() => void)[] = [
-      /**
-       * Make sure to remove the abort listener when the request/response is closed.
-       * Since a signal can be reused for multiple requests, if each request
-       * adds listeners without removing them, it can lead to excessive memory usage
-       * until the signal is garbage collected.
-       */
-      () => {
-        signal?.removeEventListener('abort', abortListener)
-      },
-    ]
-    this.cleanupFns.set(id, cleanupFns)
 
     try {
       const [jsonBody, headers, binary] = await encodeAtomicStandardBody(request.body, request.headers)
@@ -115,63 +84,54 @@ export class ClientPeer {
 
       if (isAsyncIteratorObject(request.body)) {
         const transmitter = new EventStreamTransmitter(request.body, id, this.send)
-        this.requestEventStreamTransmitters.set(id, transmitter)
+        state.eventStreamTransmitter = transmitter
 
         // Do not await here; we don't want it to block response processing.
         void transmitter.transmit().catch(async (reason) => {
-          await Promise.all([
+          if (state.eventStreamTransmitter) {
+            state.eventStreamTransmitter = undefined
+            await this.abortById(id, reason)
+          }
+          else {
             /**
              * We don't need to send abort message if transmitter was cancelled
-             * or request was aborted
+             * or request was closed
              */
-            this.requestEventStreamTransmitters.has(id) ? this.send({ id, kind: 'abort' }) : undefined,
-            this.close({ id, reason }),
-          ])
+            state.eventStreamTransmitter = undefined
+            await this.closeById(id, reason)
+          }
         })
       }
       else if (request.body instanceof ReadableStream) {
         const transmitter = new OctetStreamTransmitter(request.body, id, this.send)
-        this.requestOctetStreamTransmitters.set(id, transmitter)
+        state.octetStreamTransmitter = transmitter
 
         // Do not await here; we don't want it to block response processing.
         void transmitter.transmit().catch(async (reason) => {
-          await Promise.all([
+          if (state.octetStreamTransmitter) {
+            state.octetStreamTransmitter = undefined
+            await this.abortById(id, reason)
+          }
+          else {
             /**
              * We don't need to send abort message if transmitter was cancelled
-             * or request was aborted
+             * or request was closed
              */
-            this.requestOctetStreamTransmitters.has(id) ? this.send({ id, kind: 'abort' }) : undefined,
-            this.close({ id, reason }),
-          ])
+            state.octetStreamTransmitter = undefined
+            await this.closeById(id, reason)
+          }
         })
-      }
-      const peerResponseMessage = await this.responseMessageQueue.pull(id)
-
-      return {
-        ...peerResponseMessage.json,
-        body: await toStandardBody(
-          peerResponseMessage,
-          this.eventStreamMessageQueue,
-          this.octetStreamMessageQueue,
-          async (isCompleted) => {
-            await Promise.all([
-              /**
-               * We don't need to send abort message if completed
-               * or request was aborted
-               */
-              !isCompleted && (this.eventStreamMessageQueue.isOpen(id) || this.octetStreamMessageQueue.isOpen(id))
-                ? this.send({ id, kind: 'abort' })
-                : undefined,
-              this.close({ id }),
-            ])
-          },
-        ),
       }
     }
     catch (reason) {
-      await this.close({ id, reason })
+      await this.closeById(id, reason)
       throw reason
     }
+
+    return new Promise((resolve, reject) => {
+      state.resolve = resolve
+      state.reject = reject
+    })
   }
 
   /**
@@ -180,73 +140,142 @@ export class ClientPeer {
   async message(
     message: PeerResponseMessage | PeerAbortMessage | PeerEventStreamMessage | PeerOctetStreamMessage | PeerStreamCancelMessage,
   ): Promise<void> {
+    const id = message.id
+    const state = this.requests.get(id)
+
+    if (!state) { // request already closed or non-existing
+      return
+    }
+
     if (message.kind === 'stream/cancel') {
       const promise = Promise.all([
-        this.requestEventStreamTransmitters.get(message.id)?.cancel(),
-        this.requestOctetStreamTransmitters.get(message.id)?.cancel(),
+        state.eventStreamTransmitter?.cancel(),
+        state.octetStreamTransmitter?.cancel(),
       ])
-
-      this.requestEventStreamTransmitters.delete(message.id)
-      this.requestOctetStreamTransmitters.delete(message.id)
+      state.eventStreamTransmitter = undefined
+      state.octetStreamTransmitter = undefined
 
       await promise
-
       return
     }
 
     if (message.kind === 'abort') {
-      await this.close({ id: message.id, reason: new AbortError('Server peer aborted the request') })
+      await this.closeById(id, new AbortError('Server peer aborted the request'))
       return
     }
 
     if (message.kind === 'event-stream') {
-      if (this.eventStreamMessageQueue.isOpen(message.id)) {
-        this.eventStreamMessageQueue.push(message.id, message)
-      }
+      state.eventStreamMessageQueue?.push(message)
       return
     }
 
     if (message.kind === 'octet-stream') {
-      if (this.octetStreamMessageQueue.isOpen(message.id)) {
-        this.octetStreamMessageQueue.push(message.id, message)
-      }
+      state.octetStreamMessageQueue?.push(message)
       return
     }
 
-    if (this.responseMessageQueue.isOpen(message.id)) {
-      this.responseMessageQueue.push(message.id, message)
+    if (!state.resolve) { // duplicate response message
+      return
+    }
+
+    try {
+      const response: StandardResponse = message.json
+
+      const decoded = await toStandardBody(message, async (isCompleted) => {
+        if (!isCompleted) {
+          await this.abortById(id)
+        }
+        else if (state.eventStreamMessageQueue || state.octetStreamMessageQueue) {
+          await this.closeById(id)
+        }
+      })
+      response.body = decoded.body
+      state.eventStreamMessageQueue = decoded.eventStreamMessageQueue
+      state.octetStreamMessageQueue = decoded.octetStreamMessageQueue
+
+      state.resolve?.(response)
+      state.resolve = undefined
+      state.reject = undefined
+
+      if (!state.eventStreamMessageQueue && !state.octetStreamMessageQueue) {
+        // if there is no stream, we can close the request immediately
+        await this.closeById(id)
+      }
+    }
+    catch (reason) {
+      await this.closeById(id, reason)
     }
   }
 
-  async close(options: AsyncIdQueueCloseOptions = {}): Promise<void> {
-    const promises: (Promise<void> | undefined)[] = []
+  async close(reason?: unknown): Promise<void> {
+    reason ??= new AbortError('Peer was closed')
 
-    this.responseMessageQueue.close(options)
-    this.eventStreamMessageQueue.close(options)
-    this.octetStreamMessageQueue.close(options)
+    await Promise.all(
+      Array.from(this.requests.keys()).map(id => this.closeById(id, reason)),
+    )
+  }
 
-    if (options.id !== undefined) {
-      promises.push(
-        this.requestEventStreamTransmitters.get(options.id)?.cancel(),
-        this.requestOctetStreamTransmitters.get(options.id)?.cancel(),
-      )
+  private async closeById(id: string, reason?: unknown): Promise<void> {
+    const state = this.requests.get(id)
 
-      this.requestEventStreamTransmitters.delete(options.id)
-      this.requestOctetStreamTransmitters.delete(options.id)
-
-      this.cleanupFns.get(options.id)?.forEach(fn => fn())
-      this.cleanupFns.delete(options.id)
+    if (!state) { // already closed
+      return
     }
-    else {
-      this.requestEventStreamTransmitters.forEach(t => promises.push(t.cancel()))
-      this.requestOctetStreamTransmitters.forEach(t => promises.push(t.cancel()))
 
-      this.requestEventStreamTransmitters.clear()
-      this.requestOctetStreamTransmitters.clear()
+    this.requests.delete(id)
+    reason ??= new AbortError('Request was closed')
 
-      this.cleanupFns.forEach(fns => fns.forEach(fn => fn()))
-      this.cleanupFns.clear()
+    state.reject?.(reason)
+    state.resolve = undefined
+    state.reject = undefined
+
+    state.eventStreamMessageQueue?.close(reason)
+    state.octetStreamMessageQueue?.close(reason)
+    state.eventStreamMessageQueue = undefined
+    state.octetStreamMessageQueue = undefined
+
+    const promises = [
+      state.eventStreamTransmitter?.cancel(),
+      state.octetStreamTransmitter?.cancel(),
+    ]
+    state.eventStreamTransmitter = undefined
+    state.octetStreamTransmitter = undefined
+
+    state.cleanupFns?.forEach(fn => fn())
+    state.cleanupFns = undefined
+
+    await Promise.all(promises)
+  }
+
+  private async abortById(id: string, reason?: unknown): Promise<void> {
+    const state = this.requests.get(id)
+
+    if (!state) { // already closed
+      return
     }
+
+    this.requests.delete(id)
+    reason ??= new AbortError('Request was aborted')
+
+    state.reject?.(reason)
+    state.resolve = undefined
+    state.reject = undefined
+
+    state.eventStreamMessageQueue?.abort(reason)
+    state.octetStreamMessageQueue?.abort(reason)
+    state.eventStreamMessageQueue = undefined
+    state.octetStreamMessageQueue = undefined
+
+    const promises = [
+      state.eventStreamTransmitter?.cancel(),
+      state.octetStreamTransmitter?.cancel(),
+      this.send({ id, kind: 'abort' }),
+    ]
+    state.eventStreamTransmitter = undefined
+    state.octetStreamTransmitter = undefined
+
+    state.cleanupFns?.forEach(fn => fn())
+    state.cleanupFns = undefined
 
     await Promise.all(promises)
   }

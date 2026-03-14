@@ -1,4 +1,3 @@
-import { describe, expect, it } from 'vitest'
 import { decodePeerMessage, encodePeerMessage } from './codec'
 
 describe('codec', () => {
@@ -71,6 +70,34 @@ describe('codec', () => {
     const encoded = textEncoder.encode('WRONG:{}')
     const result = decodePeerMessage(encoded, { prefix: 'RIGHT:' })
     expect(result).toEqual({ matched: false })
+  })
+
+  it('handles empty binary payload', async () => {
+    const binary = new Uint8Array(0)
+    const message = { id: '4', binary }
+
+    const encoded = await encodePeerMessage(message as any)
+    expect(encoded).toBeInstanceOf(Uint8Array)
+
+    const decoded = decodePeerMessage(encoded)
+    expect(decoded).toEqual({ matched: true, message })
+  })
+
+  it('handles unicode characters in JSON', async () => {
+    const message = { id: '5', data: '你好世界 🌍 áéíóú' }
+
+    const encoded = await encodePeerMessage(message as any)
+    const decoded = decodePeerMessage(encoded)
+    expect(decoded).toEqual({ matched: true, message })
+  })
+
+  it('throws on malformed JSON string input', () => {
+    expect(() => decodePeerMessage('not valid json')).toThrow()
+  })
+
+  it('throws on malformed JSON binary input', () => {
+    const encoded = new TextEncoder().encode('not valid json')
+    expect(() => decodePeerMessage(encoded)).toThrow()
   })
 
   it('decodes a binary message without binary payload (JSON only in Uint8Array)', () => {

@@ -1,134 +1,73 @@
 import { AbortError } from './error'
 
-export interface AsyncIdQueueCloseOptions {
-  id?: string
-  reason?: unknown
-}
+export class Queue<T> {
+  private readonly items: T[] = []
+  private readonly pendingPulls: (readonly [resolve: (item: T) => void, reject: (err: unknown) => void])[] = []
+  private closed: undefined | { reason: unknown }
 
-export interface AsyncIdQueueOptions {
   /**
-   * Maximum number of buffered items per queue.
-   *
-   * @default Infinity
+   * Pushes an item into the queue.
+   * @throws when the queue is closed or aborted
    */
-  maxBufferedSize?: number
-}
+  push(item: T): void {
+    if (this.closed) {
+      throw this.closed.reason
+    }
 
-export class AsyncIdQueue<T> {
-  private readonly maxBufferedSize: number
-  private readonly openIds = new Set<string>()
-  private readonly queues = new Map<string, T[]>()
-  private readonly waiters = new Map<string, (readonly [resolve: (item: T) => void, reject: (err: unknown) => void])[]>()
+    const pendingPull = this.pendingPulls.shift()
 
-  constructor(options: AsyncIdQueueOptions = {}) {
-    this.maxBufferedSize = options.maxBufferedSize ?? Infinity
-  }
-
-  get length(): number {
-    return this.openIds.size
-  }
-
-  get waiterIds(): string[] {
-    return Array.from(this.waiters.keys())
-  }
-
-  hasBufferedItems(id: string): boolean {
-    return Boolean(this.queues.get(id)?.length)
-  }
-
-  open(id: string): void {
-    this.openIds.add(id)
-  }
-
-  isOpen(id: string): boolean {
-    return this.openIds.has(id)
-  }
-
-  push(id: string, item: T): void {
-    this.assertOpen(id)
-
-    const pending = this.waiters.get(id)
-
-    if (pending?.length) {
-      pending.shift()![0](item)
-
-      if (pending.length === 0) {
-        this.waiters.delete(id)
-      }
+    if (pendingPull) {
+      pendingPull[0](item)
     }
     else {
-      let items = this.queues.get(id)
-
-      if (!items) {
-        items = []
-        this.queues.set(id, items)
-      }
-
-      items.push(item)
-
-      if (items.length > this.maxBufferedSize) {
-        items.shift()
-      }
-
-      if (items.length === 0) {
-        this.queues.delete(id)
-      }
+      this.items.push(item)
     }
   }
 
-  async pull(id: string): Promise<T> {
-    this.assertOpen(id)
+  /**
+   * Pulls the next item from the queue.
+   *
+   * @throws when the queue is closed or aborted. Note that buffered items can still be pulled after close until the buffer is drained.
+   */
+  async pull(): Promise<T> {
+    const item = this.items.shift()
 
-    const items = this.queues.get(id)
-
-    if (items?.length) {
-      const item = items.shift()!
-
-      if (items.length === 0) {
-        this.queues.delete(id)
-      }
-
+    if (item !== undefined) {
       return item
     }
 
+    if (this.closed) {
+      throw this.closed.reason
+    }
+
     return new Promise<T>((resolve, reject) => {
-      const waitingPulls = this.waiters.get(id)
-
-      const pending = [resolve, reject] as const
-
-      if (waitingPulls) {
-        waitingPulls.push(pending)
-      }
-      else {
-        this.waiters.set(id, [pending])
-      }
+      this.pendingPulls.push([resolve, reject])
     })
   }
 
-  close({ id, reason }: AsyncIdQueueCloseOptions = {}): void {
-    if (id === undefined) {
-      this.waiters.forEach((pendingPulls, id) => {
-        const error = reason ?? new AbortError(`[AsyncIdQueue] Queue[${id}] was closed or aborted while waiting for pulling.`)
-        pendingPulls.forEach(([, reject]) => reject(error))
-      })
-
-      this.waiters.clear()
-      this.openIds.clear()
-      this.queues.clear()
+  /**
+   * Closes the queue and rejects any pending pulls.
+   * Buffered items remain available to be pulled. Repeated calls are ignored.
+   */
+  close(reason?: unknown): void {
+    if (this.closed) {
       return
     }
 
-    const error = reason ?? new AbortError(`[AsyncIdQueue] Queue[${id}] was closed or aborted while waiting for pulling.`)
-    this.waiters.get(id)?.forEach(([, reject]) => reject(error))
+    reason ??= new AbortError('Queue was closed.')
+    this.closed = { reason }
 
-    this.waiters.delete(id)
-    this.openIds.delete(id)
-    this.queues.delete(id)
+    this.pendingPulls.forEach(([, reject]) => reject(reason))
+    this.pendingPulls.length = 0
   }
 
-  assertOpen(id: string): void {
-    if (!this.isOpen(id)) {
-      throw new Error(`[AsyncIdQueue] Cannot access queue[${id}] because it is not open or aborted.`)
-    }
+  /**
+   * Aborts the queue.
+   * Unlike `close()`, this also discards any buffered items before closing.
+   */
+  abort(reason?: unknown): void {
+    reason ??= new AbortError('Queue was aborted.')
+    this.items.length = 0
+    this.close(reason)
   }
 }

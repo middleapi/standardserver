@@ -1,4 +1,4 @@
-import type { AsyncCleanupFn } from '@standardserver/shared'
+import type { AsyncCleanupFn, Queue } from '@standardserver/shared'
 import type { PeerOctetStreamMessage } from './types'
 
 /**
@@ -6,13 +6,13 @@ import type { PeerOctetStreamMessage } from './types'
  * The iterator yields binary chunks on 'enqueue', and completes on 'close'.
  */
 export function toOctetStream(
-  pull: () => Promise<PeerOctetStreamMessage>,
+  queue: Queue<PeerOctetStreamMessage>,
   cleanup: AsyncCleanupFn,
 ): ReadableStream<Uint8Array<ArrayBuffer>> {
   return new ReadableStream({
     async pull(controller) {
       try {
-        const { json, binary } = await pull()
+        const { json, binary } = await queue.pull()
 
         if (binary) {
           controller.enqueue(binary instanceof Uint8Array ? binary : new Uint8Array(await binary.arrayBuffer()))

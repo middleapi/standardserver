@@ -1,14 +1,7 @@
 import type { StandardRequest, StandardResponse } from '@standardserver/core'
-import type { AsyncIdQueueCloseOptions } from '@standardserver/shared'
-import type {
-  PeerAbortMessage,
-  PeerEventStreamMessage,
-  PeerOctetStreamMessage,
-  PeerRequestMessage,
-  PeerResponseMessage,
-  PeerStreamCancelMessage,
-} from './types'
-import { AbortError, AsyncIdQueue, isAsyncIteratorObject } from '@standardserver/shared'
+import type { AsyncIdQueueCloseOptions, Queue } from '@standardserver/shared'
+import type { PeerAbortMessage, PeerEventStreamMessage, PeerOctetStreamMessage, PeerRequestMessage, PeerResponseMessage, PeerStreamCancelMessage } from './types'
+import { AbortError, isAsyncIteratorObject } from '@standardserver/shared'
 import { encodeAtomicStandardBody, toStandardBody } from './body'
 import { EventStreamTransmitter } from './event-stream'
 import { HibernationEventIterator } from './hibernation'
@@ -16,20 +9,16 @@ import { OctetStreamTransmitter } from './octet-stream'
 
 export interface ServerPeerCloseOptions extends AsyncIdQueueCloseOptions {}
 
+interface ServerPeerRequestStateInternal {
+  controller?: AbortController | undefined
+  eventStreamMessageQueue?: Queue<PeerEventStreamMessage> | undefined
+  octetStreamMessageQueue?: Queue<PeerOctetStreamMessage> | undefined
+  eventStreamTransmitter?: EventStreamTransmitter | undefined
+  octetStreamTransmitter?: OctetStreamTransmitter | undefined
+}
+
 export class ServerPeer {
-  /**
-   * Messages waiting to be processed
-   */
-  private readonly eventStreamMessageQueue = new AsyncIdQueue<PeerEventStreamMessage>()
-  private readonly octetStreamMessageQueue = new AsyncIdQueue<PeerOctetStreamMessage>()
-
-  private readonly eventStreamTransmitters = new Map<string, EventStreamTransmitter>()
-  private readonly octetStreamTransmitters = new Map<string, OctetStreamTransmitter>()
-
-  /**
-   * Map of abort controllers for each request
-   */
-  private readonly controller = new Map<string, AbortController>()
+  private readonly requests = new Map<string, ServerPeerRequestStateInternal>()
 
   constructor(
     private readonly send: (
@@ -42,11 +31,7 @@ export class ServerPeer {
    * Use for measure resources usage
    */
   get size(): number {
-    return this.eventStreamMessageQueue.length
-      + this.octetStreamMessageQueue.length
-      + this.controller.size
-      + this.eventStreamTransmitters.size
-      + this.octetStreamTransmitters.size
+    return this.requests.size
   }
 
   /**
@@ -56,54 +41,45 @@ export class ServerPeer {
     message: PeerRequestMessage | PeerEventStreamMessage | PeerOctetStreamMessage | PeerAbortMessage,
     handleRequest: (request: StandardRequest) => Promise<StandardResponse>,
   ): Promise<void> {
+    const id = message.id
+
     if (message.kind === 'abort') {
-      await this.close({ id: message.id, reason: new AbortError('Client peer aborted the request') })
+      await this.closeById(id, new AbortError('Client aborted the request'))
       return
     }
 
     if (message.kind === 'event-stream') {
-      if (this.eventStreamMessageQueue.isOpen(message.id)) {
-        this.eventStreamMessageQueue.push(message.id, message)
-      }
+      this.requests.get(id)?.eventStreamMessageQueue?.push(message)
       return
     }
 
     if (message.kind === 'octet-stream') {
-      if (this.octetStreamMessageQueue.isOpen(message.id)) {
-        this.octetStreamMessageQueue.push(message.id, message)
-      }
+      this.requests.get(id)?.octetStreamMessageQueue?.push(message)
       return
     }
 
-    this.eventStreamMessageQueue.open(message.id)
-    this.octetStreamMessageQueue.open(message.id)
+    if (this.requests.has(id)) { // duplicate request message
+      return
+    }
+
     const controller = new AbortController()
-    this.controller.set(message.id, controller)
+    const state: ServerPeerRequestStateInternal = { controller }
+    this.requests.set(id, state)
     const signal = controller.signal
 
     try {
-      const request: StandardRequest = {
-        ...message.json,
-        signal,
-        body: await toStandardBody(
-          message,
-          this.eventStreamMessageQueue,
-          this.octetStreamMessageQueue,
-          async (isCompleted) => {
-            // Stop buffering incoming messages in memory without aborting the request.
-            this.eventStreamMessageQueue.close({ id: message.id })
-            this.octetStreamMessageQueue.close({ id: message.id })
+      const request: StandardRequest = { ...message.json, signal }
 
-            /**
-             * We don't need to send stream cancel message if request was closed or aborted
-             */
-            if (!isCompleted && this.controller.has(message.id)) {
-              // let client know that we no longer need stream messages
-              await this.send({ id: message.id, kind: 'stream/cancel' })
-            }
-          },
-        ),
-      }
+      const decoded = await toStandardBody(message, async (isCompleted) => {
+        if (!isCompleted) {
+          state.eventStreamMessageQueue = undefined
+          state.octetStreamMessageQueue = undefined
+          await this.send({ id, kind: 'stream/cancel' })
+        }
+      })
+      request.body = decoded.body
+      state.eventStreamMessageQueue = decoded.eventStreamMessageQueue
+      state.octetStreamMessageQueue = decoded.octetStreamMessageQueue
 
       const response = await handleRequest(request)
 
@@ -145,61 +121,66 @@ export class ServerPeer {
         }
         else {
           const transmitter = new EventStreamTransmitter(response.body, message.id, this.send)
-          this.eventStreamTransmitters.set(message.id, transmitter)
+          state.eventStreamTransmitter = transmitter
           await transmitter.transmit()
         }
       }
       else if (response.body instanceof ReadableStream) {
         const transmitter = new OctetStreamTransmitter(response.body, message.id, this.send)
-        this.octetStreamTransmitters.set(message.id, transmitter)
+        state.octetStreamTransmitter = transmitter
         await transmitter.transmit()
       }
 
       // close without aborting, because the request is finished successfully
-      this.controller.delete(message.id)
-      await this.close({ id: message.id })
+      state.controller = undefined
+      await this.closeById(id)
     }
     catch (reason) {
       await Promise.all([
         /**
          * Do not need to send abort message if request was closed or aborted
          */
-        this.controller.has(message.id) ? this.send({ id: message.id, kind: 'abort' }) : undefined,
-        this.close({ id: message.id, reason }),
+        this.requests.has(message.id) ? this.send({ id: message.id, kind: 'abort' }) : undefined,
+        this.closeById(id, reason),
       ])
 
       throw reason
     }
   }
 
-  async close(options: ServerPeerCloseOptions = {}): Promise<void> {
-    const promises: (Promise<void> | undefined)[] = []
+  async close(reason?: unknown): Promise<void> {
+    reason ??= new AbortError('Peer was closed')
 
-    this.eventStreamMessageQueue.close(options)
-    this.octetStreamMessageQueue.close(options)
+    await Promise.all(
+      Array.from(this.requests.keys()).map(id => this.closeById(id, reason)),
+    )
+  }
 
-    if (options.id === undefined) {
-      this.eventStreamTransmitters.forEach(t => promises.push(t.cancel()))
-      this.octetStreamTransmitters.forEach(t => promises.push(t.cancel()))
+  private async closeById(id: string, reason?: unknown): Promise<void> {
+    const state = this.requests.get(id)
 
-      this.eventStreamTransmitters.clear()
-      this.octetStreamTransmitters.clear()
-
-      this.controller.forEach(c => c.abort(options.reason))
-      this.controller.clear()
+    if (!state) { // already closed or aborted
+      return
     }
-    else {
-      promises.push(
-        this.eventStreamTransmitters.get(options.id)?.cancel(),
-        this.octetStreamTransmitters.get(options.id)?.cancel(),
-      )
 
-      this.eventStreamTransmitters.delete(options.id)
-      this.octetStreamTransmitters.delete(options.id)
+    this.requests.delete(id)
+    reason ??= new AbortError('Request was closed')
 
-      this.controller.get(options.id)?.abort(options.reason)
-      this.controller.delete(options.id)
-    }
+    state.controller?.abort(reason)
+    state.controller = undefined
+
+    state.eventStreamMessageQueue?.close(reason)
+    state.octetStreamMessageQueue?.close(reason)
+    state.eventStreamMessageQueue = undefined
+    state.octetStreamMessageQueue = undefined
+
+    const promises = [
+      state.eventStreamTransmitter?.cancel(),
+      state.octetStreamTransmitter?.cancel(),
+    ]
+
+    state.eventStreamTransmitter = undefined
+    state.octetStreamTransmitter = undefined
 
     await Promise.all(promises)
   }
