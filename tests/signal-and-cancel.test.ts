@@ -118,7 +118,7 @@ describe.each([
     if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
       expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(2)
       expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'abort' }))
+      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'cancel' }))
 
       expect(clientServer.sendServerPeerMessage).toHaveBeenCalledTimes(0) // abort before send anything
     }
@@ -180,7 +180,7 @@ describe.each([
       expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(3)
       expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
       expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'event-stream' }))
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(3, expect.objectContaining({ kind: 'abort' }))
+      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(3, expect.objectContaining({ kind: 'cancel' }))
 
       expect(clientServer.sendServerPeerMessage).toHaveBeenCalledTimes(0) // abort before send anything
     }
@@ -241,7 +241,7 @@ describe.each([
       expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(3)
       expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
       expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'octet-stream' }))
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(3, expect.objectContaining({ kind: 'abort' }))
+      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(3, expect.objectContaining({ kind: 'cancel' }))
 
       expect(clientServer.sendServerPeerMessage).toHaveBeenCalledTimes(0) // abort before send anything
     }
@@ -298,7 +298,7 @@ describe.each([
     if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
       expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(2)
       expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'abort' }))
+      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'cancel' }))
 
       expect(clientServer.sendServerPeerMessage).toHaveBeenCalledTimes(2)
       expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'response' }))
@@ -356,7 +356,7 @@ describe.each([
     if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
       expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(2)
       expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'abort' }))
+      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'cancel' }))
 
       expect(clientServer.sendServerPeerMessage).toHaveBeenCalledTimes(2)
       expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'response' }))
@@ -415,7 +415,7 @@ describe.each([
     if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
       expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(2)
       expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'abort' }))
+      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'cancel' }))
 
       expect(clientServer.sendServerPeerMessage).toHaveBeenCalledTimes(2)
       expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'response' }))
@@ -472,7 +472,7 @@ describe.each([
     if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
       expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(2)
       expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'abort' }))
+      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'cancel' }))
 
       expect(clientServer.sendServerPeerMessage).toHaveBeenCalledTimes(2)
       expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'response' }))
@@ -661,7 +661,7 @@ describe.each([
       expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(3)
       expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
       expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'event-stream' }))
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(3, expect.objectContaining({ kind: 'abort' }))
+      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(3, expect.objectContaining({ kind: 'cancel' }))
 
       expect(clientServer.sendServerPeerMessage).toHaveBeenCalledTimes(0)
     }
@@ -745,7 +745,7 @@ describe.each([
       expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(3)
       expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
       expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'octet-stream' }))
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(3, expect.objectContaining({ kind: 'abort' }))
+      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(3, expect.objectContaining({ kind: 'cancel' }))
 
       expect(clientServer.sendServerPeerMessage).toHaveBeenCalledTimes(0)
     }
@@ -808,7 +808,7 @@ describe.each([
       expect(clientServer.sendServerPeerMessage).toHaveBeenCalledTimes(3)
       expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'response' }))
       expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'event-stream' }))
-      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(3, expect.objectContaining({ kind: 'abort' }))
+      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(3, expect.objectContaining({ kind: 'cancel' }))
     }
   })
 
@@ -867,7 +867,7 @@ describe.each([
       expect(clientServer.sendServerPeerMessage).toHaveBeenCalledTimes(3)
       expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'response' }))
       expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'octet-stream' }))
-      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(3, expect.objectContaining({ kind: 'abort' }))
+      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(3, expect.objectContaining({ kind: 'cancel' }))
     }
   })
 })

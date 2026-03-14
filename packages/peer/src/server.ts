@@ -1,13 +1,11 @@
 import type { StandardRequest, StandardResponse } from '@standardserver/core'
-import type { AsyncIdQueueCloseOptions, Queue } from '@standardserver/shared'
-import type { PeerAbortMessage, PeerEventStreamMessage, PeerOctetStreamMessage, PeerRequestMessage, PeerResponseMessage, PeerStreamCancelMessage } from './types'
+import type { Queue } from '@standardserver/shared'
+import type { PeerCancelMessage, PeerEventStreamMessage, PeerOctetStreamMessage, PeerRequestMessage, PeerResponseMessage, PeerStreamCancelMessage } from './types'
 import { AbortError, isAsyncIteratorObject } from '@standardserver/shared'
 import { encodeAtomicStandardBody, toStandardBody } from './body'
 import { EventStreamTransmitter } from './event-stream'
 import { HibernationEventIterator } from './hibernation'
 import { OctetStreamTransmitter } from './octet-stream'
-
-export interface ServerPeerCloseOptions extends AsyncIdQueueCloseOptions {}
 
 interface ServerPeerRequestStateInternal {
   controller?: AbortController | undefined
@@ -22,7 +20,7 @@ export class ServerPeer {
 
   constructor(
     private readonly send: (
-      message: PeerResponseMessage | PeerAbortMessage | PeerOctetStreamMessage | PeerEventStreamMessage | PeerStreamCancelMessage,
+      message: PeerResponseMessage | PeerCancelMessage | PeerOctetStreamMessage | PeerEventStreamMessage | PeerStreamCancelMessage,
     ) => Promise<void>,
   ) {
   }
@@ -38,12 +36,12 @@ export class ServerPeer {
    * Handle a message from client
    */
   async message(
-    message: PeerRequestMessage | PeerEventStreamMessage | PeerOctetStreamMessage | PeerAbortMessage,
+    message: PeerRequestMessage | PeerEventStreamMessage | PeerOctetStreamMessage | PeerCancelMessage,
     handleRequest: (request: StandardRequest) => Promise<StandardResponse>,
   ): Promise<void> {
     const id = message.id
 
-    if (message.kind === 'abort') {
+    if (message.kind === 'cancel') {
       await this.closeById(id, new AbortError('Client aborted the request'))
       return
     }
@@ -138,9 +136,9 @@ export class ServerPeer {
     catch (reason) {
       await Promise.all([
         /**
-         * Do not need to send abort message if request was closed or aborted
+         * Do not need to send cancel message if request was closed or aborted
          */
-        this.requests.has(message.id) ? this.send({ id: message.id, kind: 'abort' }) : undefined,
+        this.requests.has(message.id) ? this.send({ id: message.id, kind: 'cancel' }) : undefined,
         this.closeById(id, reason),
       ])
 

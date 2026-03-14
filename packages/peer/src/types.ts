@@ -70,17 +70,17 @@ export interface PeerResponseMessage extends PeerMessage {
  * - **Client → Server**: Cancel an in-flight request or stop consuming a stream.
  * - **Server → Client**: Signal an error or premature termination.
  */
-export interface PeerAbortMessage extends PeerMessage {
+export interface PeerCancelMessage extends PeerMessage {
   /**
    * The kind of the message.
    */
-  kind: 'abort'
+  kind: 'cancel'
   /**
    * This message does not have a JSON payload.
    */
   json?: undefined
   /**
-   * Abort messages carry no binary payload.
+   * Cancel messages carry no binary payload.
    */
   binary?: undefined
 }

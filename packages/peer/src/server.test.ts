@@ -1,11 +1,11 @@
 import type { StandardRequest, StandardResponse } from '@standardserver/core'
-import type { PeerAbortMessage, PeerEventStreamMessage, PeerOctetStreamMessage, PeerRequestMessage, PeerResponseMessage, PeerStreamCancelMessage } from './types'
+import type { PeerCancelMessage, PeerEventStreamMessage, PeerOctetStreamMessage, PeerRequestMessage, PeerResponseMessage, PeerStreamCancelMessage } from './types'
 import { AbortError, AsyncIteratorClass, isAsyncIteratorObject, sleep } from '@standardserver/shared'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { HibernationEventIterator } from './hibernation'
 import { ServerPeer } from './server'
 
-type ServerSendMessage = PeerResponseMessage | PeerAbortMessage | PeerOctetStreamMessage | PeerEventStreamMessage | PeerStreamCancelMessage
+type ServerSendMessage = PeerResponseMessage | PeerCancelMessage | PeerOctetStreamMessage | PeerEventStreamMessage | PeerStreamCancelMessage
 
 function makeRequestMessage(overrides: Partial<PeerRequestMessage['json']> = {}, binary?: Uint8Array<ArrayBuffer>): PeerRequestMessage {
   return {
@@ -28,8 +28,8 @@ function octetStreamResponse(body: ReadableStream<Uint8Array>): StandardResponse
   return { status: 200, headers: { 'standard-server': 'octet-stream' }, body }
 }
 
-function makeAbortMessage(id: string): PeerAbortMessage {
-  return { id, kind: 'abort' }
+function makeCancelMessage(id: string): PeerCancelMessage {
+  return { id, kind: 'cancel' }
 }
 
 function makeEventStreamMessage(id: string, data: unknown, event = 'message'): PeerEventStreamMessage {
@@ -111,7 +111,7 @@ describe('serverPeer', () => {
       await expect(peer.message(makeRequestMessage(), handler)).rejects.toThrow('handler failed')
 
       expect(send).toHaveBeenCalledTimes(1)
-      expect(send).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'abort' }))
+      expect(send).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'cancel' }))
     })
 
     it('sends abort and re-throws when send fails', async () => {
@@ -121,7 +121,7 @@ describe('serverPeer', () => {
       await expect(peer.message(makeRequestMessage(), async () => jsonResponse('ok'))).rejects.toThrow(error)
 
       expect(send).toHaveBeenCalledTimes(2)
-      expect(send).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'abort' }))
+      expect(send).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'cancel' }))
     })
   })
 
@@ -131,7 +131,7 @@ describe('serverPeer', () => {
       const promise = peer.message(makeRequestMessage(), handler)
       await vi.waitFor(() => expect(signals.length).toBe(1))
 
-      await peer.message(makeAbortMessage('1'), vi.fn())
+      await peer.message(makeCancelMessage('1'), vi.fn())
 
       expect(signals[0]!.aborted).toBe(true)
 
@@ -140,12 +140,12 @@ describe('serverPeer', () => {
     })
 
     it('ignores abort for non-existing request', async () => {
-      await peer.message(makeAbortMessage('nonexist'), vi.fn())
+      await peer.message(makeCancelMessage('nonexist'), vi.fn())
     })
 
     it('does not send response message if request was aborted', async () => {
       const handler = vi.fn<HandlerFn>().mockImplementation(async () => {
-        await peer.message(makeAbortMessage('1'), vi.fn()) // simulate aborting the request during handling
+        await peer.message(makeCancelMessage('1'), vi.fn()) // simulate aborting the request during handling
         return jsonResponse()
       })
 
@@ -265,7 +265,7 @@ describe('serverPeer', () => {
 
         expect(send).toHaveBeenCalledTimes(2)
         expect(send).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'response' }))
-        expect(send).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'abort' }))
+        expect(send).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'cancel' }))
       })
     })
   })
@@ -362,7 +362,7 @@ describe('serverPeer', () => {
 
         expect(send).toHaveBeenCalledTimes(2)
         expect(send).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'response' }))
-        expect(send).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'abort' }))
+        expect(send).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'cancel' }))
       })
     })
   })

@@ -1,6 +1,6 @@
 import type { StandardRequest, StandardResponse } from '@standardserver/core'
 import type { Queue } from '@standardserver/shared'
-import type { PeerAbortMessage, PeerEventStreamMessage, PeerOctetStreamMessage, PeerRequestMessage, PeerResponseMessage, PeerStreamCancelMessage } from './types'
+import type { PeerCancelMessage, PeerEventStreamMessage, PeerOctetStreamMessage, PeerRequestMessage, PeerResponseMessage, PeerStreamCancelMessage } from './types'
 import { AbortError, isAsyncIteratorObject, SequentialIdGenerator } from '@standardserver/shared'
 import { encodeAtomicStandardBody, toStandardBody } from './body'
 import { EventStreamTransmitter } from './event-stream'
@@ -22,7 +22,7 @@ export class ClientPeer {
 
   constructor(
     private readonly send: (
-      message: PeerAbortMessage | PeerRequestMessage | PeerEventStreamMessage | PeerOctetStreamMessage,
+      message: PeerCancelMessage | PeerRequestMessage | PeerEventStreamMessage | PeerOctetStreamMessage,
     ) => Promise<void>,
   ) {
   }
@@ -138,7 +138,7 @@ export class ClientPeer {
    * Handle a message from server
    */
   async message(
-    message: PeerResponseMessage | PeerAbortMessage | PeerEventStreamMessage | PeerOctetStreamMessage | PeerStreamCancelMessage,
+    message: PeerResponseMessage | PeerCancelMessage | PeerEventStreamMessage | PeerOctetStreamMessage | PeerStreamCancelMessage,
   ): Promise<void> {
     const id = message.id
     const state = this.requests.get(id)
@@ -159,8 +159,8 @@ export class ClientPeer {
       return
     }
 
-    if (message.kind === 'abort') {
-      await this.closeById(id, new AbortError('Server peer aborted the request'))
+    if (message.kind === 'cancel') {
+      await this.closeById(id, new AbortError('Server canceled the request'))
       return
     }
 
@@ -269,7 +269,7 @@ export class ClientPeer {
     const promises = [
       state.eventStreamTransmitter?.cancel(),
       state.octetStreamTransmitter?.cancel(),
-      this.send({ id, kind: 'abort' }),
+      this.send({ id, kind: 'cancel' }),
     ]
     state.eventStreamTransmitter = undefined
     state.octetStreamTransmitter = undefined

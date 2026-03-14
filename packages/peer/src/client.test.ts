@@ -1,10 +1,10 @@
 import type { StandardRequest, StandardResponse } from '@standardserver/core'
-import type { PeerAbortMessage, PeerEventStreamMessage, PeerOctetStreamMessage, PeerRequestMessage, PeerResponseMessage, PeerStreamCancelMessage } from './types'
+import type { PeerCancelMessage, PeerEventStreamMessage, PeerOctetStreamMessage, PeerRequestMessage, PeerResponseMessage, PeerStreamCancelMessage } from './types'
 import { AbortError, AsyncIteratorClass, isAsyncIteratorObject, sleep } from '@standardserver/shared'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ClientPeer } from './client'
 
-type ClientSendMessage = PeerAbortMessage | PeerRequestMessage | PeerEventStreamMessage | PeerOctetStreamMessage
+type ClientSendMessage = PeerCancelMessage | PeerRequestMessage | PeerEventStreamMessage | PeerOctetStreamMessage
 
 function makeRequest(overrides: Partial<StandardRequest> = {}): StandardRequest {
   return { method: 'GET', url: '/test', headers: {}, ...overrides }
@@ -18,8 +18,8 @@ function makeStreamingResponse(id: string, type: 'event-stream' | 'octet-stream'
   return { id, kind: 'response', json: { status: 200, headers: { 'standard-server': type }, body: undefined } }
 }
 
-function makeAbortMessage(id: string): PeerAbortMessage {
-  return { id, kind: 'abort' }
+function makeCancelMessage(id: string): PeerCancelMessage {
+  return { id, kind: 'cancel' }
 }
 
 function makeEventStreamMessage(id: string, data: unknown, event = 'message'): PeerEventStreamMessage {
@@ -147,7 +147,7 @@ describe('clientPeer', () => {
 
       await expect(promise).rejects.toThrow(error)
       expect(send).toHaveBeenCalledTimes(2)
-      expect(send).toHaveBeenNthCalledWith(2, { id, kind: 'abort' })
+      expect(send).toHaveBeenNthCalledWith(2, { id, kind: 'cancel' })
     })
 
     it('throws when signal aborted during send', async () => {
@@ -162,7 +162,7 @@ describe('clientPeer', () => {
 
       expect(send).toHaveBeenCalledTimes(2)
       const id = (send.mock.calls[0]![0] as PeerRequestMessage).id
-      expect(send).toHaveBeenNthCalledWith(2, { id, kind: 'abort' })
+      expect(send).toHaveBeenNthCalledWith(2, { id, kind: 'cancel' })
     })
 
     it('rejects when send throws', async () => {
@@ -173,7 +173,7 @@ describe('clientPeer', () => {
 
     it('rejects pending request on server abort', async () => {
       const { id, promise } = await requestAndGetId()
-      await peer.message(makeAbortMessage(id))
+      await peer.message(makeCancelMessage(id))
       await expect(promise).rejects.toThrow(AbortError)
     })
   })
@@ -229,7 +229,7 @@ describe('clientPeer', () => {
         await promise
         expect(send).toHaveBeenCalledTimes(2)
         expect(send).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
-        expect(send).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'abort' }))
+        expect(send).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'cancel' }))
       })
 
       it('does not send abort on non-protocol error if stream was canceled', async () => {
@@ -251,7 +251,7 @@ describe('clientPeer', () => {
         console.log(await promise)
         expect(send).toHaveBeenCalledTimes(1)
         expect(send).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
-        expect(send).not.toHaveBeenCalledWith(expect.objectContaining({ kind: 'abort' }))
+        expect(send).not.toHaveBeenCalledWith(expect.objectContaining({ kind: 'cancel' }))
       })
     })
 
@@ -289,7 +289,7 @@ describe('clientPeer', () => {
 
         expect(send).toHaveBeenCalledTimes(2)
         expect(send).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
-        expect(send).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'abort' }))
+        expect(send).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'cancel' }))
       })
     })
   })
@@ -354,7 +354,7 @@ describe('clientPeer', () => {
         await promise
         expect(send).toHaveBeenCalledTimes(2)
         expect(send).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
-        expect(send).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'abort' }))
+        expect(send).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'cancel' }))
       })
 
       it('does not send abort on error if stream was canceled', async () => {
@@ -371,7 +371,7 @@ describe('clientPeer', () => {
 
         expect(send).toHaveBeenCalledTimes(1)
 
-        expect(send).not.toHaveBeenCalledWith(expect.objectContaining({ kind: 'abort' }))
+        expect(send).not.toHaveBeenCalledWith(expect.objectContaining({ kind: 'cancel' }))
 
         await peer.message(makeResponseMessage(id))
         await promise
