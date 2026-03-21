@@ -19,17 +19,17 @@ export function toOctetStream(
         }
 
         if (json.close) {
-          await cleanup(true)
+          await cleanup({ isCancelled: false })
           controller.close()
         }
       }
-      catch (err) {
-        await cleanup(true)
-        controller.error(err)
+      catch (error) {
+        await cleanup({ isCancelled: false, error })
+        controller.error(error)
       }
     },
     async cancel() {
-      await cleanup(false)
+      await cleanup({ isCancelled: true })
     },
   })
 }
@@ -58,9 +58,13 @@ export class OctetStreamTransmitter {
 
   async transmit(): Promise<void> {
     while (true) {
-      const { done, value } = await this.reader.read()
+      try {
+        const { done, value } = await this.reader.read()
 
-      if (!this.isCompleted) {
+        if (this.isCompleted) {
+          return
+        }
+
         try {
           await this.send({
             json: { close: done },
@@ -70,14 +74,22 @@ export class OctetStreamTransmitter {
           })
         }
         catch (err) {
-          await this.cancel()
+          if (!done) {
+            // only need cancel if stream hasn't finished yet
+            await this.cancel()
+          }
+
           throw err
         }
-      }
 
-      if (done) {
+        if (done) {
+          this.isCompleted = true
+          return
+        }
+      }
+      catch (error) {
         this.isCompleted = true
-        break
+        throw error
       }
     }
   }

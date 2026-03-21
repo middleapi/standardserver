@@ -33,7 +33,7 @@ describe('toOctetStream', () => {
     const r3 = await reader.read()
     expect(r3.done).toBe(true)
 
-    expect(cleanup).toHaveBeenCalledWith(true)
+    expect(cleanup).toHaveBeenCalledWith({ isCancelled: false })
   })
 
   it('handles close with no binary', async () => {
@@ -50,7 +50,7 @@ describe('toOctetStream', () => {
     const reader = stream.getReader()
     const r = await reader.read()
     expect(r.done).toBe(true)
-    expect(cleanup).toHaveBeenCalledWith(true)
+    expect(cleanup).toHaveBeenCalledWith({ isCancelled: false })
   })
 
   it('converts Blob binary to Uint8Array', async () => {
@@ -77,7 +77,7 @@ describe('toOctetStream', () => {
 
     // read close
     await reader.read()
-    expect(cleanup).toHaveBeenCalledWith(true)
+    expect(cleanup).toHaveBeenCalledWith({ isCancelled: false })
   })
 
   it('calls cleanup(false) on cancel', async () => {
@@ -88,7 +88,7 @@ describe('toOctetStream', () => {
     const reader = stream.getReader()
     await reader.cancel()
 
-    expect(cleanup).toHaveBeenCalledWith(false)
+    expect(cleanup).toHaveBeenCalledWith({ isCancelled: true })
   })
 
   it('throw on aborted queue', async () => {
@@ -96,11 +96,12 @@ describe('toOctetStream', () => {
     const cleanup = vi.fn()
     const stream = toOctetStream(queue, cleanup)
 
-    queue.abort(new Error('aborted'))
+    const error = new Error('aborted')
+    queue.abort(error)
 
     const reader = stream.getReader()
     await expect(reader.read()).rejects.toThrow('aborted')
-    expect(cleanup).toHaveBeenCalledWith(true)
+    expect(cleanup).toHaveBeenCalledWith({ isCancelled: false, error })
   })
 })
 
@@ -174,9 +175,10 @@ describe('octetStreamTransmitter', () => {
     await expect(transmitter.transmit()).rejects.toThrow('stream error')
   })
 
-  it('rethrow send error', async () => {
+  it('rethrow send-error and cleanup during sending enqueue-event', async () => {
+    const error = new Error('send failed')
     const send = vi.fn(async () => {
-      throw new Error('send failed')
+      throw error
     })
 
     const cancel = vi.fn()
@@ -189,7 +191,27 @@ describe('octetStreamTransmitter', () => {
 
     const transmitter = new OctetStreamTransmitter(stream, 'msg-1', send)
     await expect(transmitter.transmit()).rejects.toThrow('send failed')
+
     expect(cancel).toHaveBeenCalledTimes(1)
+  })
+
+  it('rethrow send-error during sending close-event', async () => {
+    const send = vi.fn(async () => {
+      throw new Error('send failed')
+    })
+
+    const cancel = vi.fn()
+    const stream = new ReadableStream({
+      async pull(controller) {
+        controller.close()
+      },
+      cancel,
+    })
+
+    const transmitter = new OctetStreamTransmitter(stream, 'msg-1', send)
+    await expect(transmitter.transmit()).rejects.toThrow('send failed')
+
+    expect(cancel).toHaveBeenCalledTimes(0)
   })
 
   it('cancel is idempotent', async () => {

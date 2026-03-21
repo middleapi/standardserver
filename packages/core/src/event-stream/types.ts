@@ -16,7 +16,7 @@ export interface EventStreamMessageMeta {
    *
    * @warning Comments must not contain newline characters (`\n`).
    */
-  comments?: readonly string[] | undefined
+  comments?: string[] | undefined
 }
 
 export interface EventStreamMessage extends EventStreamMessageMeta {

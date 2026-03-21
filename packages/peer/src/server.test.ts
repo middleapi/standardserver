@@ -1,11 +1,9 @@
-import type { StandardRequest, StandardResponse } from '@standardserver/core'
-import type { PeerCancelMessage, PeerEventStreamMessage, PeerOctetStreamMessage, PeerRequestMessage, PeerResponseMessage, PeerStreamCancelMessage } from './types'
+import type { StandardLazyRequest, StandardResponse } from '@standardserver/core'
+import type { PeerCancelMessage, PeerEventStreamMessage, PeerOctetStreamMessage, PeerRequestMessage, PeerResponseMessage, PeerStreamCancelMessage, ServerPeerSendMessage } from './types'
 import { AbortError, AsyncIteratorClass, isAsyncIteratorObject, sleep } from '@standardserver/shared'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { HibernationEventIterator } from './hibernation'
 import { ServerPeer } from './server'
-
-type ServerSendMessage = PeerResponseMessage | PeerCancelMessage | PeerOctetStreamMessage | PeerEventStreamMessage | PeerStreamCancelMessage
 
 function makeRequestMessage(overrides: Partial<PeerRequestMessage['json']> = {}, binary?: Uint8Array<ArrayBuffer>): PeerRequestMessage {
   return {
@@ -51,11 +49,11 @@ function makeAsyncIter(values: unknown[]): AsyncIteratorClass<unknown> {
 }
 
 describe('serverPeer', () => {
-  let send: ReturnType<typeof vi.fn<(msg: ServerSendMessage) => Promise<void>>>
+  let send: ReturnType<typeof vi.fn<(msg: ServerPeerSendMessage) => Promise<void>>>
   let peer: ServerPeer
 
   beforeEach(() => {
-    send = vi.fn<(msg: ServerSendMessage) => Promise<void>>().mockResolvedValue(undefined)
+    send = vi.fn<(msg: ServerPeerSendMessage) => Promise<void>>().mockResolvedValue(undefined)
     peer = new ServerPeer(send)
   })
 
@@ -63,7 +61,7 @@ describe('serverPeer', () => {
     expect(peer.size).toBe(0)
   })
 
-  type HandlerFn = (req: StandardRequest) => Promise<StandardResponse>
+  type HandlerFn = (req: StandardLazyRequest) => Promise<StandardResponse>
 
   function deferredHandler() {
     const signals: AbortSignal[] = []
@@ -86,7 +84,7 @@ describe('serverPeer', () => {
       const req = handler.mock.calls[0]![0]
       expect(req.method).toBe('POST')
       expect(req.url).toBe('/test')
-      expect(req.body).toEqual({ data: 'hello' })
+      expect(await req.resolveBody()).toEqual({ data: 'hello' })
       expect(req.signal).toBeInstanceOf(AbortSignal)
 
       const sentMsg = send.mock.calls[0]![0] as PeerResponseMessage
@@ -112,6 +110,17 @@ describe('serverPeer', () => {
 
       expect(send).toHaveBeenCalledTimes(1)
       expect(send).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'cancel' }))
+    })
+
+    it('re-throws and does not sends abort when handler throws after cancelling', async () => {
+      const handler = vi.fn().mockImplementationOnce(async () => {
+        await peer.message(makeCancelMessage('1'), handler)
+        throw new Error('handler failed')
+      })
+
+      await expect(peer.message(makeRequestMessage(), handler)).rejects.toThrow('handler failed')
+
+      expect(send).toHaveBeenCalledTimes(0)
     })
 
     it('sends abort and re-throws when send fails', async () => {
@@ -143,7 +152,7 @@ describe('serverPeer', () => {
       await peer.message(makeCancelMessage('nonexist'), vi.fn())
     })
 
-    it('does not send response message if request was aborted', async () => {
+    it('does not send response message if abort during handle request', async () => {
       const handler = vi.fn<HandlerFn>().mockImplementation(async () => {
         await peer.message(makeCancelMessage('1'), vi.fn()) // simulate aborting the request during handling
         return jsonResponse()
@@ -151,6 +160,20 @@ describe('serverPeer', () => {
 
       await peer.message(makeRequestMessage(), handler)
       expect(send).toHaveBeenCalledTimes(0)
+    })
+
+    it('does not send stream message if abort during send response message', async () => {
+      send.mockImplementationOnce(async () => {
+        await peer.message(makeCancelMessage('1'), vi.fn())
+      })
+
+      const handler = vi.fn<HandlerFn>().mockImplementation(async () => {
+        return octetStreamResponse(new ReadableStream({ }))
+      })
+
+      await peer.message(makeRequestMessage(), handler)
+      expect(send).toHaveBeenCalledTimes(1)
+      expect(send).toHaveBeenCalledWith(expect.objectContaining({ kind: 'response' }))
     })
   })
 
@@ -164,7 +187,7 @@ describe('serverPeer', () => {
 
         await vi.waitFor(() => expect(handler).toHaveBeenCalled())
         const request = handler.mock.calls[0]![0]
-        const iter = request.body as AsyncIterator<unknown>
+        const iter = await request.resolveBody() as AsyncIterator<unknown>
         expect(iter).toSatisfy(isAsyncIteratorObject)
 
         await peer.message(makeEventStreamMessage('1', 'hello-data'), vi.fn())
@@ -179,22 +202,22 @@ describe('serverPeer', () => {
       })
 
       it('sends stream/cancel when handler stops reading event-stream', async () => {
-        let capturedBody!: AsyncIterator<unknown>
+        let success = false
+
         const handler = vi.fn<HandlerFn>().mockImplementation(async (req) => {
-          capturedBody = req.body as AsyncIterator<unknown>
+          const iterator = await req.resolveBody() as AsyncIterator<unknown>
+
+          await iterator.return?.()
+          expect(send).toHaveBeenCalledTimes(1)
+          expect(send).toHaveBeenCalledWith({ id: '1', kind: 'stream/cancel' })
+          success = true
+
           return jsonResponse()
         })
 
         const msg = makeRequestMessage({ headers: { 'standard-server': 'event-stream' } })
         await peer.message(msg, handler)
-
-        await capturedBody.return?.()
-
-        const cancelMsgs = send.mock.calls
-          .map(c => c[0])
-          .filter((message): message is PeerStreamCancelMessage => message?.kind === 'stream/cancel')
-        expect(cancelMsgs.length).toBe(1)
-        expect(cancelMsgs[0]!.id).toBe('1')
+        expect(success).toBeTruthy()
       })
     })
 
@@ -280,7 +303,7 @@ describe('serverPeer', () => {
 
         await vi.waitFor(() => expect(handler).toHaveBeenCalled())
         const request = handler.mock.calls[0]![0]
-        const body = request.body as ReadableStream<Uint8Array>
+        const body = await request.resolveBody() as ReadableStream<Uint8Array>
         expect(body).toBeInstanceOf(ReadableStream)
 
         await peer.message(makeOctetStreamMessage('1', false, new Uint8Array([1, 2, 3])), vi.fn())
@@ -298,7 +321,7 @@ describe('serverPeer', () => {
 
       it('sends stream/cancel when handler stops reading octet-stream', async () => {
         const handler = vi.fn<HandlerFn>().mockImplementation(async (req) => {
-          const body = req.body as ReadableStream<Uint8Array>
+          const body = await req.resolveBody() as ReadableStream<Uint8Array>
           await body.cancel()
           return jsonResponse()
         })
@@ -412,7 +435,7 @@ describe('serverPeer', () => {
       await vi.waitFor(() => expect(handler).toHaveBeenCalled())
 
       const request = handler.mock.calls[0]![0]
-      const iter = request.body as AsyncIterator<unknown>
+      const iter = await request.resolveBody() as AsyncIterator<unknown>
       const readPromise = expect(iter.next()).rejects.toThrow(AbortError)
 
       await peer.close()
@@ -428,7 +451,7 @@ describe('serverPeer', () => {
       const promise = peer.message(msg, handler)
       await vi.waitFor(() => expect(handler).toHaveBeenCalled())
       const request = handler.mock.calls[0]![0]
-      const reader = (request.body as ReadableStream).getReader()
+      const reader = (await request.resolveBody() as ReadableStream).getReader()
       const readPromise = expect(reader.read()).rejects.toThrow(AbortError)
 
       await peer.close()

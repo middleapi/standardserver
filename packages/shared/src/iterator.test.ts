@@ -94,16 +94,16 @@ describe('asyncIteratorClass', () => {
       expect(next).toHaveBeenCalledTimes(1)
     })
 
-    it('should call cleanup("next") when next() resolves (done: true)', async () => {
+    it('should call cleanup({ isCancelled: false }) when next() resolves (done: true)', async () => {
       next.mockResolvedValue({ done: true, value: undefined })
       await iterator.next()
       await iterator.next()
       await iterator.next()
       expect(cleanup).toHaveBeenCalledTimes(1)
-      expect(cleanup).toHaveBeenCalledWith('next')
+      expect(cleanup).toHaveBeenCalledWith({ isCancelled: false })
     })
 
-    it('should call cleanup("next") when next() rejects', async () => {
+    it('should call cleanup({ isCancelled: false, error }) when next() rejects', async () => {
       const error = new Error('Failed')
       next.mockRejectedValue(error)
 
@@ -115,7 +115,7 @@ describe('asyncIteratorClass', () => {
       ])
 
       expect(cleanup).toHaveBeenCalledTimes(1)
-      expect(cleanup).toHaveBeenCalledWith('next')
+      expect(cleanup).toHaveBeenCalledWith({ isCancelled: false, error })
     })
   })
 
@@ -126,7 +126,7 @@ describe('asyncIteratorClass', () => {
       expect(next).toHaveBeenCalledTimes(0)
     })
 
-    it('should call cleanup("return")', async () => {
+    it('should call cleanup({ isCancelled: true })', async () => {
       await Promise.all([
         iterator.return('done'),
         iterator.return('done'),
@@ -134,7 +134,7 @@ describe('asyncIteratorClass', () => {
       ])
 
       expect(cleanup).toHaveBeenCalledTimes(1)
-      expect(cleanup).toHaveBeenCalledWith('return')
+      expect(cleanup).toHaveBeenCalledWith({ isCancelled: true })
     })
   })
 
@@ -145,7 +145,7 @@ describe('asyncIteratorClass', () => {
       expect(next).toHaveBeenCalledTimes(0)
     })
 
-    it('should call cleanup("throw")', async () => {
+    it('should call cleanup({ isCancelled: true, error })', async () => {
       const error = new Error('Forced error')
 
       await Promise.all([
@@ -155,7 +155,7 @@ describe('asyncIteratorClass', () => {
       ])
 
       expect(cleanup).toHaveBeenCalledTimes(1)
-      expect(cleanup).toHaveBeenCalledWith('throw')
+      expect(cleanup).toHaveBeenCalledWith({ isCancelled: true, error })
     })
   })
 
@@ -166,7 +166,7 @@ describe('asyncIteratorClass', () => {
       await iterator.return(undefined)
     })
 
-    it('should call cleanup("dispose") when disposed', async () => {
+    it('should call cleanup({ isCancelled: true }) when disposed', async () => {
       await Promise.all([
         (iterator as any)[Symbol.asyncDispose](),
         (iterator as any)[Symbol.asyncDispose](),
@@ -175,7 +175,7 @@ describe('asyncIteratorClass', () => {
 
       expect(next).toHaveBeenCalledTimes(0)
       expect(cleanup).toHaveBeenCalledTimes(1)
-      expect(cleanup).toHaveBeenCalledWith('dispose')
+      expect(cleanup).toHaveBeenCalledWith({ isCancelled: true })
     })
   })
 
@@ -199,10 +199,10 @@ describe('asyncIteratorClass', () => {
       expect(collectedValues).toEqual([0, 1, 2])
       expect(next).toHaveBeenCalledTimes(limit + 1)
       expect(cleanup).toHaveBeenCalledTimes(1)
-      expect(cleanup).toHaveBeenCalledWith('next')
+      expect(cleanup).toHaveBeenCalledWith({ isCancelled: false })
     })
 
-    it('should call cleanup("return") when breaking a for await...of loop', async () => {
+    it('should call cleanup({ isCancelled: true }) when breaking a for await...of loop', async () => {
       let counter = 0
       next.mockImplementation(async () => ({ done: false, value: counter++ }))
 
@@ -217,10 +217,10 @@ describe('asyncIteratorClass', () => {
       expect(collectedValues).toEqual([0, 1])
       expect(next).toHaveBeenCalledTimes(2)
       expect(cleanup).toHaveBeenCalledTimes(1)
-      expect(cleanup).toHaveBeenCalledWith('return')
+      expect(cleanup).toHaveBeenCalledWith({ isCancelled: true })
     })
 
-    it('should call cleanup("return") when throwing inside a for await...of loop', async () => {
+    it('should call cleanup({ isCancelled: true }) when throwing inside a for await...of loop', async () => {
       let counter = 0
       next.mockImplementation(async () => ({ done: false, value: counter++ }))
       const error = new Error('Loop error')
@@ -241,7 +241,7 @@ describe('asyncIteratorClass', () => {
       expect(collectedValues).toEqual([0, 1])
       expect(next).toHaveBeenCalledTimes(2)
       expect(cleanup).toHaveBeenCalledTimes(1)
-      expect(cleanup).toHaveBeenCalledWith('return')
+      expect(cleanup).toHaveBeenCalledWith({ isCancelled: true })
     })
   })
 })

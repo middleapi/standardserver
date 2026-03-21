@@ -1,10 +1,15 @@
-import type { StandardRequest, StandardResponse } from '@standardserver/core'
-import type { PeerCancelMessage, PeerEventStreamMessage, PeerOctetStreamMessage, PeerRequestMessage, PeerResponseMessage, PeerStreamCancelMessage } from './types'
-import { AbortError, AsyncIteratorClass, isAsyncIteratorObject, sleep } from '@standardserver/shared'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { StandardLazyResponse, StandardRequest } from '@standardserver/core'
+import type { ClientPeerSendMessage, PeerCancelMessage, PeerEventStreamMessage, PeerOctetStreamMessage, PeerRequestMessage, PeerResponseMessage, PeerStreamCancelMessage } from './types'
+import { AbortError, AsyncIteratorClass, emitUnhandledRejection, isAsyncIteratorObject, sleep } from '@standardserver/shared'
+import * as Body from './body'
 import { ClientPeer } from './client'
 
-type ClientSendMessage = PeerCancelMessage | PeerRequestMessage | PeerEventStreamMessage | PeerOctetStreamMessage
+const toStandardBodySpy = vi.spyOn(Body, 'toStandardBody')
+
+vi.mock('@standardserver/shared', async origin => ({
+  ...await origin(),
+  emitUnhandledRejection: vi.fn(),
+}))
 
 function makeRequest(overrides: Partial<StandardRequest> = {}): StandardRequest {
   return { method: 'GET', url: '/test', headers: {}, ...overrides }
@@ -49,11 +54,11 @@ function makeHangingIter(): AsyncIteratorClass<unknown> {
 }
 
 describe('clientPeer', () => {
-  let send: ReturnType<typeof vi.fn<(msg: ClientSendMessage) => Promise<void>>>
+  let send: ReturnType<typeof vi.fn<(msg: ClientPeerSendMessage) => Promise<void>>>
   let peer: ClientPeer
 
   beforeEach(() => {
-    send = vi.fn<(msg: ClientSendMessage) => Promise<void>>().mockResolvedValue(undefined)
+    send = vi.fn<(msg: ClientPeerSendMessage) => Promise<void>>().mockResolvedValue(undefined)
     peer = new ClientPeer(send)
   })
 
@@ -67,7 +72,7 @@ describe('clientPeer', () => {
     return (requestCall![0] as PeerRequestMessage).id
   }
 
-  async function requestAndGetId(request?: StandardRequest): Promise<{ id: string, promise: Promise<StandardResponse> }> {
+  async function requestAndGetId(request?: StandardRequest): Promise<{ id: string, promise: Promise<StandardLazyResponse> }> {
     const promise = peer.request(request ?? makeRequest())
     const id = await waitForSend()
     return { id, promise }
@@ -95,7 +100,7 @@ describe('clientPeer', () => {
       await peer.message(makeResponseMessage(id, 'result'))
       const response = await promise
       expect(response.status).toBe(200)
-      expect(response.body).toBe('result')
+      expect(await response.resolveBody()).toBe('result')
     })
 
     it('ignores response for non-existing request', async () => {
@@ -105,15 +110,22 @@ describe('clientPeer', () => {
     it('ignores duplicate response messages', async () => {
       const { id, promise } = await requestAndGetId()
       await Promise.all([
-        peer.message(makeResponseMessage(id, 'first')),
-        peer.message(makeResponseMessage(id, 'second')),
+        peer.message(makeStreamingResponse(id, 'octet-stream')),
+        peer.message(makeStreamingResponse(id, 'octet-stream')),
       ])
 
+      peer.message(makeOctetStreamMessage(id, true, new Uint8Array([1, 4])))
+
       const response = await promise
-      expect(response.body).toBe('first')
+      const body = await response.resolveBody() as ReadableStream
+      expect(body).toBeInstanceOf(ReadableStream)
+
+      const reader = body.getReader()
+      expect(await reader.read()).toEqual({ done: false, value: new Uint8Array([1, 4]) })
+      expect(await reader.read()).toEqual({ done: true })
     })
 
-    it('rejects when parsing invalid response', async () => {
+    it('does not rejects when parsing invalid response body until resolved', async () => {
       const { id, promise } = await requestAndGetId()
 
       await peer.message({
@@ -123,7 +135,28 @@ describe('clientPeer', () => {
         binary: new Uint8Array([1, 2, 3]),
       })
 
-      await expect(promise).rejects.toThrow()
+      const response = await promise
+
+      await expect(response.resolveBody()).rejects.toThrow()
+    })
+
+    it('rethrow and auto close if throw during toStandardBody', async () => {
+      const error = new Error('something went wrong')
+      toStandardBodySpy.mockImplementationOnce(() => {
+        throw error
+      })
+
+      const { id, promise } = await requestAndGetId()
+
+      await peer.message({
+        id,
+        kind: 'response',
+        json: { status: 200, headers: { 'standard-server': 'form-data' }, body: undefined },
+        binary: new Uint8Array([1, 2, 3]),
+      })
+
+      await expect(promise).rejects.toThrow(error)
+      expect(peer.size).toEqual(0) // auto close
     })
   })
 
@@ -213,7 +246,7 @@ describe('clientPeer', () => {
         await promise
       })
 
-      it('reject and send abort on non-protocol error', async () => {
+      it('reject and send cancel message on non-protocol error', async () => {
         const nonProtocolError = new Error('non-protocol error')
         const iter = new AsyncIteratorClass<unknown>(async () => {
           sleep(100)
@@ -232,23 +265,26 @@ describe('clientPeer', () => {
         expect(send).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'cancel' }))
       })
 
-      it('does not send abort on non-protocol error if stream was canceled', async () => {
+      it('does not send cancel on non-protocol error if request was resolved', async () => {
         const nonProtocolError = new Error('non-protocol error')
         const iter = new AsyncIteratorClass<unknown>(async () => {
           await sleep(100)
           throw nonProtocolError
         }, async () => {})
 
-        const promise = expect(
-          peer.request(
-            makeRequest({ method: 'POST', headers: { 'standard-server': 'event-stream' }, body: iter }),
-          ),
-        ).rejects.toThrow(nonProtocolError)
+        const promise = peer.request(
+          makeRequest({ method: 'POST', headers: { 'standard-server': 'event-stream' }, body: iter }),
+        )
 
         const id = await waitForSend()
-        await peer.message(makeStreamCancelMessage(id))
+        await sleep(10) // wait until iterator start consuming
+        await peer.message(makeResponseMessage(id))
 
-        console.log(await promise)
+        await promise
+
+        await vi.waitFor(() => expect(emitUnhandledRejection).toHaveBeenCalledTimes(1))
+        expect(emitUnhandledRejection).toHaveBeenCalledWith(nonProtocolError)
+
         expect(send).toHaveBeenCalledTimes(1)
         expect(send).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
         expect(send).not.toHaveBeenCalledWith(expect.objectContaining({ kind: 'cancel' }))
@@ -261,7 +297,7 @@ describe('clientPeer', () => {
         await peer.message(makeStreamingResponse(id, 'event-stream'))
 
         const response = await promise
-        const iter = response.body as AsyncIterator<unknown>
+        const iter = await response.resolveBody() as AsyncIterator<unknown>
         expect(iter).toSatisfy(isAsyncIteratorObject)
 
         await peer.message(makeEventStreamMessage(id, 'evt1'))
@@ -274,21 +310,23 @@ describe('clientPeer', () => {
         expect(closeResult.done).toBe(true)
       })
 
-      it('abort request when canceling iterator', async () => {
+      it('cancel request when canceling iterator', async () => {
         const { id, promise } = await requestAndGetId()
         await peer.message(makeStreamingResponse(id, 'event-stream'))
 
         const response = await promise
         await peer.message(makeEventStreamMessage(id, 42))
 
-        const iter = response.body as AsyncIterator<unknown>
+        const iter = await response.resolveBody() as AsyncIterator<unknown>
         const result = await iter.next()
         expect(result.value).toBe(42)
+
+        expect(send).toHaveBeenCalledTimes(1)
+        expect(send).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
 
         await iter.return?.()
 
         expect(send).toHaveBeenCalledTimes(2)
-        expect(send).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
         expect(send).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'cancel' }))
       })
     })
@@ -336,10 +374,10 @@ describe('clientPeer', () => {
         expect(cancel).toHaveBeenCalled()
       })
 
-      it('reject and send abort on stream error', async () => {
+      it('reject and send cancel message on stream error', async () => {
         const error = new Error('stream error')
         const stream = new ReadableStream<Uint8Array<ArrayBuffer>>({
-          async start(controller) {
+          async pull(controller) {
             await sleep(100)
             controller.error(error)
           },
@@ -357,9 +395,13 @@ describe('clientPeer', () => {
         expect(send).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'cancel' }))
       })
 
-      it('does not send abort on error if stream was canceled', async () => {
+      it('does not send cancel message on error if request was resolved', async () => {
+        const error = new Error('stream error')
         const stream = new ReadableStream<Uint8Array>({
-          start() { /* hangs */ },
+          async start(controller) {
+            await sleep(100)
+            controller.error(error)
+          },
         })
 
         const promise = peer.request(
@@ -367,14 +409,15 @@ describe('clientPeer', () => {
         )
 
         const id = await waitForSend()
-        await peer.message(makeStreamCancelMessage(id))
-
-        expect(send).toHaveBeenCalledTimes(1)
-
-        expect(send).not.toHaveBeenCalledWith(expect.objectContaining({ kind: 'cancel' }))
-
+        await sleep(10) // wait until stream start
         await peer.message(makeResponseMessage(id))
         await promise
+
+        // await vi.waitFor(() => expect(emitUnhandledRejection).toHaveBeenCalledTimes(1))
+        // expect(emitUnhandledRejection).toHaveBeenCalledWith(error)
+
+        expect(send).toHaveBeenCalledTimes(1)
+        expect(send).not.toHaveBeenCalledWith(expect.objectContaining({ kind: 'cancel' }))
       })
     })
 
@@ -384,9 +427,10 @@ describe('clientPeer', () => {
         await peer.message(makeStreamingResponse(id, 'octet-stream'))
 
         const response = await promise
-        expect(response.body).toBeInstanceOf(ReadableStream)
+        const body = await response.resolveBody()
+        expect(body).toBeInstanceOf(ReadableStream)
 
-        const reader = (response.body as ReadableStream).getReader()
+        const reader = (body as ReadableStream).getReader()
 
         await peer.message(makeOctetStreamMessage(id, false, new Uint8Array([5, 6])))
         const { value } = await reader.read()
@@ -395,6 +439,27 @@ describe('clientPeer', () => {
         await peer.message(makeOctetStreamMessage(id, true))
         const { done } = await reader.read()
         expect(done).toBe(true)
+      })
+
+      it('cancel request when canceling ReadableStream', async () => {
+        const { id, promise } = await requestAndGetId()
+        await peer.message(makeStreamingResponse(id, 'octet-stream'))
+
+        const response = await promise
+        const body = await response.resolveBody()
+        await peer.message(makeOctetStreamMessage(id, false, new Uint8Array([5, 6])))
+
+        const reader = (body as ReadableStream).getReader()
+        const { value } = await reader.read()
+        expect(value).toEqual(new Uint8Array([5, 6]))
+
+        expect(send).toHaveBeenCalledTimes(1)
+        expect(send).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
+
+        await reader.cancel()
+
+        expect(send).toHaveBeenCalledTimes(2)
+        expect(send).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'cancel' }))
       })
     })
   })
@@ -422,7 +487,7 @@ describe('clientPeer', () => {
       await peer.message(makeStreamingResponse(id, 'event-stream'))
       const response = await promise
 
-      const iter = response.body as AsyncIterator<unknown>
+      const iter = await response.resolveBody() as AsyncIterator<unknown>
       const nextPromise = iter.next()
 
       await peer.close()
@@ -435,7 +500,7 @@ describe('clientPeer', () => {
       await peer.message(makeStreamingResponse(id, 'octet-stream'))
       const response = await promise
 
-      const reader = (response.body as ReadableStream).getReader()
+      const reader = (await response.resolveBody() as ReadableStream).getReader()
       const readPromise = reader.read()
 
       await peer.close()
@@ -448,7 +513,7 @@ describe('clientPeer', () => {
       await peer.message(makeStreamingResponse(id, 'event-stream'))
       const response = await promise
 
-      const iter = response.body as AsyncIterator<unknown>
+      const iter = await response.resolveBody() as AsyncIterator<unknown>
       await peer.close()
 
       // does not send abort message for already closed request

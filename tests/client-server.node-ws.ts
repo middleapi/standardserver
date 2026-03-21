@@ -100,7 +100,7 @@ export function createNodeWsClientServerTest(): ClientServerTest {
         }
 
         await serverPeer.message(message as any, async (request) => {
-          return handler({ ...request, resolveBody: async () => request.body })
+          return handler(request)
         })
       }
       catch (e) {
@@ -111,7 +111,7 @@ export function createNodeWsClientServerTest(): ClientServerTest {
 
   const request: ClientServerTest['request'] = vi.fn(async (standardRequest) => {
     const response = await clientPeer.request(standardRequest)
-    return { ...response, resolveBody: async () => response.body }
+    return response
   })
 
   afterEach(() => {

@@ -1,3 +1,3 @@
 export interface AsyncCleanupFn {
-  (isCompleted: boolean): Promise<void>
+  (state: { isCancelled: boolean, error?: unknown }): Promise<void>
 }

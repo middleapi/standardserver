@@ -1,5 +1,6 @@
 import type { PeerMessage } from './types'
 import { stringifyJSON } from '@standardserver/shared'
+import { isPeerMessage } from './validators'
 
 /**
  * Single-byte delimiter separating the JSON payload from trailing binary data.
@@ -97,45 +98,63 @@ export function decodePeerMessage(
   encoded: string | Uint8Array<ArrayBuffer>,
   options: DecodePeerMessageOptions = {},
 ): DecodePeerMessageResult {
-  if (typeof encoded === 'string') {
+  try {
+    if (typeof encoded === 'string') {
+      if (options.prefix) {
+        if (!encoded.startsWith(options.prefix)) {
+          return { matched: false }
+        }
+
+        encoded = encoded.slice(options.prefix.length)
+      }
+
+      const message = JSON.parse(encoded) as unknown
+
+      if (!isPeerMessage(message)) {
+        return { matched: false }
+      }
+
+      return { matched: true, message }
+    }
+
     if (options.prefix) {
-      if (!encoded.startsWith(options.prefix)) {
+      const prefixBytes = textEncoder.encode(options.prefix)
+
+      for (let i = 0; i < prefixBytes.length; i++) {
+        if (encoded[i] !== prefixBytes[i]) {
+          return { matched: false }
+        }
+      }
+
+      encoded = encoded.subarray(prefixBytes.length)
+    }
+
+    const separatorIndex = encoded.indexOf(JSON_BINARY_DELIMITER)
+
+    // No separator means the payload is JSON-only.
+    if (separatorIndex === -1) {
+      const message = JSON.parse(textDecoder.decode(encoded)) as unknown
+
+      if (!isPeerMessage(message)) {
         return { matched: false }
       }
 
-      encoded = encoded.slice(options.prefix.length)
+      return { matched: true, message }
     }
 
-    return { matched: true, message: JSON.parse(encoded) }
-  }
+    const jsonBytes = encoded.subarray(0, separatorIndex)
+    const binaryBytes = encoded.subarray(separatorIndex + 1)
 
-  if (options.prefix) {
-    const prefixBytes = textEncoder.encode(options.prefix)
+    const message = JSON.parse(textDecoder.decode(jsonBytes)) as unknown
 
-    for (let i = 0; i < prefixBytes.length; i++) {
-      if (encoded[i] !== prefixBytes[i]) {
-        return { matched: false }
-      }
+    if (!isPeerMessage(message)) {
+      return { matched: false }
     }
 
-    encoded = encoded.subarray(prefixBytes.length)
+    message.binary = binaryBytes
+    return { matched: true, message }
   }
-
-  const separatorIndex = encoded.indexOf(JSON_BINARY_DELIMITER)
-
-  // No separator means the payload is JSON-only.
-  if (separatorIndex === -1) {
-    return { matched: true, message: JSON.parse(textDecoder.decode(encoded)) }
-  }
-
-  const jsonBytes = encoded.subarray(0, separatorIndex)
-  const binaryBytes = encoded.subarray(separatorIndex + 1)
-
-  return {
-    matched: true,
-    message: {
-      ...JSON.parse(textDecoder.decode(jsonBytes)),
-      binary: binaryBytes,
-    },
+  catch {
+    return { matched: false }
   }
 }

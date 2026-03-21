@@ -1,13 +1,13 @@
-import type { StandardRequest, StandardResponse } from '@standardserver/core'
+import type { StandardLazyResponse, StandardRequest } from '@standardserver/core'
 import type { Queue } from '@standardserver/shared'
-import type { PeerCancelMessage, PeerEventStreamMessage, PeerOctetStreamMessage, PeerRequestMessage, PeerResponseMessage, PeerStreamCancelMessage } from './types'
-import { AbortError, isAsyncIteratorObject, SequentialIdGenerator } from '@standardserver/shared'
+import type { ClientPeerSendMessage, PeerEventStreamMessage, PeerOctetStreamMessage, ServerPeerSendMessage } from './types'
+import { AbortError, emitUnhandledRejection, isAsyncIteratorObject, omit, SequentialIdGenerator } from '@standardserver/shared'
 import { encodeAtomicStandardBody, toStandardBody } from './body'
 import { EventStreamTransmitter } from './event-stream'
 import { OctetStreamTransmitter } from './octet-stream'
 
 interface ClientPeerRequestStateInternal {
-  resolve?: ((response: StandardResponse) => void) | undefined
+  resolve?: ((response: StandardLazyResponse) => void) | undefined
   reject?: ((reason: unknown) => void) | undefined
   eventStreamMessageQueue?: Queue<PeerEventStreamMessage> | undefined
   octetStreamMessageQueue?: Queue<PeerOctetStreamMessage> | undefined
@@ -21,9 +21,7 @@ export class ClientPeer {
   private readonly requests = new Map<string, ClientPeerRequestStateInternal>()
 
   constructor(
-    private readonly send: (
-      message: PeerCancelMessage | PeerRequestMessage | PeerEventStreamMessage | PeerOctetStreamMessage,
-    ) => Promise<void>,
+    private readonly send: (message: ClientPeerSendMessage) => Promise<void>,
   ) {
   }
 
@@ -37,7 +35,7 @@ export class ClientPeer {
   /**
    * Send a request to the server peer
    */
-  async request(request: StandardRequest): Promise<StandardResponse> {
+  async request(request: StandardRequest): Promise<StandardLazyResponse> {
     const signal = request.signal
     signal?.throwIfAborted()
 
@@ -64,20 +62,17 @@ export class ClientPeer {
       // signal can be aborted during encode
       signal?.throwIfAborted()
 
-      const requestMessage: PeerRequestMessage = {
+      // PeerRequestMessage must be sent before stream messages
+      await this.send({
         id,
         kind: 'request',
         json: {
-          ...request,
+          ...omit(request, ['signal']),
           headers,
           body: jsonBody,
-          ...{ signal: undefined }, // remove signal from request
         },
         binary,
-      }
-
-      // PeerRequestMessage must be sent before stream messages
-      await this.send(requestMessage)
+      })
 
       // signal can be aborted after sending request message
       signal?.throwIfAborted()
@@ -87,18 +82,19 @@ export class ClientPeer {
         state.eventStreamTransmitter = transmitter
 
         // Do not await here; we don't want it to block response processing.
-        void transmitter.transmit().catch(async (reason) => {
-          if (state.eventStreamTransmitter) {
-            state.eventStreamTransmitter = undefined
-            await this.abortById(id, reason)
+        void transmitter.transmit().catch(async (error) => {
+          if (state.eventStreamTransmitter) { // stream transmitter is still active
+            await this.abortById(id, error)
           }
           else {
             /**
-             * We don't need to send abort message if transmitter was cancelled
-             * or request was closed
+             * The request has already been closed or the stream transmitter
+             * was cancelled earlier.
+             *
+             * This error should not affect the current flow. Instead, forward it
+             * as an unhandled rejection so it can be noticed and fixed.
              */
-            state.eventStreamTransmitter = undefined
-            await this.closeById(id, reason)
+            emitUnhandledRejection(error)
           }
         })
       }
@@ -107,19 +103,27 @@ export class ClientPeer {
         state.octetStreamTransmitter = transmitter
 
         // Do not await here; we don't want it to block response processing.
-        void transmitter.transmit().catch(async (reason) => {
-          if (state.octetStreamTransmitter) {
-            state.octetStreamTransmitter = undefined
-            await this.abortById(id, reason)
+        void transmitter.transmit().catch(async (error) => {
+          if (state.octetStreamTransmitter) { // stream transmitter is still active
+            await this.abortById(id, error)
           }
+
+          /**
+           * ReadableStream does not throw after cancel, so this branch is unlikely.
+           * It exists for completeness to cover all edge cases.
+           * v8 ignore start -- @preserve
+           */
           else {
             /**
-             * We don't need to send abort message if transmitter was cancelled
-             * or request was closed
+             * The request has already been closed or the stream transmitter
+             * was cancelled earlier.
+             *
+             * This error should not affect the current flow. Instead, forward it
+             * as an unhandled rejection so it can be noticed and fixed.
              */
-            state.octetStreamTransmitter = undefined
-            await this.closeById(id, reason)
+            emitUnhandledRejection(error)
           }
+          /* v8 ignore stop -- @preserve */
         })
       }
     }
@@ -138,7 +142,7 @@ export class ClientPeer {
    * Handle a message from server
    */
   async message(
-    message: PeerResponseMessage | PeerCancelMessage | PeerEventStreamMessage | PeerOctetStreamMessage | PeerStreamCancelMessage,
+    message: ServerPeerSendMessage,
   ): Promise<void> {
     const id = message.id
     const state = this.requests.get(id)
@@ -178,24 +182,22 @@ export class ClientPeer {
       return
     }
 
-    try {
-      const response: StandardResponse = message.json
+    const resolve = state.resolve
+    state.resolve = undefined
 
-      const decoded = await toStandardBody(message, async (isCompleted) => {
-        if (!isCompleted) {
-          await this.abortById(id)
+    try {
+      const decoded = toStandardBody(message, async ({ isCancelled, error }) => {
+        if (isCancelled) {
+          await this.abortById(id, error)
         }
         else if (state.eventStreamMessageQueue || state.octetStreamMessageQueue) {
-          await this.closeById(id)
+          await this.closeById(id, error)
         }
       })
-      response.body = decoded.body
       state.eventStreamMessageQueue = decoded.eventStreamMessageQueue
       state.octetStreamMessageQueue = decoded.octetStreamMessageQueue
 
-      state.resolve?.(response)
-      state.resolve = undefined
-      state.reject = undefined
+      resolve({ ...message.json, resolveBody: decoded.resolveBody })
 
       if (!state.eventStreamMessageQueue && !state.octetStreamMessageQueue) {
         // if there is no stream, we can close the request immediately
@@ -267,9 +269,9 @@ export class ClientPeer {
     state.octetStreamMessageQueue = undefined
 
     const promises = [
+      this.send({ id, kind: 'cancel' }),
       state.eventStreamTransmitter?.cancel(),
       state.octetStreamTransmitter?.cancel(),
-      this.send({ id, kind: 'cancel' }),
     ]
     state.eventStreamTransmitter = undefined
     state.octetStreamTransmitter = undefined

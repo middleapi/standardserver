@@ -7,61 +7,77 @@ import { toEventIterator } from './event-stream'
 import { toOctetStream } from './octet-stream'
 
 export interface ToStandardBodyResult {
-  body: StandardBody
+  resolveBody: () => Promise<StandardBody>
   eventStreamMessageQueue?: Queue<PeerEventStreamMessage>
   octetStreamMessageQueue?: Queue<PeerOctetStreamMessage>
 }
 
-export async function toStandardBody(
+export function toStandardBody(
   message: PeerRequestMessage | PeerResponseMessage,
   cleanup: AsyncCleanupFn,
-): Promise<ToStandardBodyResult> {
+): ToStandardBodyResult {
   const bodyHint = flattenStandardHeader(message.json.headers['standard-server'])
 
   if (bodyHint === 'event-stream' satisfies StandardBodyHint) {
     const eventStreamMessageQueue = new Queue<PeerEventStreamMessage>()
-    return { body: toEventIterator(eventStreamMessageQueue, cleanup), eventStreamMessageQueue }
+    return {
+      resolveBody: async () => toEventIterator(eventStreamMessageQueue, cleanup),
+      eventStreamMessageQueue,
+    }
   }
 
   if (bodyHint === 'octet-stream' satisfies StandardBodyHint) {
     const octetStreamMessageQueue = new Queue<PeerOctetStreamMessage>()
-    return { body: toOctetStream(octetStreamMessageQueue, cleanup), octetStreamMessageQueue }
+    return {
+      resolveBody: async () => toOctetStream(octetStreamMessageQueue, cleanup),
+      octetStreamMessageQueue,
+    }
   }
 
-  try {
-    if (bodyHint === 'file' satisfies StandardBodyHint) {
-      const contentDisposition = flattenStandardHeader(message.json.headers['content-disposition'])
-      const filename = contentDisposition !== undefined
-        ? getFilenameFromContentDisposition(contentDisposition)
-        : 'undefined'
+  const resolveBody = async () => {
+    let errorRef: { value: unknown } | undefined
 
-      const body = new File(message.binary ? [message.binary] : [], filename ?? 'blob', {
-        type: flattenStandardHeader(message.json.headers['content-type']) ?? 'application/octet-stream',
-      })
-      return { body }
+    try {
+      if (bodyHint === 'file' satisfies StandardBodyHint) {
+        const contentDisposition = flattenStandardHeader(message.json.headers['content-disposition'])
+        const filename = contentDisposition !== undefined
+          ? getFilenameFromContentDisposition(contentDisposition)
+          : undefined
+
+        const body = new File(message.binary ? [message.binary] : [], filename ?? 'blob', {
+          type: flattenStandardHeader(message.json.headers['content-type']) ?? 'application/octet-stream',
+        })
+        return body
+      }
+
+      if (bodyHint === 'form-data' satisfies StandardBodyHint) {
+        const res = new Response(message.binary, {
+          headers: {
+            'content-type': flattenStandardHeader(message.json.headers['content-type']) ?? 'multipart/form-data',
+          },
+        })
+
+        const body = await res.formData()
+        return body
+      }
+
+      if (bodyHint === 'url-search-params' satisfies StandardBodyHint && typeof message.json.body === 'string') {
+        return new URLSearchParams(message.json.body)
+      }
+
+      return message.json.body
     }
-
-    if (bodyHint === 'form-data' satisfies StandardBodyHint) {
-      const res = new Response(message.binary, {
-        headers: {
-          'content-type': flattenStandardHeader(message.json.headers['content-type']) ?? 'multipart/form-data',
-        },
-      })
-
-      const body = await res.formData()
-      return { body }
+    catch (error) {
+      errorRef = { value: error }
+      throw error
     }
-
-    if (bodyHint === 'url-search-params' satisfies StandardBodyHint && typeof message.json.body === 'string') {
-      return { body: new URLSearchParams(message.json.body) }
-    }
-
-    return { body: message.json.body }
-  }
-  finally {
+    finally {
     // The body is fully loaded, so we can clean up immediately.
-    await cleanup(true)
+      await cleanup(errorRef ? { isCancelled: false, error: errorRef.value } : { isCancelled: false })
+    }
   }
+
+  return { resolveBody }
 }
 
 export async function encodeAtomicStandardBody(

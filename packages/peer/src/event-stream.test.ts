@@ -18,7 +18,7 @@ describe('toEventIterator', () => {
 
     const r2 = await iter.next()
     expect(r2.done).toBe(true)
-    expect(cleanup).toHaveBeenCalledWith(true)
+    expect(cleanup).toHaveBeenCalledWith({ isCancelled: false })
   })
 
   it('attaches event metadata to object values', async () => {
@@ -67,15 +67,17 @@ describe('toEventIterator', () => {
       json: { event: 'error', data: { code: 500 }, comments: ['oops'] },
     })
 
-    await expect(iter.next()).rejects.toSatisfy((err: EventIteratorErrorEvent) => {
+    const assertError = (err: EventIteratorErrorEvent) => {
       expect(err).toBeInstanceOf(EventIteratorErrorEvent)
       expect(err.data).toEqual({ code: 500 })
       const [, meta] = unwrapEventIteratorEvent(err)
       expect(meta).toEqual({ comments: ['oops'] })
       return true
-    })
+    }
 
-    expect(cleanup).toHaveBeenCalledWith(true)
+    await expect(iter.next()).rejects.toSatisfy(assertError)
+
+    expect(cleanup).toHaveBeenCalledWith({ isCancelled: false, error: expect.toSatisfy(assertError) })
   })
 
   it('returns done with value on close event', async () => {
@@ -93,16 +95,16 @@ describe('toEventIterator', () => {
     expect(result.done).toBe(true)
     const [data] = unwrapEventIteratorEvent(result.value)
     expect(data).toEqual({ final: true })
-    expect(cleanup).toHaveBeenCalledWith(true)
+    expect(cleanup).toHaveBeenCalledWith({ isCancelled: false })
   })
 
-  it('calls cleanup(false) when iterator.return() is called early', async () => {
+  it('calls cleanup({ isCancelled: true }) when iterator.return() is called early', async () => {
     const queue = new Queue<PeerEventStreamMessage>()
     const cleanup = vi.fn()
     const iter = toEventIterator(queue, cleanup)
 
     await iter.return(undefined)
-    expect(cleanup).toHaveBeenCalledWith(false)
+    expect(cleanup).toHaveBeenCalledWith({ isCancelled: true })
   })
 
   it('throw on aborted queue', async () => {
@@ -110,10 +112,11 @@ describe('toEventIterator', () => {
     const cleanup = vi.fn()
     const iter = toEventIterator(queue, cleanup)
 
-    queue.abort(new Error('aborted'))
+    const error = new Error('aborted')
+    queue.abort(error)
 
-    await expect(iter.next()).rejects.toThrow('aborted')
-    expect(cleanup).toHaveBeenCalledWith(true)
+    await expect(iter.next()).rejects.toThrow(error)
+    expect(cleanup).toHaveBeenCalledWith({ isCancelled: false, error })
   })
 })
 
@@ -189,17 +192,54 @@ describe('eventStreamTransmitter', () => {
     await expect(transmitter.transmit()).rejects.toThrow('unexpected')
   })
 
-  it('rethrow send error', async () => {
+  it('rethrow send-error and cleanup during sending yield-event', async () => {
     const send = vi.fn(async () => {
       throw new Error('send failed')
     })
-    const iter = new AsyncIteratorClass(async () => ({ done: true, value: 'data' }), async () => {})
+
+    const cleanup = vi.fn()
+    const iter = new AsyncIteratorClass(async () => ({ done: false, value: 'data' }), cleanup)
 
     const transmitter = new EventStreamTransmitter(iter, 'msg-1', send)
     await expect(transmitter.transmit()).rejects.toThrow('send failed')
+
+    expect(cleanup).toHaveBeenCalledTimes(1)
+    expect(cleanup).toHaveBeenCalledWith({ isCancelled: true })
   })
 
-  it('does not send after cancel', async () => {
+  it('rethrow send-error and cleanup during sending return-event', async () => {
+    const send = vi.fn(async () => {
+      throw new Error('send failed')
+    })
+
+    const cleanup = vi.fn()
+    const iter = new AsyncIteratorClass(async () => ({ done: true, value: 'data' }), cleanup)
+
+    const transmitter = new EventStreamTransmitter(iter, 'msg-1', send)
+    await expect(transmitter.transmit()).rejects.toThrow('send failed')
+
+    expect(cleanup).toHaveBeenCalledTimes(1)
+    expect(cleanup).toHaveBeenCalledWith({ isCancelled: false })
+  })
+
+  it('rethrow send-error and cleanup during sending error-event', async () => {
+    const send = vi.fn(async () => {
+      throw new Error('send failed')
+    })
+
+    const cleanup = vi.fn()
+    const iter = new AsyncIteratorClass(async () => {
+      throw new EventIteratorErrorEvent({ hi: true })
+    }, cleanup)
+
+    const transmitter = new EventStreamTransmitter(iter, 'msg-1', send)
+    await expect(transmitter.transmit()).rejects.toThrow('send failed')
+
+    expect(cleanup).toHaveBeenCalledTimes(1)
+    expect(cleanup).toHaveBeenCalledWith({ isCancelled: false, error: expect.any(EventIteratorErrorEvent) })
+  })
+
+  it('does not send success-event after cancel', async () => {
     const send = vi.fn(async () => {})
     let pullCount = 0
     const iter = new AsyncIteratorClass(async () => {
@@ -207,6 +247,28 @@ describe('eventStreamTransmitter', () => {
       // simulate slow iterator so cancel happens mid-stream
       await new Promise(resolve => setTimeout(resolve, 50))
       return { done: false, value: 'data' }
+    }, async () => {})
+
+    const transmitter = new EventStreamTransmitter(iter, 'msg-1', send)
+    const transmitPromise = transmitter.transmit()
+
+    // cancel immediately
+    await transmitter.cancel()
+    await transmitPromise
+
+    // The first next() was already in progress when cancel was called.
+    // After cancel, the transmitter should not send the result.
+    expect(send).not.toHaveBeenCalled()
+  })
+
+  it('does not send error-event after cancel', async () => {
+    const send = vi.fn(async () => {})
+    let pullCount = 0
+    const iter = new AsyncIteratorClass(async () => {
+      pullCount++
+      // simulate slow iterator so cancel happens mid-stream
+      await new Promise(resolve => setTimeout(resolve, 50))
+      throw new EventIteratorErrorEvent({ reason: 'fail' })
     }, async () => {})
 
     const transmitter = new EventStreamTransmitter(iter, 'msg-1', send)

@@ -149,8 +149,8 @@ describe.each([
           await sleep(times === 1 ? 100 : 1000)
           return { done: false, value: 'Hello' }
         },
-        async (completed) => {
-          if (!completed) {
+        async ({ isCancelled }) => {
+          if (isCancelled) {
             canceled = true
           }
         },
@@ -263,8 +263,8 @@ describe.each([
             await sleep(times === 1 ? 100 : 1000)
             return { done: false, value: 'Hello' }
           },
-          async (completed) => {
-            if (!completed) {
+          async ({ isCancelled }) => {
+            if (isCancelled) {
               canceled = true
             }
           },
@@ -380,8 +380,8 @@ describe.each([
             await sleep(times === 1 ? 100 : 1000)
             return { done: false, value: 'Hello' }
           },
-          async (completed) => {
-            if (!completed) {
+          async ({ isCancelled }) => {
+            if (isCancelled) {
               canceled = true
             }
           },
@@ -510,8 +510,8 @@ describe.each([
           await sleep(times === 1 ? 100 : 1000)
           return { done: false, value: 'Hello' }
         },
-        async (completed) => {
-          if (!completed) {
+        async ({ isCancelled }) => {
+          if (isCancelled) {
             canceled = true
           }
         },
@@ -667,14 +667,7 @@ describe.each([
     }
   })
 
-  it('error happen while sending request octet stream', async ({ onTestFinished }) => {
-    const unhandledRejection = vi.fn()
-    process.on('unhandledRejection', unhandledRejection)
-
-    onTestFinished(() => {
-      process.off('unhandledRejection', unhandledRejection)
-    })
-
+  it('error happen while sending request octet stream', async () => {
     let serverSignal!: AbortSignal
     let canceled = false
     let serverError!: unknown
@@ -707,7 +700,6 @@ describe.each([
       headers: {},
       body: new ReadableStream({
         pull: async (controller) => {
-          console.log('pull request octet stream', times)
           times += 1
           await sleep(100)
 
@@ -718,7 +710,6 @@ describe.each([
           controller.enqueue(new TextEncoder().encode('Hello'))
         },
         cancel: async (reason) => {
-          console.log('cancel request octet stream', reason)
           canceled = true
         },
       }),
@@ -726,20 +717,18 @@ describe.each([
       url: '/',
     })
 
-    await expect(responsePromise).rejects.toThrow()
+    if (adapter === 'message-port' || adapter === 'node-ws') {
+      await expect(responsePromise).rejects.toThrow(error)
+    }
+    else {
+      await expect(responsePromise).rejects.toThrow()
+    }
 
     await sleep(100) // wait for server handle abort
     expect(serverSignal.aborted).toBe(true)
     expect(serverError).toBeInstanceOf(Error)
     expect(times).toBe(2) // stop at second chunk
     expect(canceled).toBe(false) // don't need cancel if error happen
-
-    if (adapter === 'message-port' || adapter === 'node-ws') {
-    // If the readable stream has already errored before cancel is called,
-    // cancel() will throw, so an unhandledRejection is expected.
-      expect(unhandledRejection).toHaveBeenCalledTimes(1)
-      expect(unhandledRejection).toHaveBeenNthCalledWith(1, error, expect.anything())
-    }
 
     if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
       expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(3)

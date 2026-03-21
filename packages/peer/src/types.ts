@@ -172,3 +172,22 @@ export interface PeerStreamCancelMessage extends PeerMessage {
    */
   binary?: undefined
 }
+
+/**
+ * Union of all messages a client peer may send to a server peer.
+ */
+export type ClientPeerSendMessage
+  = | PeerRequestMessage
+    | PeerCancelMessage
+    | PeerEventStreamMessage
+    | PeerOctetStreamMessage
+
+/**
+ * Union of all messages a server peer may send to a client peer.
+ */
+export type ServerPeerSendMessage
+  = | PeerResponseMessage
+    | PeerCancelMessage
+    | PeerOctetStreamMessage
+    | PeerEventStreamMessage
+    | PeerStreamCancelMessage

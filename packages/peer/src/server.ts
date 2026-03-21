@@ -1,6 +1,6 @@
-import type { StandardRequest, StandardResponse } from '@standardserver/core'
+import type { StandardLazyRequest, StandardResponse } from '@standardserver/core'
 import type { Queue } from '@standardserver/shared'
-import type { PeerCancelMessage, PeerEventStreamMessage, PeerOctetStreamMessage, PeerRequestMessage, PeerResponseMessage, PeerStreamCancelMessage } from './types'
+import type { ClientPeerSendMessage, PeerEventStreamMessage, PeerOctetStreamMessage, PeerResponseMessage, ServerPeerSendMessage } from './types'
 import { AbortError, isAsyncIteratorObject } from '@standardserver/shared'
 import { encodeAtomicStandardBody, toStandardBody } from './body'
 import { EventStreamTransmitter } from './event-stream'
@@ -19,9 +19,7 @@ export class ServerPeer {
   private readonly requests = new Map<string, ServerPeerRequestStateInternal>()
 
   constructor(
-    private readonly send: (
-      message: PeerResponseMessage | PeerCancelMessage | PeerOctetStreamMessage | PeerEventStreamMessage | PeerStreamCancelMessage,
-    ) => Promise<void>,
+    private readonly send: (message: ServerPeerSendMessage) => Promise<void>,
   ) {
   }
 
@@ -36,8 +34,8 @@ export class ServerPeer {
    * Handle a message from client
    */
   async message(
-    message: PeerRequestMessage | PeerEventStreamMessage | PeerOctetStreamMessage | PeerCancelMessage,
-    handleRequest: (request: StandardRequest) => Promise<StandardResponse>,
+    message: ClientPeerSendMessage,
+    handleRequest: (request: StandardLazyRequest) => Promise<StandardResponse>,
   ): Promise<void> {
     const id = message.id
 
@@ -66,20 +64,18 @@ export class ServerPeer {
     const signal = controller.signal
 
     try {
-      const request: StandardRequest = { ...message.json, signal }
-
-      const decoded = await toStandardBody(message, async (isCompleted) => {
-        if (!isCompleted) {
+      const decoded = toStandardBody(message, async ({ isCancelled }) => {
+        if (isCancelled && (state.eventStreamMessageQueue || state.octetStreamMessageQueue)) {
+          // only need cancel stream if streams is still active
           state.eventStreamMessageQueue = undefined
           state.octetStreamMessageQueue = undefined
           await this.send({ id, kind: 'stream/cancel' })
         }
       })
-      request.body = decoded.body
       state.eventStreamMessageQueue = decoded.eventStreamMessageQueue
       state.octetStreamMessageQueue = decoded.octetStreamMessageQueue
 
-      const response = await handleRequest(request)
+      const response = await handleRequest({ ...message.json, signal, resolveBody: decoded.resolveBody })
 
       // only send message if still open and not aborted
       if (signal.aborted) {
@@ -96,12 +92,7 @@ export class ServerPeer {
       const responseMessage: PeerResponseMessage = {
         id: message.id,
         kind: 'response',
-        json: {
-          ...response,
-          headers,
-          body: jsonBody,
-          ...{ signal: undefined }, // remove signal from request
-        },
+        json: { ...response, headers, body: jsonBody },
         binary,
       }
 
@@ -176,7 +167,6 @@ export class ServerPeer {
       state.eventStreamTransmitter?.cancel(),
       state.octetStreamTransmitter?.cancel(),
     ]
-
     state.eventStreamTransmitter = undefined
     state.octetStreamTransmitter = undefined
 
