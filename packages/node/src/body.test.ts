@@ -305,6 +305,46 @@ describe('toStandardBody', () => {
     })
   })
 
+  describe('handle utf-8 characters split across stream chunks', () => {
+    function createChunkedIncomingMessage(method: string, contentType: string, chunks: Buffer[]): IncomingMessage {
+      const request = Readable.from(chunks) as IncomingMessage
+      request.method = method
+      request.headers = {
+        'content-type': contentType,
+      }
+      return request
+    }
+
+    it('json: 4-byte emoji split after first byte', async () => {
+      const bytes = Buffer.from('{"emoji":"😀"}', 'utf-8')
+      const splitAt = Buffer.from('{"emoji":"').length + 1 // one byte into the emoji codepoint
+      const chunks = [bytes.subarray(0, splitAt), bytes.subarray(splitAt)]
+
+      const incomingMessage = createChunkedIncomingMessage('POST', 'application/json', chunks)
+      const result = await toStandardBody(incomingMessage)
+      expect(result).toEqual({ emoji: '😀' })
+    })
+
+    it('url-search-params: 4-byte emoji split after first byte', async () => {
+      const bytes = Buffer.from('emoji=😀', 'utf-8')
+      const splitAt = Buffer.from('emoji=').length + 1 // one byte into the emoji codepoint
+      const chunks = [bytes.subarray(0, splitAt), bytes.subarray(splitAt)]
+
+      const incomingMessage = createChunkedIncomingMessage('POST', 'application/x-www-form-urlencoded', chunks)
+      const result = await toStandardBody(incomingMessage)
+      expect(result).toEqual(new URLSearchParams('emoji=😀'))
+    })
+
+    it('url-search-params: end with incomplete 4-byte emoji', async () => {
+      const bytes = Buffer.from('emoji=😀', 'utf-8')
+      const chunks = [bytes.subarray(0, bytes.length - 1)] // emoji missing last byte
+
+      const incomingMessage = createChunkedIncomingMessage('POST', 'application/x-www-form-urlencoded', chunks)
+      const result = await toStandardBody(incomingMessage)
+      expect(result).toEqual(new URLSearchParams('emoji=�'))
+    })
+  })
+
   describe('edge case', () => {
     it('throw on read body multiple time except (hint=none)', async () => {
       let req: NodeHttpRequest

@@ -1,8 +1,8 @@
 import type { StandardBody, StandardBodyHint, StandardHeaders } from '@standardserver/core'
-import type { Buffer } from 'node:buffer'
 import type { IncomingMessage } from 'node:http'
 import type { ToEventStreamOptions } from './event-stream'
 import type { NodeHttpRequest } from './types'
+import { Buffer } from 'node:buffer'
 import { Readable } from 'node:stream'
 import { flattenStandardHeader, generateContentDisposition, getFilenameFromContentDisposition } from '@standardserver/core'
 import { isAsyncIteratorObject, parseEmptyableJSON, stringifyJSON } from '@standardserver/shared'
@@ -164,11 +164,15 @@ function _streamToFormData(stream: Readable, contentType: string | undefined): P
 }
 
 async function _streamToString(stream: Readable): Promise<string> {
+  const decoder = new TextDecoder()
   let string = ''
 
   for await (const chunk of stream) {
-    string += chunk.toString()
+    string += decoder.decode(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk), { stream: true })
   }
+
+  // Flush any remaining bytes (e.g. incomplete multi-byte sequences)
+  string += decoder.decode()
 
   return string
 }
