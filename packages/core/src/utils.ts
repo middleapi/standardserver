@@ -2,14 +2,14 @@ import type { StandardHeaders, StandardUrl } from './types'
 import { toArray, tryDecodeURIComponent } from '@standardserver/shared'
 
 export function generateContentDisposition(filename: string): string {
-  const escapedFileName = filename.replace(/"/g, '\\"')
+  const encodedFilename = filename.replace(/[^\x20-\x7E]/g, '_').replace(/"/g, '\\"')
 
   // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/encodeURIComponent#encoding_for_content-disposition_and_link_headers
   const encodedFilenameStar = encodeURIComponent(filename)
     .replace(/['()*]/g, c => `%${c.charCodeAt(0).toString(16).toUpperCase()}`)
     .replace(/%(7C|60|5E)/g, (str, hex) => String.fromCharCode(Number.parseInt(hex, 16)))
 
-  return `inline; filename="${escapedFileName}"; filename*=utf-8''${encodedFilenameStar}`
+  return `inline; filename="${encodedFilename}"; filename*=utf-8''${encodedFilenameStar}`
 }
 
 export function getFilenameFromContentDisposition(contentDisposition: string): string | undefined {
