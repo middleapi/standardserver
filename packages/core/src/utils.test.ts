@@ -1,4 +1,4 @@
-import { flattenStandardHeader, generateContentDisposition, getFilenameFromContentDisposition, mergeStandardHeaders, parseStandardUrl } from './utils'
+import { flattenStandardHeader, generateContentDisposition, getFilenameFromContentDisposition, mergeStandardHeaders, parseQueryStringWithRawValues, parseStandardUrl } from './utils'
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -139,6 +139,48 @@ describe('parseStandardUrl', () => {
       '/page',
       '?',
       '#',
+    ])
+  })
+})
+
+describe('parseQueryStringWithRawValues', () => {
+  it('returns empty array for undefined and empty search', () => {
+    expect(parseQueryStringWithRawValues(undefined)).toEqual([])
+    expect(parseQueryStringWithRawValues('?')).toEqual([])
+  })
+
+  it('parses key-value pairs', () => {
+    expect(parseQueryStringWithRawValues('?q=test&page=2')).toEqual([
+      ['q', 'test'],
+      ['page', '2'],
+    ])
+  })
+
+  it('parses keys without equals as empty value', () => {
+    expect(parseQueryStringWithRawValues('?flag&enabled')).toEqual([
+      ['flag', ''],
+      ['enabled', ''],
+    ])
+  })
+
+  it('keeps empty values and ignores empty segments', () => {
+    expect(parseQueryStringWithRawValues('?a=&b=2&&c=')).toEqual([
+      ['a', ''],
+      ['b', '2'],
+      ['c', ''],
+    ])
+  })
+
+  it('splits only on first equals sign', () => {
+    expect(parseQueryStringWithRawValues('?token=a=b=c')).toEqual([
+      ['token', 'a=b=c'],
+    ])
+  })
+
+  it('decode key parts only', () => {
+    expect(parseQueryStringWithRawValues('?name%20first=John%20Doe&%E3%83%86%E3%82%B9%E3%83%88=%E5%80%A4')).toEqual([
+      ['name first', 'John%20Doe'],
+      ['テスト', '%E5%80%A4'],
     ])
   })
 })
