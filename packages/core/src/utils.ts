@@ -78,21 +78,3 @@ export function parseStandardUrl(url: StandardUrl): [
 
   return [pathname, search, hash]
 }
-
-export function parseQueryStringWithRawValues(search: `?${string}` | undefined): [string, string][] {
-  if (!search || search.length <= 1) {
-    return []
-  }
-
-  return search
-    .slice(1)
-    .split('&')
-    .filter(Boolean)
-    .map((part): [string, string] => {
-      const separatorIndex = part.indexOf('=')
-      const key = separatorIndex === -1 ? part : part.slice(0, separatorIndex)
-      const value = separatorIndex === -1 ? '' : part.slice(separatorIndex + 1)
-
-      return [tryDecodeURIComponent(key), value]
-    })
-}
