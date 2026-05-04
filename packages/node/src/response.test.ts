@@ -66,7 +66,7 @@ describe('sendStandardResponse', () => {
     }, options.body)
 
     expect(endSpy).toBeCalledTimes(1)
-    expect(endSpy).toBeCalledWith(toNodeHttpBodySpy.mock.results[0]!.value[0])
+    expect(endSpy).toBeCalledWith((await toNodeHttpBodySpy.mock.results[0]!.value)[0])
 
     expect(res.status).toBe(207)
     expect(res.headers).toMatchObject({

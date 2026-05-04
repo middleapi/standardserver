@@ -118,7 +118,7 @@ describe('eventStreamDecoder', () => {
     decoder.feed('event: message\ndata: hello1\ndata: world\n\n')
     decoder.feed('event: message\ndata: hello2\ndata: world\nid: 123\nretry: 10000\n')
 
-    expect(() => decoder.end()).toThrowError('Event Iterator ended before complete')
+    expect(() => decoder.end()).toThrowError('Event Stream ended before complete')
 
     expect(onEvent).toHaveBeenCalledTimes(1)
     expect(onEvent).toHaveBeenNthCalledWith(1, {
@@ -205,7 +205,7 @@ describe('eventStreamDecoderStream', () => {
       for await (const message of eventStream) {
         messages.push(message)
       }
-    }).rejects.toThrowError('Event Iterator ended before complete')
+    }).rejects.toThrowError('Event Stream ended before complete')
 
     expect(messages).toEqual([
       {

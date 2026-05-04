@@ -9,7 +9,7 @@ const getFilenameFromContentDispositionSpy = vi.spyOn(StandardServerModule, 'get
 const toEventStreamSpy = vi.spyOn(EventIteratorModule, 'toEventStream')
 
 beforeEach(() => {
-  vi.clearAllMocks()
+  vi.resetAllMocks()
 })
 
 describe('toStandardBody', () => {
@@ -129,7 +129,7 @@ describe('toStandardBody', () => {
       },
     })
 
-    getFilenameFromContentDispositionSpy.mockReturnValue('__name__')
+    getFilenameFromContentDispositionSpy.mockReturnValueOnce('__name__')
 
     const standardFile = await toStandardBody(request) as any
     expect(standardFile).toBeInstanceOf(File)
@@ -571,6 +571,22 @@ it.each([
       form.append('file', new File(['foo'], 'foo.pdf', { type: 'application/pdf' }))
       return form
     },
+    assertBody: async (value: any) => {
+      expect(value).toBeInstanceOf(FormData)
+
+      const form = value as FormData
+      expect([...form.keys()]).toEqual(['foo', 'bar', 'file'])
+      expect(form.getAll('foo')).toEqual(['bar'])
+      expect(form.getAll('bar')).toEqual(['baz'])
+      const files = form.getAll('file')
+
+      expect(files.length).toEqual(1)
+      const file = files[0] as File
+      expect(file).toBeInstanceOf(File)
+      expect(file.name).toEqual('foo.pdf')
+      expect(file.type).toEqual('application/pdf')
+      expect(await file.text()).toEqual('foo')
+    },
   },
   {
     name: 'url-search-params',
@@ -588,6 +604,12 @@ it.each([
   {
     name: 'file',
     createBody: () => new File(['foo'], 'foo.pdf', { type: 'application/pdf' }),
+    assertBody: async (file: any) => {
+      expect(file).toBeInstanceOf(File)
+      expect(file.name).toEqual('foo.pdf')
+      expect(file.type).toEqual('application/pdf')
+      expect(await file.text()).toEqual('foo')
+    },
   },
   {
     name: 'event-stream',

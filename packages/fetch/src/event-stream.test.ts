@@ -232,7 +232,6 @@ describe('toEventStream', () => {
     expect((await reader.read())).toEqual({ done: false, value: 'event: message\nid: id-1\ndata: {"order":1}\n\n' })
     expect((await reader.read())).toEqual({ done: false, value: 'event: message\nretry: 20000\ndata: {"order":2}\n\n' })
     expect((await reader.read())).toEqual({ done: false, value: 'event: message\n\n' })
-    expect((await reader.read())).toEqual({ done: false, value: 'event: close\n\n' })
     expect((await reader.read())).toEqual({ done: true })
   })
 
@@ -394,7 +393,6 @@ describe('toEventStream', () => {
         keepAliveEnabled: true,
         keepAliveInterval: 40,
         keepAliveComment: 'ping',
-        alwaysSendCloseEvent: false,
       })
 
       const reader = stream
@@ -447,7 +445,6 @@ describe('toEventStream', () => {
         keepAliveEnabled: false,
         keepAliveInterval: 40,
         keepAliveComment: 'ping',
-        alwaysSendCloseEvent: false,
       })
 
       const reader = stream
@@ -476,7 +473,6 @@ describe('toEventStream', () => {
       }
 
       const stream = toEventStream(gen(), {
-        alwaysSendCloseEvent: false,
         initialCommentEnabled: true,
         initialComment: 'stream-started',
         keepAliveEnabled: false,
@@ -504,7 +500,6 @@ describe('toEventStream', () => {
       }
 
       const stream = toEventStream(gen(), {
-        alwaysSendCloseEvent: false,
         initialCommentEnabled: false,
         keepAliveEnabled: false,
       })
@@ -522,7 +517,7 @@ describe('toEventStream', () => {
     })
   })
 
-  describe('always send close event', () => {
+  describe('omit empty close event', () => {
     it('enabled', async () => {
       async function* gen() {
         yield 'hello'
@@ -531,7 +526,7 @@ describe('toEventStream', () => {
       const stream = toEventStream(gen(), {
         initialCommentEnabled: false,
         keepAliveEnabled: false,
-        alwaysSendCloseEvent: true,
+        omitEmptyCloseEvent: true,
       })
 
       const reader = stream
@@ -539,7 +534,6 @@ describe('toEventStream', () => {
         .getReader()
 
       await expect(reader.read()).resolves.toEqual({ done: false, value: 'event: message\ndata: "hello"\n\n' })
-      await expect(reader.read()).resolves.toEqual({ done: false, value: 'event: close\n\n' })
       await expect(reader.read()).resolves.toEqual({ done: true })
     })
 
@@ -551,7 +545,7 @@ describe('toEventStream', () => {
       const stream = toEventStream(gen(), {
         initialCommentEnabled: false,
         keepAliveEnabled: false,
-        alwaysSendCloseEvent: false,
+        omitEmptyCloseEvent: false,
       })
 
       const reader = stream
@@ -559,10 +553,11 @@ describe('toEventStream', () => {
         .getReader()
 
       await expect(reader.read()).resolves.toEqual({ done: false, value: 'event: message\ndata: "hello"\n\n' })
+      await expect(reader.read()).resolves.toEqual({ done: false, value: 'event: close\n\n' })
       await expect(reader.read()).resolves.toEqual({ done: true })
     })
 
-    it.each([true, false])('always send close event when iterator returns a value: %s', async (alwaysSendCloseEvent) => {
+    it.each([true, false])('still sends close event when iterator returns a value: %s', async (omitEmptyCloseEvent) => {
       async function* gen() {
         yield 'hello'
         return 'bye'
@@ -571,7 +566,7 @@ describe('toEventStream', () => {
       const stream = toEventStream(gen(), {
         initialCommentEnabled: false,
         keepAliveEnabled: false,
-        alwaysSendCloseEvent,
+        omitEmptyCloseEvent,
       })
 
       const reader = stream
