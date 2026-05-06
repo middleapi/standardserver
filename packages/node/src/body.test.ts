@@ -37,6 +37,16 @@ describe('toStandardBody', () => {
     expect(standardBody).toBe(undefined)
   })
 
+  it('ignores body parsing for GET requests even when headers imply a body', async () => {
+    const incomingMessage = Readable.from([Buffer.from('{"foo":"bar"}')]) as IncomingMessage
+    incomingMessage.method = 'GET'
+    incomingMessage.headers = {
+      'content-type': 'application/json',
+    }
+
+    expect(await toStandardBody(incomingMessage as NodeHttpRequest)).toBe(undefined)
+  })
+
   it('json', async () => {
     let standardBody: StandardBody = {} as any
 
@@ -151,13 +161,13 @@ describe('toStandardBody', () => {
       res.end()
     })
       .delete('/')
-      .type('application/json')
+      .type('plain/text')
       .set('content-disposition', 'attachment; filename="foo.pdf"')
-      .send({ value: 123 })
+      .send('{"value":123}')
 
     expect(standardBody).toBeInstanceOf(File)
     expect(standardBody.name).toBe('__name__')
-    expect(standardBody.type).toBe('application/json')
+    expect(standardBody.type).toBe('plain/text')
     expect(await standardBody.text()).toBe('{"value":123}')
 
     expect(getFilenameFromContentDispositionSpy).toHaveBeenCalledTimes(1)
@@ -182,6 +192,21 @@ describe('toStandardBody', () => {
     expect(await standardBody.text()).toBe('foo')
 
     expect(getFilenameFromContentDispositionSpy).toHaveBeenCalledTimes(0)
+  })
+
+  it('file without content-type', async () => {
+    const incomingMessage = Readable.from([Buffer.from('foo')]) as IncomingMessage
+    incomingMessage.method = 'POST'
+    incomingMessage.headers = {
+      'content-length': '3',
+    }
+
+    const standardBody = await toStandardBody(incomingMessage as NodeHttpRequest)
+
+    expect(standardBody).toBeInstanceOf(File)
+    expect((standardBody as File).name).toBe('blob')
+    expect((standardBody as File).type).toBe('')
+    expect(await (standardBody as File).text()).toBe('foo')
   })
 
   it('prefer parsed body', async () => {
@@ -306,7 +331,7 @@ describe('toStandardBody', () => {
   })
 
   describe('handle utf-8 characters split across stream chunks', () => {
-    function createChunkedIncomingMessage(method: string, contentType: string, chunks: Buffer[]): IncomingMessage {
+    function createChunkedIncomingMessage(method: string, contentType: string, chunks: Array<Buffer | string>): IncomingMessage {
       const request = Readable.from(chunks) as IncomingMessage
       request.method = method
       request.headers = {
@@ -342,6 +367,12 @@ describe('toStandardBody', () => {
       const incomingMessage = createChunkedIncomingMessage('POST', 'application/x-www-form-urlencoded', chunks)
       const result = await toStandardBody(incomingMessage)
       expect(result).toEqual(new URLSearchParams('emoji=�'))
+    })
+
+    it('json: string chunks', async () => {
+      const incomingMessage = createChunkedIncomingMessage('POST', 'application/json', ['{"emoji":"', '😀"}'])
+      const result = await toStandardBody(incomingMessage)
+      expect(result).toEqual({ emoji: '😀' })
     })
   })
 
@@ -407,7 +438,6 @@ describe('toNodeHttpBody', () => {
     expect(body).toBe(undefined)
     expect(headers).toEqual({
       'x-custom-header': 'custom-value',
-      'standard-server': 'none',
     })
   })
 
@@ -418,7 +448,6 @@ describe('toNodeHttpBody', () => {
     expect(headers).toEqual({
       'content-type': 'application/json',
       'x-custom-header': 'custom-value',
-      'standard-server': 'json',
     })
   })
 
@@ -432,7 +461,6 @@ describe('toNodeHttpBody', () => {
     expect(body).toBeInstanceOf(Readable)
     expect(headers).toEqual({
       'x-custom-header': 'custom-value',
-      'standard-server': 'form-data',
       'content-length': expect.any(String),
       'content-type': expect.stringMatching(/multipart\/form-data;.+/),
     })
@@ -454,7 +482,6 @@ describe('toNodeHttpBody', () => {
     expect(body).toBe('foo=bar&bar=baz')
     expect(headers).toEqual({
       'x-custom-header': 'custom-value',
-      'standard-server': 'url-search-params',
       'content-type': 'application/x-www-form-urlencoded',
     })
   })
@@ -577,7 +604,6 @@ describe('toNodeHttpBody', () => {
     expect(headers).toEqual({
       'content-type': 'text/event-stream',
       'x-custom-header': 'custom-value',
-      'standard-server': 'event-stream',
     })
 
     const reader = Readable.toWeb((body as Readable)).pipeThrough(new TextDecoderStream()).getReader()

@@ -15,7 +15,7 @@
   },
   "devDependencies": {
     "@antfu/eslint-config": "^6.7.3",
-    "@hono/node-server": "^1.19.7",
+    "@hono/node-server": "^2.0.1",
     "@remix-run/node-fetch-server": "^0.13.0",
     "@standardserver/core": "workspace:*",
     "@standardserver/fetch": "workspace:*",

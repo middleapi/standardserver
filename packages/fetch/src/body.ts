@@ -17,17 +17,16 @@ export interface ToStandardBodyOptions {
 export async function toStandardBody(re: Request | Response, options?: ToStandardBodyOptions): Promise<StandardBody> {
   const hint = re.headers.get('standard-server') ?? options?.hint
   const mimeType = re.headers.get('content-type')?.split(';')[0]?.trim()
-  const contentDisposition = re.headers.get('content-disposition')
   const contentLength = re.headers.get('content-length')
 
-  if (hint === 'none') {
+  if (hint === 'none' || (hint === undefined && mimeType === undefined && (contentLength === '0' || contentLength === null))) {
     return undefined
   }
 
   // request.body might be null if the method is GET, HEAD, or other methods.
-  // @warning response.body over fetch is almost always a stream,
+  // WARNING: response.body over fetch is almost always a stream,
   // even if the standard-server response body is undefined.
-  // @warning React Native fetch body might not exist (undefined), so we need to explicitly check for null.
+  // WARNING: React Native fetch body might not exist (undefined), so we need to explicitly check for null.
   if (hint === undefined && re.body === null) {
     return undefined
   }
@@ -37,25 +36,26 @@ export async function toStandardBody(re: Request | Response, options?: ToStandar
     throw new TypeError('Failed to read body: body stream already read')
   }
 
-  if (hint === 'json' || (hint === undefined && contentDisposition === null && mimeType === 'application/json')) {
+  if (hint === 'json' || (hint === undefined && mimeType === 'application/json')) {
     const text = await re.text()
     return parseEmptyableJSON(text)
   }
 
-  if (hint === 'form-data' || (hint === undefined && contentDisposition === null && mimeType === 'multipart/form-data')) {
+  if (hint === 'form-data' || (hint === undefined && mimeType === 'multipart/form-data')) {
     return await re.formData()
   }
 
-  if (hint === 'url-search-params' || (hint === undefined && contentDisposition === null && mimeType === 'application/x-www-form-urlencoded')) {
+  if (hint === 'url-search-params' || (hint === undefined && mimeType === 'application/x-www-form-urlencoded')) {
     const text = await re.text()
     return new URLSearchParams(text)
   }
 
-  if (hint === 'event-stream' || (hint === undefined && contentDisposition === null && mimeType === 'text/event-stream')) {
+  if (hint === 'event-stream' || (hint === undefined && mimeType === 'text/event-stream')) {
     return toEventIterator(re.body)
   }
 
-  if (hint === 'file' || (hint === undefined && (contentDisposition !== null || contentLength !== null))) {
+  if (hint === 'file' || (hint === undefined && contentLength !== null)) {
+    const contentDisposition = re.headers.get('content-disposition')
     const fileName = contentDisposition !== null
       ? getFilenameFromContentDisposition(contentDisposition)
       : undefined
@@ -91,22 +91,37 @@ export function toFetchBody(
   body: undefined | string | FormData | URLSearchParams | Blob | ReadableStream<Uint8Array<ArrayBuffer>>,
   headers: StandardHeaders,
 ] {
-  headers = { ...headers }
+  const originalContentType = headers['content-type']
+  const originalContentLength = headers['content-length']
+
+  headers = {
+    ...headers,
+    'standard-server': undefined,
+    'content-type': undefined,
+    'content-length': undefined,
+  }
 
   if (body === undefined) {
-    headers['standard-server'] = 'none' satisfies StandardBodyHint
     return [undefined, headers]
   }
 
   if (body instanceof ReadableStream) {
+    // Explicitly set the body hint to avoid misidentification
+    // when the stream is empty, the length is predictable, or the content type is common.
     headers['standard-server'] = 'octet-stream' satisfies StandardBodyHint
-    headers['content-type'] ??= 'application/octet-stream'
+
+    headers['content-type'] = originalContentType ?? 'application/octet-stream'
+    headers['content-length'] = originalContentLength
+
     return [body, headers]
   }
 
   if (body instanceof Blob) {
-    headers['standard-server'] = 'file' satisfies StandardBodyHint // file is a blob, but blob is not a file
-    headers['content-type'] ??= body.type
+    // Explicitly set the body hint to avoid misidentification
+    // when the file size is NaN or the content type is common.
+    headers['standard-server'] = 'file' satisfies StandardBodyHint // A File is also a Blob
+
+    headers['content-type'] = body.type
     headers['content-disposition'] ??= generateContentDisposition(body instanceof File ? body.name : 'blob')
 
     // BunS3 can use NaN for the size
@@ -119,22 +134,20 @@ export function toFetchBody(
   }
 
   if (body instanceof FormData) {
-    headers['standard-server'] = 'form-data' satisfies StandardBodyHint
+    // Fetch client/server automatically sets content-type, content-length for FormData bodies.
     return [body, headers]
   }
 
   if (body instanceof URLSearchParams) {
-    headers['standard-server'] = 'url-search-params' satisfies StandardBodyHint
+    // Fetch client/server automatically sets content-type, content-length for URLSearchParams bodies.
     return [body, headers]
   }
 
   if (isAsyncIteratorObject(body)) {
-    headers['standard-server'] = 'event-stream' satisfies StandardBodyHint
-    headers['content-type'] ??= 'text/event-stream'
+    headers['content-type'] = 'text/event-stream'
     return [toEventStream(body, options.eventStream), headers]
   }
 
-  headers['standard-server'] = 'json' satisfies StandardBodyHint
-  headers['content-type'] ??= 'application/json'
+  headers['content-type'] = 'application/json'
   return [stringifyJSON(body), headers]
 }

@@ -30,26 +30,118 @@ describe.each([
   })
 
   it.each([
-    () => undefined,
-    () => 'string',
-    () => ({ a: 1, b: [2, 3, { c: 4 }] }),
-    () => new URLSearchParams('a=b&c=d'),
-    () => new File(['hello world'], 'test.txt', { type: 'text/plain' }),
-    () => {
-      const formData = new FormData()
-      formData.append('a', 'b')
-      formData.append('c', 'd')
-      formData.append('file', new File(['File Inside'], 'test.etc', { type: 'application/octet-stream' }))
-      return formData
+    {
+      name: 'undefined',
+      createBody: () => undefined,
     },
-  ])('buffered body %s', async (createBody) => {
+    {
+      name: 'json-string',
+      createBody: () => 'string',
+    },
+    {
+      name: 'json-object',
+      createBody: () => ({ a: 1, b: [2, 3, { c: 4 }] }),
+    },
+    {
+      name: 'URLSearchParams',
+      createBody: () => new URLSearchParams('a=b&c=d'),
+    },
+    {
+      name: 'blob',
+      createBody: () => new Blob(['hello world'], { type: 'text/plain' }),
+      assertBody: async (body: any) => {
+        expect(body).toBeInstanceOf(Blob)
+        expect(body.type).toEqual('text/plain')
+        expect(await body.text()).toEqual('hello world')
+      },
+    },
+    {
+      name: 'file',
+      createBody: () => new File(['hello world'], 'test.txt', { type: 'text/plain' }),
+      assertBody: async (body: any) => {
+        expect(body).toBeInstanceOf(File)
+        expect(body.name).toEqual('test.txt')
+        expect(body.type).toEqual('text/plain')
+        expect(await body.text()).toEqual('hello world')
+      },
+    },
+    {
+      name: 'empty-file',
+      createBody: () => new File([], '', { type: '' }),
+      assertBody: async (body: any) => {
+        expect(body).toBeInstanceOf(File)
+        expect(body.name).toEqual('')
+        expect(body.type).toEqual('')
+        expect(body.size).toEqual(0)
+        expect(await body.text()).toEqual('')
+      },
+    },
+    {
+      name: 'formdata',
+      createBody: () => {
+        const formData = new FormData()
+        formData.append('a', 'b')
+        formData.append('c', 'd')
+        formData.append('file', new File(['File Inside'], 'test.etc', { type: 'application/octet-stream' }))
+        return formData
+      },
+      assertBody: async (body: any) => {
+        expect(body).toBeInstanceOf(FormData)
+        const form = body as FormData
+        expect([...form.keys()]).toEqual(['a', 'c', 'file'])
+        expect(form.getAll('a')).toEqual(['b'])
+        expect(form.getAll('c')).toEqual(['d'])
+
+        const files = form.getAll('file')
+        expect(files.length).toEqual(1)
+        const file = files[0] as File
+        expect(file.name).toEqual('test.etc')
+        expect(file.type).toEqual('application/octet-stream')
+        expect(await file.text()).toEqual('File Inside')
+      },
+    },
+    {
+      name: 'empty-event-stream',
+      createBody: () => {
+        return (async function* () {}())
+      },
+      assertBody: async (body: any) => {
+        expect(body).toSatisfy(isAsyncIteratorObject)
+        const iterator = body as AsyncGenerator
+        await expect(iterator.next()).resolves.toEqual({ done: true })
+      },
+    },
+    {
+      name: 'empty-octet-stream',
+      createBody: () => {
+        return new ReadableStream({
+          start(controller) {
+            controller.close()
+          },
+        })
+      },
+      assertBody: async (body: any) => {
+        expect(body).toBeInstanceOf(ReadableStream)
+        const stream = body as ReadableStream
+        const reader = stream.getReader()
+        await expect(reader.read()).resolves.toEqual({ done: true })
+      },
+    },
+  ])('buffered body $name', async ({ createBody, assertBody }) => {
     const method = Math.random() < 0.5 ? 'POST' : 'PATCH'
     const status = Math.random() < 0.5 ? 200 : 201
     const url: StandardUrl = Math.random() < 0.5 ? '/test' : '/test2?query=1'
 
     clientServer.handler.mockImplementationOnce(async (request) => {
       expect(request.headers['x-from']).toEqual('client')
-      expect(await request.resolveBody()).toEqual(createBody())
+
+      if (assertBody) {
+        await assertBody(await request.resolveBody())
+      }
+      else {
+        expect(await request.resolveBody()).toEqual(createBody())
+      }
+
       expect(request.method).toEqual(method)
       expect(request.url).toEqual(url)
 
@@ -73,7 +165,13 @@ describe.each([
 
     expect(response.headers['x-from']).toEqual('server')
     expect(response.status).toEqual(status)
-    expect(await response.resolveBody()).toEqual(createBody())
+
+    if (assertBody) {
+      await assertBody(await response.resolveBody())
+    }
+    else {
+      expect(await response.resolveBody()).toEqual(createBody())
+    }
   })
 
   it('event stream in parallel', async () => {

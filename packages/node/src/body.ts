@@ -30,10 +30,14 @@ export async function toStandardBody(
   const hint = flattenStandardHeader(req.headers['standard-server']) ?? options?.hint
   const contentType = req.headers['content-type']
   const mimeType = contentType?.split(';')[0]?.trim()
-  const contentDisposition = req.headers['content-disposition']
   const contentLength = req.headers['content-length']
 
-  if (hint === 'none') {
+  // body's already parsed by upstream framework like express, ...
+  if (req.body !== undefined) {
+    return req.body
+  }
+
+  if (hint === 'none' || (hint === undefined && mimeType === undefined && (contentLength === '0' || contentLength === undefined))) {
     return undefined
   }
 
@@ -41,35 +45,31 @@ export async function toStandardBody(
     return undefined
   }
 
-  // body's already parsed by upstream framework like express, ...
-  if (req.body !== undefined) {
-    return req.body
-  }
-
   if (!req.readable) {
     // native fetch error use TypeError
     throw new TypeError('Failed to read body: body stream already read or destroyed')
   }
 
-  if (hint === 'json' || (hint === undefined && contentDisposition === undefined && mimeType === 'application/json')) {
+  if (hint === 'json' || (hint === undefined && mimeType === 'application/json')) {
     const text = await _streamToString(req)
     return parseEmptyableJSON(text)
   }
 
-  if (hint === 'form-data' || (hint === undefined && contentDisposition === undefined && mimeType === 'multipart/form-data')) {
+  if (hint === 'form-data' || (hint === undefined && mimeType === 'multipart/form-data')) {
     return _streamToFormData(req, contentType)
   }
 
-  if (hint === 'url-search-params' || (hint === undefined && contentDisposition === undefined && mimeType === 'application/x-www-form-urlencoded')) {
+  if (hint === 'url-search-params' || (hint === undefined && mimeType === 'application/x-www-form-urlencoded')) {
     const text = await _streamToString(req)
     return new URLSearchParams(text)
   }
 
-  if (hint === 'event-stream' || (hint === undefined && contentDisposition === undefined && mimeType === 'text/event-stream')) {
+  if (hint === 'event-stream' || (hint === undefined && mimeType === 'text/event-stream')) {
     return toEventIterator(req)
   }
 
-  if (hint === 'file' || (hint === undefined && (contentDisposition !== undefined || contentLength !== undefined))) {
+  if (hint === 'file' || (hint === undefined && contentLength !== undefined)) {
+    const contentDisposition = req.headers['content-disposition']
     const fileName = contentDisposition !== undefined
       ? getFilenameFromContentDisposition(contentDisposition)
       : undefined
@@ -96,27 +96,43 @@ export async function toNodeHttpBody(
   body: Readable | undefined | string,
   headers: StandardHeaders,
 ]> {
-  headers = { ...headers } // copy
+  const originalContentType = headers['content-type']
+  const originalContentLength = headers['content-length']
+
+  headers = {
+    ...headers,
+    'standard-server': undefined,
+    'content-type': undefined,
+    'content-length': undefined,
+  }
 
   if (body === undefined) {
-    headers['standard-server'] = 'none' satisfies StandardBodyHint
     return [undefined, headers]
   }
 
   if (body instanceof ReadableStream) {
+    // Explicitly set the body hint to avoid misidentification
+    // when the stream is empty, the length is predictable, or the content type is common.
     headers['standard-server'] = 'octet-stream' satisfies StandardBodyHint
-    headers['content-type'] ??= 'application/octet-stream'
+
+    // content-type is required when body is present
+    headers['content-type'] = originalContentType ?? 'application/octet-stream'
+    headers['content-length'] = originalContentLength
+
     return [Readable.fromWeb(body), headers]
   }
 
   if (body instanceof Blob) {
-    headers['standard-server'] = 'file' satisfies StandardBodyHint
-    headers['content-type'] ??= body.type
+    // Explicitly set the body hint to avoid misidentification
+    // when the file size is NaN or the content type is common.
+    headers['standard-server'] = 'file' satisfies StandardBodyHint // A File is also a Blob
+
+    headers['content-type'] = body.type
     headers['content-disposition'] ??= generateContentDisposition(body instanceof File ? body.name : 'blob')
 
     // BunS3 can use NaN for the size
     if (!Number.isNaN(body.size)) {
-      headers['content-length'] ??= body.size.toString()
+      headers['content-length'] = body.size.toString()
     }
 
     return [Readable.fromWeb(body.stream()), headers]
@@ -126,30 +142,23 @@ export async function toNodeHttpBody(
     const response = new Response(body)
     // some formdata parser require content-length, so we need load the blob first
     const blob = await response.blob()
-    headers['standard-server'] = 'form-data' satisfies StandardBodyHint
-    headers['content-type'] ??= blob.type
-    headers['content-length'] ??= blob.size.toString()
+    headers['content-type'] = blob.type
+    headers['content-length'] = blob.size.toString()
 
     return [Readable.fromWeb(blob.stream()), headers]
   }
 
   if (body instanceof URLSearchParams) {
-    headers['standard-server'] = 'url-search-params' satisfies StandardBodyHint
-    headers['content-type'] ??= 'application/x-www-form-urlencoded'
-
+    headers['content-type'] = 'application/x-www-form-urlencoded'
     return [body.toString(), headers]
   }
 
   if (isAsyncIteratorObject(body)) {
-    headers['standard-server'] = 'event-stream' satisfies StandardBodyHint
-    headers['content-type'] ??= 'text/event-stream'
-
+    headers['content-type'] = 'text/event-stream'
     return [toEventStream(body, options.eventStream), headers]
   }
 
-  headers['standard-server'] = 'json' satisfies StandardBodyHint
-  headers['content-type'] ??= 'application/json'
-
+  headers['content-type'] = 'application/json'
   return [stringifyJSON(body), headers]
 }
 

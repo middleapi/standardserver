@@ -121,11 +121,13 @@ describe('toStandardBody', () => {
   })
 
   it('file', async () => {
+    const file = new Blob(['{"value":123}'], { type: 'plain/text' })
     const request = new Request('https://example.com', {
       method: 'POST',
-      body: new Blob(['{"value":123}'], { type: 'application/json' }),
+      body: file,
       headers: {
         'content-disposition': 'attachment; filename="foo.pdf"',
+        'Content-Length': file.size.toString(),
       },
     })
 
@@ -134,7 +136,31 @@ describe('toStandardBody', () => {
     const standardFile = await toStandardBody(request) as any
     expect(standardFile).toBeInstanceOf(File)
     expect(standardFile.name).toBe('__name__')
-    expect(standardFile.type).toBe('application/json')
+    expect(standardFile.type).toBe('plain/text')
+    expect(await standardFile.text()).toBe('{"value":123}')
+
+    expect(getFilenameFromContentDispositionSpy).toHaveBeenCalledTimes(1)
+    expect(getFilenameFromContentDispositionSpy).toHaveBeenCalledWith('attachment; filename="foo.pdf"')
+  })
+
+  it('file (without content-type)', async () => {
+    const file = new Blob(['{"value":123}'], { type: 'plain/text' })
+    const request = new Request('https://example.com', {
+      method: 'POST',
+      body: file.stream(),
+      headers: {
+        'content-disposition': 'attachment; filename="foo.pdf"',
+        'Content-Length': file.size.toString(),
+      },
+      duplex: 'half',
+    })
+
+    getFilenameFromContentDispositionSpy.mockReturnValueOnce('__name__')
+
+    const standardFile = await toStandardBody(request) as any
+    expect(standardFile).toBeInstanceOf(File)
+    expect(standardFile.name).toBe('__name__')
+    expect(standardFile.type).toBe('')
     expect(await standardFile.text()).toBe('{"value":123}')
 
     expect(getFilenameFromContentDispositionSpy).toHaveBeenCalledTimes(1)
@@ -169,6 +195,9 @@ describe('toStandardBody', () => {
     const request = new Request('https://example.com', {
       method: 'POST',
       body: stream,
+      headers: {
+        'Content-Type': 'application/octet-stream',
+      },
       duplex: 'half',
     })
 
@@ -309,6 +338,16 @@ describe('toStandardBody', () => {
   })
 
   describe('edge case', () => {
+    it('returns undefined when body is null despite content-type', async () => {
+      const response = new Response(null, {
+        headers: {
+          'content-type': 'application/json',
+        },
+      })
+
+      expect(await toStandardBody(response)).toBe(undefined)
+    })
+
     it('throw on read body multiple time except (hint=none)', async () => {
       const request = new Request('https://example.com', {
         method: 'POST',
@@ -382,7 +421,6 @@ describe('toFetchBody', () => {
     expect(body).toBe(undefined)
     expect(headers).toEqual({
       'x-custom-header': 'custom-value',
-      'standard-server': 'none',
     })
   })
 
@@ -393,7 +431,6 @@ describe('toFetchBody', () => {
     expect(headers).toEqual({
       'content-type': 'application/json',
       'x-custom-header': 'custom-value',
-      'standard-server': 'json',
     })
   })
 
@@ -407,7 +444,6 @@ describe('toFetchBody', () => {
     expect(body).toBe(form)
     expect(headers).toEqual({
       'x-custom-header': 'custom-value',
-      'standard-server': 'form-data',
     })
   })
 
@@ -419,7 +455,6 @@ describe('toFetchBody', () => {
     expect(body).toBe(query)
     expect(headers).toEqual({
       'x-custom-header': 'custom-value',
-      'standard-server': 'url-search-params',
     })
   })
 
@@ -511,7 +546,6 @@ describe('toFetchBody', () => {
     expect(headers).toEqual({
       'content-type': 'text/event-stream',
       'x-custom-header': 'custom-value',
-      'standard-server': 'event-stream',
     })
 
     const reader = (body as ReadableStream).pipeThrough(new TextDecoderStream()).getReader()
