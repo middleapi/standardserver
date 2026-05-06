@@ -1,8 +1,12 @@
 import type { EventStreamMessage } from './types'
 import { EventStreamDecoderError } from './error'
 
+const EVENT_STREAM_LINE_DELIMITER_REGEX = /\r\n|[\n\r]/
+const EVENT_STREAM_DELIMITER_REGEX = /(?:\r\n|\r(?!\n)|\n)(?:\r\n|\r(?!\n)|\n)/
+const LEADING_WHITESPACE_REGEX = /^\s/
+
 export function decodeEventStreamMessage(encoded: string): EventStreamMessage {
-  const lines = encoded.replace(/\n+$/, '').split(/\n/)
+  const lines = encoded.split(EVENT_STREAM_LINE_DELIMITER_REGEX)
 
   const message: EventStreamMessage & { comments?: string[] } = {}
 
@@ -14,7 +18,7 @@ export function decodeEventStreamMessage(encoded: string): EventStreamMessage {
       : line.slice(0, index)
     const value = index === -1
       ? ''
-      : line.slice(index + 1).replace(/^\s/, '') // value may be prefixed by a single space https://html.spec.whatwg.org/multipage/server-sent-events.html#event-stream-interpretation
+      : line.slice(index + 1).replace(LEADING_WHITESPACE_REGEX, '') // value may be prefixed by a single space https://html.spec.whatwg.org/multipage/server-sent-events.html#event-stream-interpretation
 
     if (index === 0) { // comment starting with ':'
       message.comments ??= []
@@ -54,6 +58,7 @@ export function decodeEventStreamMessage(encoded: string): EventStreamMessage {
 
 export class EventStreamDecoder {
   private incomplete: string = ''
+  private trailingCR: boolean = false
 
   constructor(
     private readonly onEvent: (event: EventStreamMessage) => void,
@@ -61,19 +66,20 @@ export class EventStreamDecoder {
   }
 
   feed(chunk: string): void {
-    this.incomplete += chunk
-
-    const lastCompleteIndex = this.incomplete.lastIndexOf('\n\n')
-
-    if (lastCompleteIndex === -1) {
-      return
+    // If the previous chunk ended with '\r', a leading '\n' in this chunk is the
+    // second half of a CRLF sequence and should be ignored to avoid double-splitting.
+    if (this.trailingCR && chunk.startsWith('\n')) {
+      chunk = chunk.slice(1)
     }
 
-    const completes = this.incomplete.slice(0, lastCompleteIndex).split(/\n\n/)
-    this.incomplete = this.incomplete.slice(lastCompleteIndex + 2)
+    this.trailingCR = chunk.endsWith('\r')
+    this.incomplete += chunk
 
-    for (const encoded of completes) {
-      const message = decodeEventStreamMessage(`${encoded}\n\n`)
+    const parts = this.incomplete.split(EVENT_STREAM_DELIMITER_REGEX)
+    this.incomplete = parts.pop()!
+
+    for (const encoded of parts) {
+      const message = decodeEventStreamMessage(encoded)
       this.onEvent(message)
     }
   }

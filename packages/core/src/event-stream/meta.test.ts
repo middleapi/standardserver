@@ -9,11 +9,13 @@ it('get/withEventIteratorEventMeta', () => {
   expect(getEventIteratorEventMeta(data)).toEqual(undefined)
   expect(getEventIteratorEventMeta(1)).toEqual(undefined)
 
-  expect(() => withEventIteratorEventMeta(data, { id: '123\n' })).toThrow('Event\'s id must not contain a newline character')
+  expect(() => withEventIteratorEventMeta(data, { id: '123\n' })).toThrow('Event\'s id must not contain a carriage return or newline character')
+  expect(() => withEventIteratorEventMeta(data, { id: '123\r' })).toThrow('Event\'s id must not contain a carriage return or newline character')
   expect(() => withEventIteratorEventMeta(data, { retry: Number.NaN })).toThrow('Event\'s retry must be a integer and >= 0')
   expect(() => withEventIteratorEventMeta(data, { retry: 1.1 })).toThrow('Event\'s retry must be a integer and >= 0')
   expect(() => withEventIteratorEventMeta(data, { retry: -1 })).toThrow('Event\'s retry must be a integer and >= 0')
-  expect(() => withEventIteratorEventMeta(data, { comments: ['hi\n'] })).toThrow('Event\'s comment must not contain a newline character')
+  expect(() => withEventIteratorEventMeta(data, { comments: ['hi\n'] })).toThrow('Event\'s comment must not contain a carriage return or newline character')
+  expect(() => withEventIteratorEventMeta(data, { comments: ['hi\r'] })).toThrow('Event\'s comment must not contain a carriage return or newline character')
 })
 
 it('withEventIteratorEventMeta only proxy when make sense', () => {

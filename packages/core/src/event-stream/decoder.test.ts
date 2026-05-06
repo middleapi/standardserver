@@ -42,6 +42,15 @@ describe('decodeEventStreamMessage', () => {
     })
   })
 
+  it('on success - CR & CRLF delimiters', () => {
+    expect(decodeEventStreamMessage('event: message\rdata: hello\r\ndata: world\rid: 123\r\nretry: 10000\r\r\n')).toEqual({
+      event: 'message',
+      data: 'hello\nworld',
+      id: '123',
+      retry: 10000,
+    })
+  })
+
   it('unknown keys', () => {
     expect(decodeEventStreamMessage('foo: bar\n\n')).toEqual({})
   })
@@ -107,6 +116,54 @@ describe('eventStreamDecoder', () => {
       event: 'done',
       id: '123',
       retry: 10000,
+    })
+  })
+
+  it('on success with CR & CRLF delimiters', () => {
+    const onEvent = vi.fn()
+
+    const decoder = new EventStreamDecoder(onEvent)
+
+    decoder.feed('event: message\rdata: hello\r\ndata: world\r')
+    decoder.feed('\r\nevent: done\r')
+    decoder.feed('data: bye\r\n\r')
+
+    decoder.end()
+
+    expect(onEvent).toHaveBeenCalledTimes(2)
+    expect(onEvent).toHaveBeenNthCalledWith(1, {
+      data: 'hello\nworld',
+      event: 'message',
+    })
+    expect(onEvent).toHaveBeenNthCalledWith(2, {
+      data: 'bye',
+      event: 'done',
+    })
+  })
+
+  it('on success with spec line endings', () => {
+    const onEvent = vi.fn()
+
+    const decoder = new EventStreamDecoder(onEvent)
+
+    decoder.feed('event: message\r')
+    decoder.feed('\ndata: hello\r')
+    decoder.feed('\ndata: world\r')
+    decoder.feed('\n\r')
+    decoder.feed('\n')
+
+    decoder.feed('event: done\rdata: bye\r\r')
+
+    decoder.end()
+
+    expect(onEvent).toHaveBeenCalledTimes(2)
+    expect(onEvent).toHaveBeenNthCalledWith(1, {
+      data: 'hello\nworld',
+      event: 'message',
+    })
+    expect(onEvent).toHaveBeenNthCalledWith(2, {
+      data: 'bye',
+      event: 'done',
     })
   })
 

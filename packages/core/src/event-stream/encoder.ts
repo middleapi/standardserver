@@ -1,15 +1,21 @@
 import type { EventStreamMessage } from './types'
 import { EventStreamEncoderError } from './error'
 
+const EVENT_STREAM_LINE_ENDING_REGEX = /\r\n|[\n\r]/
+
+function containsEventStreamLineBreak(value: string): boolean {
+  return EVENT_STREAM_LINE_ENDING_REGEX.test(value)
+}
+
 export function assertEventStreamMessageId(id: string): void {
-  if (id.includes('\n')) {
-    throw new EventStreamEncoderError('Event\'s id must not contain a newline character')
+  if (containsEventStreamLineBreak(id)) {
+    throw new EventStreamEncoderError('Event\'s id must not contain a carriage return or newline character')
   }
 }
 
 export function assertEventStreamMessageName(event: string): void {
-  if (event.includes('\n')) {
-    throw new EventStreamEncoderError('Event\'s event must not contain a newline character')
+  if (containsEventStreamLineBreak(event)) {
+    throw new EventStreamEncoderError('Event\'s event must not contain a carriage return or newline character')
   }
 }
 
@@ -20,18 +26,20 @@ export function assertEventStreamMessageRetry(retry: number): void {
 }
 
 export function assertEventStreamMessageComment(comment: string): void {
-  if (comment.includes('\n')) {
-    throw new EventStreamEncoderError('Event\'s comment must not contain a newline character')
+  if (containsEventStreamLineBreak(comment)) {
+    throw new EventStreamEncoderError('Event\'s comment must not contain a carriage return or newline character')
   }
 }
 
 export function encodeEventStreamMessageData(data: string | undefined): string {
-  const lines = data?.split(/\n/) ?? []
-
   let output = ''
 
-  for (const line of lines) {
-    output += `data: ${line}\n`
+  if (data !== undefined) {
+    const lines = data.split(EVENT_STREAM_LINE_ENDING_REGEX)
+
+    for (const line of lines) {
+      output += `data: ${line}\n`
+    }
   }
 
   return output
