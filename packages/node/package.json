@@ -9,6 +9,7 @@
     "url": "git+https://github.com/standardserver/standardserver.git",
     "directory": "packages/node"
   },
+  "sideEffects": false,
   "publishConfig": {
     "exports": {
       ".": {

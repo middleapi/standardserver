@@ -9,6 +9,7 @@
     "url": "git+https://github.com/standardserver/standardserver.git",
     "directory": "packages/peer"
   },
+  "sideEffects": false,
   "publishConfig": {
     "exports": {
       ".": {
