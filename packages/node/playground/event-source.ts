@@ -4,7 +4,7 @@ import { toStandardLazyRequest } from '../src/request'
 import { sendStandardResponse } from '../src/response'
 
 const server = createServer(async (req, res) => {
-  const body = await toStandardLazyRequest(req, res).body()
+  const body = await toStandardLazyRequest(req, res).resolveBody()
 
   if (isAsyncIteratorObject(body)) {
     while (true) {

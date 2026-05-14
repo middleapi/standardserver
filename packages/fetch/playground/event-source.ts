@@ -6,7 +6,7 @@ import { toFetchResponse } from '../src/response'
 
 serve({
   async fetch(request) {
-    const body = await toStandardLazyRequest(request).body()
+    const body = await toStandardLazyRequest(request).resolveBody()
 
     if (isAsyncIteratorObject(body)) {
       while (true) {

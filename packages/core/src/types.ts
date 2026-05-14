@@ -40,7 +40,7 @@ export interface StandardRequest {
   /**
    * The body has been parsed based on the content headers.
    */
-  body?: StandardBody | undefined
+  body: StandardBody | undefined
   /**
    * An AbortSignal to communicate aborting of request.
    */
@@ -71,7 +71,7 @@ export interface StandardResponse {
   /**
    * The body has been parsed based on the content headers.
    */
-  body?: StandardBody | undefined
+  body: StandardBody | undefined
 }
 
 export interface StandardLazyResponse extends Omit<StandardResponse, 'body'> {

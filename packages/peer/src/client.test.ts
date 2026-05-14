@@ -12,7 +12,13 @@ vi.mock('@standardserver/shared', async origin => ({
 }))
 
 function makeRequest(overrides: Partial<StandardRequest> = {}): StandardRequest {
-  return { method: 'GET', url: '/test', headers: {}, ...overrides }
+  return {
+    method: 'GET',
+    url: '/test',
+    headers: {},
+    body: undefined,
+    ...overrides,
+  }
 }
 
 function makeResponseMessage(id: string, body?: unknown, headers: Record<string, string> = {}): PeerResponseMessage {
