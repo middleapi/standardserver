@@ -46,7 +46,8 @@ it('toEventStream', async () => {
   expect((await reader.read())).toEqual({ done: false, value: 'event: message\ndata: 1\n\n' })
   expect((await reader.read())).toEqual({ done: false, value: 'event: message\ndata: 2\n\n' })
   expect((await reader.read())).toEqual({ done: false, value: 'event: message\ndata: 3\n\n' })
+  expect((await reader.read())).toEqual({ done: false, value: 'event: close\n\n' })
   expect((await reader.read())).toEqual({ done: true, value: undefined })
 
-  expect(toEventStreamFetch).toBeCalledTimes(1)
+  expect(toEventStreamFetch).toHaveBeenCalledTimes(1)
 })

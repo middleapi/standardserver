@@ -232,6 +232,7 @@ describe('toEventStream', () => {
     expect((await reader.read())).toEqual({ done: false, value: 'event: message\nid: id-1\ndata: {"order":1}\n\n' })
     expect((await reader.read())).toEqual({ done: false, value: 'event: message\nretry: 20000\ndata: {"order":2}\n\n' })
     expect((await reader.read())).toEqual({ done: false, value: 'event: message\n\n' })
+    expect((await reader.read())).toEqual({ done: false, value: 'event: close\n\n' })
     expect((await reader.read())).toEqual({ done: true })
   })
 
@@ -429,6 +430,7 @@ describe('toEventStream', () => {
         vi.advanceTimersByTimeAsync(20),
       ])
 
+      await expect(reader.read()).resolves.toEqual({ done: false, value: 'event: close\n\n' })
       await expect(reader.read()).resolves.toEqual({ done: true })
     })
 
@@ -461,6 +463,7 @@ describe('toEventStream', () => {
         vi.advanceTimersByTimeAsync(100),
       ])
 
+      await expect(reader.read()).resolves.toEqual({ done: false, value: 'event: close\n\n' })
       await expect(reader.read()).resolves.toEqual({ done: true })
     })
   })
@@ -490,6 +493,7 @@ describe('toEventStream', () => {
         vi.advanceTimersByTimeAsync(50),
       ])
 
+      await expect(reader.read()).resolves.toEqual({ done: false, value: 'event: close\n\n' })
       await expect(reader.read()).resolves.toEqual({ done: true })
     })
 
@@ -513,12 +517,13 @@ describe('toEventStream', () => {
         vi.advanceTimersByTimeAsync(50),
       ])
 
+      await expect(reader.read()).resolves.toEqual({ done: false, value: 'event: close\n\n' })
       await expect(reader.read()).resolves.toEqual({ done: true })
     })
   })
 
-  describe('omit empty close event', () => {
-    it('enabled', async () => {
+  describe('empty close event', () => {
+    it('enabled by default', async () => {
       async function* gen() {
         yield 'hello'
       }
@@ -526,26 +531,6 @@ describe('toEventStream', () => {
       const stream = toEventStream(gen(), {
         initialCommentEnabled: false,
         keepAliveEnabled: false,
-        omitEmptyCloseEvent: true,
-      })
-
-      const reader = stream
-        .pipeThrough(new TextDecoderStream())
-        .getReader()
-
-      await expect(reader.read()).resolves.toEqual({ done: false, value: 'event: message\ndata: "hello"\n\n' })
-      await expect(reader.read()).resolves.toEqual({ done: true })
-    })
-
-    it('disabled', async () => {
-      async function* gen() {
-        yield 'hello'
-      }
-
-      const stream = toEventStream(gen(), {
-        initialCommentEnabled: false,
-        keepAliveEnabled: false,
-        omitEmptyCloseEvent: false,
       })
 
       const reader = stream
@@ -557,7 +542,46 @@ describe('toEventStream', () => {
       await expect(reader.read()).resolves.toEqual({ done: true })
     })
 
-    it.each([true, false])('still sends close event when iterator returns a value: %s', async (omitEmptyCloseEvent) => {
+    it('disabled', async () => {
+      async function* gen() {
+        yield 'hello'
+      }
+
+      const stream = toEventStream(gen(), {
+        initialCommentEnabled: false,
+        keepAliveEnabled: false,
+        emptyCloseEventEnabled: false,
+      })
+
+      const reader = stream
+        .pipeThrough(new TextDecoderStream())
+        .getReader()
+
+      await expect(reader.read()).resolves.toEqual({ done: false, value: 'event: message\ndata: "hello"\n\n' })
+      await expect(reader.read()).resolves.toEqual({ done: true })
+    })
+
+    it('enabled explicitly', async () => {
+      async function* gen() {
+        yield 'hello'
+      }
+
+      const stream = toEventStream(gen(), {
+        initialCommentEnabled: false,
+        keepAliveEnabled: false,
+        emptyCloseEventEnabled: true,
+      })
+
+      const reader = stream
+        .pipeThrough(new TextDecoderStream())
+        .getReader()
+
+      await expect(reader.read()).resolves.toEqual({ done: false, value: 'event: message\ndata: "hello"\n\n' })
+      await expect(reader.read()).resolves.toEqual({ done: false, value: 'event: close\n\n' })
+      await expect(reader.read()).resolves.toEqual({ done: true })
+    })
+
+    it.each([true, false])('still sends close event when iterator returns a value: %s', async (emptyCloseEventEnabled) => {
       async function* gen() {
         yield 'hello'
         return 'bye'
@@ -566,7 +590,7 @@ describe('toEventStream', () => {
       const stream = toEventStream(gen(), {
         initialCommentEnabled: false,
         keepAliveEnabled: false,
-        omitEmptyCloseEvent,
+        emptyCloseEventEnabled,
       })
 
       const reader = stream
