@@ -116,11 +116,11 @@ export interface ToEventStreamOptions {
   initialComment?: string
 
   /**
-   * If true, no `close` event is sent when the iterator completes with `undefined`.
+   * If true, a empty `close` event is sent when the iterator completes with `undefined`.
    *
    * @default true
    */
-  omitEmptyCloseEvent?: boolean
+  emptyCloseEventEnabled?: boolean
 }
 
 export function toEventStream(
@@ -132,7 +132,7 @@ export function toEventStream(
   const keepAliveComment = options.keepAliveComment ?? ''
   const initialCommentEnabled = options.initialCommentEnabled ?? true
   const initialComment = options.initialComment ?? ''
-  const omitEmptyCloseEvent = options.omitEmptyCloseEvent ?? true
+  const emptyCloseEventEnabled = options.emptyCloseEventEnabled ?? true
 
   let cancelled = false
   let timeout: ReturnType<typeof setInterval> | undefined
@@ -165,7 +165,7 @@ export function toEventStream(
 
         const [data, meta] = unwrapEventIteratorEvent(result.value)
 
-        if (!omitEmptyCloseEvent || !result.done || data !== undefined || meta !== undefined) {
+        if (!result.done || data !== undefined || meta !== undefined || emptyCloseEventEnabled) {
           const event = result.done ? 'close' : 'message'
           controller.enqueue(encodeEventStreamMessage({
             ...meta,
