@@ -140,12 +140,9 @@ export async function toNodeHttpBody(
 
   if (body instanceof FormData) {
     const response = new Response(body)
-    // some formdata parser require content-length, so we need load the blob first
-    const blob = await response.blob()
-    headers['content-type'] = blob.type
-    headers['content-length'] = blob.size.toString()
+    headers['content-type'] = response.headers.get('content-type')!
 
-    return [Readable.fromWeb(blob.stream()), headers]
+    return [Readable.fromWeb(response.body!), headers]
   }
 
   if (body instanceof URLSearchParams) {

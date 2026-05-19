@@ -461,7 +461,6 @@ describe('toNodeHttpBody', () => {
     expect(body).toBeInstanceOf(Readable)
     expect(headers).toEqual({
       'x-custom-header': 'custom-value',
-      'content-length': expect.any(String),
       'content-type': expect.stringMatching(/multipart\/form-data;.+/),
     })
 
