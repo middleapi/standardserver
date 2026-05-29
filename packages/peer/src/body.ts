@@ -73,7 +73,7 @@ export function toStandardBody(
     }
     finally {
     // The body is fully loaded, so we can clean up immediately.
-      await cleanup(errorRef ? { isCancelled: false, error: errorRef.value } : { isCancelled: false })
+      await cleanup(errorRef ? { kind: 'error', error: errorRef.value } : { kind: 'success' })
     }
   }
 

@@ -64,8 +64,8 @@ export class ServerPeer {
     const signal = controller.signal
 
     try {
-      const decoded = toStandardBody(message, async ({ isCancelled }) => {
-        if (isCancelled && (state.eventStreamMessageQueue || state.octetStreamMessageQueue)) {
+      const decoded = toStandardBody(message, async ({ kind }) => {
+        if (kind === 'cancelled' && (state.eventStreamMessageQueue || state.octetStreamMessageQueue)) {
           // only need cancel stream if streams is still active
           state.eventStreamMessageQueue = undefined
           state.octetStreamMessageQueue = undefined

@@ -186,12 +186,12 @@ export class ClientPeer {
     state.resolve = undefined
 
     try {
-      const decoded = toStandardBody(message, async ({ isCancelled, error }) => {
-        if (isCancelled) {
-          await this.abortById(id, error)
+      const decoded = toStandardBody(message, async (cleanupState) => {
+        if (cleanupState.kind === 'cancelled') {
+          await this.abortById(id, cleanupState.error)
         }
         else if (state.eventStreamMessageQueue || state.octetStreamMessageQueue) {
-          await this.closeById(id, error)
+          await this.closeById(id, cleanupState.error)
         }
       })
       state.eventStreamMessageQueue = decoded.eventStreamMessageQueue

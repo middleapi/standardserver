@@ -70,7 +70,7 @@ export function toEventIterator(
       }
     }
   }, async (state) => {
-    if (state.isCancelled) {
+    if (state.kind === 'cancelled') {
       isCancelled = true
     }
 

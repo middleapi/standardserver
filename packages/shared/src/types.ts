@@ -1,3 +1,8 @@
+type AsyncCleanupFnState
+  = | { kind: 'success', error?: undefined }
+    | { kind: 'error', error: unknown }
+    | { kind: 'cancelled', error?: unknown }
+
 export interface AsyncCleanupFn {
-  (state: { isCancelled: boolean, error?: unknown }): Promise<void>
+  (state: AsyncCleanupFnState): Promise<void>
 }

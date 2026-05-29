@@ -148,8 +148,8 @@ describe.each([
           await sleep(times === 1 ? 100 : 1000)
           return { done: false, value: 'Hello' }
         },
-        async ({ isCancelled }) => {
-          if (isCancelled) {
+        async ({ kind }) => {
+          if (kind === 'cancelled') {
             canceled = true
           }
         },
@@ -262,8 +262,8 @@ describe.each([
             await sleep(times === 1 ? 100 : 1000)
             return { done: false, value: 'Hello' }
           },
-          async ({ isCancelled }) => {
-            if (isCancelled) {
+          async ({ kind }) => {
+            if (kind === 'cancelled') {
               canceled = true
             }
           },
@@ -379,8 +379,8 @@ describe.each([
             await sleep(times === 1 ? 100 : 1000)
             return { done: false, value: 'Hello' }
           },
-          async ({ isCancelled }) => {
-            if (isCancelled) {
+          async ({ kind }) => {
+            if (kind === 'cancelled') {
               canceled = true
             }
           },
@@ -509,8 +509,8 @@ describe.each([
           await sleep(times === 1 ? 100 : 1000)
           return { done: false, value: 'Hello' }
         },
-        async ({ isCancelled }) => {
-          if (isCancelled) {
+        async ({ kind }) => {
+          if (kind === 'cancelled') {
             canceled = true
           }
         },

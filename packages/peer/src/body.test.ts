@@ -126,7 +126,7 @@ describe('toStandardBody', () => {
     await expect((body as AsyncIteratorClass<any>).next()).resolves.toEqual({ done: true, value: 'data' })
 
     expect(cleanup).toHaveBeenCalledTimes(1)
-    expect(cleanup).toHaveBeenCalledWith({ isCancelled: false })
+    expect(cleanup).toHaveBeenCalledWith({ kind: 'success' })
   })
 
   it('decodes octet-stream hint to ReadableStream', async () => {
@@ -147,7 +147,7 @@ describe('toStandardBody', () => {
     expect(await reader.read()).toEqual({ done: true, value: undefined })
 
     expect(cleanup).toHaveBeenCalledTimes(1)
-    expect(cleanup).toHaveBeenCalledWith({ isCancelled: false })
+    expect(cleanup).toHaveBeenCalledWith({ kind: 'success' })
   })
 
   it('decodes file hint to File', async () => {
@@ -168,7 +168,7 @@ describe('toStandardBody', () => {
     expect(await (body as File).text()).toBe('file content')
 
     expect(cleanup).toHaveBeenCalledTimes(1)
-    expect(cleanup).toHaveBeenCalledWith({ isCancelled: false })
+    expect(cleanup).toHaveBeenCalledWith({ kind: 'success' })
   })
 
   it('decodes file hint with no binary', async () => {
@@ -182,7 +182,7 @@ describe('toStandardBody', () => {
     expect((body as File).size).toBe(0)
 
     expect(cleanup).toHaveBeenCalledTimes(1)
-    expect(cleanup).toHaveBeenCalledWith({ isCancelled: false })
+    expect(cleanup).toHaveBeenCalledWith({ kind: 'success' })
   })
 
   it('decodes file hint to File without content-disposition', async () => {
@@ -203,7 +203,7 @@ describe('toStandardBody', () => {
     expect(await body.text()).toBe('file content')
 
     expect(cleanup).toHaveBeenCalledTimes(1)
-    expect(cleanup).toHaveBeenCalledWith({ isCancelled: false })
+    expect(cleanup).toHaveBeenCalledWith({ kind: 'success' })
   })
 
   it('decodes form-data hint to FormData', async () => {
@@ -227,7 +227,7 @@ describe('toStandardBody', () => {
     expect((body as FormData).get('key')).toBe('value')
 
     expect(cleanup).toHaveBeenCalledTimes(1)
-    expect(cleanup).toHaveBeenCalledWith({ isCancelled: false })
+    expect(cleanup).toHaveBeenCalledWith({ kind: 'success' })
   })
 
   it('decodes form-data hint resolveBody throw on invalid data', async () => {
@@ -239,7 +239,7 @@ describe('toStandardBody', () => {
     const { resolveBody } = toStandardBody(message, cleanup)
 
     await expect(resolveBody()).rejects.toThrow()
-    expect(cleanup).toHaveBeenCalledWith({ isCancelled: false, error: expect.any(Error) })
+    expect(cleanup).toHaveBeenCalledWith({ kind: 'error', error: expect.any(Error) })
   })
 
   it('decodes url-search-params hint', async () => {
@@ -257,7 +257,7 @@ describe('toStandardBody', () => {
     expect(body.get('b')).toBe('2')
 
     expect(cleanup).toHaveBeenCalledTimes(1)
-    expect(cleanup).toHaveBeenCalledWith({ isCancelled: false })
+    expect(cleanup).toHaveBeenCalledWith({ kind: 'success' })
   })
 
   it('decodes default (JSON) body', async () => {
@@ -273,7 +273,7 @@ describe('toStandardBody', () => {
     expect(body).toEqual({ key: 'val' })
 
     expect(cleanup).toHaveBeenCalledTimes(1)
-    expect(cleanup).toHaveBeenCalledWith({ isCancelled: false })
+    expect(cleanup).toHaveBeenCalledWith({ kind: 'success' })
   })
 
   it('decodes undefined body', async () => {
@@ -288,6 +288,6 @@ describe('toStandardBody', () => {
 
     expect(body).toBe(undefined)
     expect(cleanup).toHaveBeenCalledTimes(1)
-    expect(cleanup).toHaveBeenCalledWith({ isCancelled: false })
+    expect(cleanup).toHaveBeenCalledWith({ kind: 'success' })
   })
 })

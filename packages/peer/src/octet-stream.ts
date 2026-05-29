@@ -19,17 +19,17 @@ export function toOctetStream(
         }
 
         if (json.close) {
-          await cleanup({ isCancelled: false })
+          await cleanup({ kind: 'success' })
           controller.close()
         }
       }
       catch (error) {
-        await cleanup({ isCancelled: false, error })
+        await cleanup({ kind: 'error', error })
         controller.error(error)
       }
     },
-    async cancel() {
-      await cleanup({ isCancelled: true })
+    async cancel(error) {
+      await cleanup({ kind: 'cancelled', error })
     },
   })
 }

@@ -18,7 +18,7 @@ describe('toEventIterator', () => {
 
     const r2 = await iter.next()
     expect(r2.done).toBe(true)
-    expect(cleanup).toHaveBeenCalledWith({ isCancelled: false })
+    expect(cleanup).toHaveBeenCalledWith({ kind: 'success' })
   })
 
   it('attaches event metadata to object values', async () => {
@@ -77,7 +77,7 @@ describe('toEventIterator', () => {
 
     await expect(iter.next()).rejects.toSatisfy(assertError)
 
-    expect(cleanup).toHaveBeenCalledWith({ isCancelled: false, error: expect.toSatisfy(assertError) })
+    expect(cleanup).toHaveBeenCalledWith({ kind: 'error', error: expect.toSatisfy(assertError) })
   })
 
   it('returns done with value on close event', async () => {
@@ -95,16 +95,16 @@ describe('toEventIterator', () => {
     expect(result.done).toBe(true)
     const [data] = unwrapEventIteratorEvent(result.value)
     expect(data).toEqual({ final: true })
-    expect(cleanup).toHaveBeenCalledWith({ isCancelled: false })
+    expect(cleanup).toHaveBeenCalledWith({ kind: 'success' })
   })
 
-  it('calls cleanup({ isCancelled: true }) when iterator.return() is called early', async () => {
+  it('calls cleanup({kind: cancelled}) when iterator.return() is called early', async () => {
     const queue = new Queue<PeerEventStreamMessage>()
     const cleanup = vi.fn()
     const iter = toEventIterator(queue, cleanup)
 
     await iter.return(undefined)
-    expect(cleanup).toHaveBeenCalledWith({ isCancelled: true })
+    expect(cleanup).toHaveBeenCalledWith({ kind: 'cancelled' })
   })
 
   it('throw on aborted queue', async () => {
@@ -116,7 +116,7 @@ describe('toEventIterator', () => {
     queue.abort(error)
 
     await expect(iter.next()).rejects.toThrow(error)
-    expect(cleanup).toHaveBeenCalledWith({ isCancelled: false, error })
+    expect(cleanup).toHaveBeenCalledWith({ kind: 'error', error })
   })
 })
 
@@ -204,7 +204,7 @@ describe('eventStreamTransmitter', () => {
     await expect(transmitter.transmit()).rejects.toThrow('send failed')
 
     expect(cleanup).toHaveBeenCalledTimes(1)
-    expect(cleanup).toHaveBeenCalledWith({ isCancelled: true })
+    expect(cleanup).toHaveBeenCalledWith({ kind: 'cancelled' })
   })
 
   it('rethrow send-error and cleanup during sending return-event', async () => {
@@ -219,7 +219,7 @@ describe('eventStreamTransmitter', () => {
     await expect(transmitter.transmit()).rejects.toThrow('send failed')
 
     expect(cleanup).toHaveBeenCalledTimes(1)
-    expect(cleanup).toHaveBeenCalledWith({ isCancelled: false })
+    expect(cleanup).toHaveBeenCalledWith({ kind: 'success' })
   })
 
   it('rethrow send-error and cleanup during sending error-event', async () => {
@@ -236,7 +236,7 @@ describe('eventStreamTransmitter', () => {
     await expect(transmitter.transmit()).rejects.toThrow('send failed')
 
     expect(cleanup).toHaveBeenCalledTimes(1)
-    expect(cleanup).toHaveBeenCalledWith({ isCancelled: false, error: expect.any(EventIteratorErrorEvent) })
+    expect(cleanup).toHaveBeenCalledWith({ kind: 'error', error: expect.any(EventIteratorErrorEvent) })
   })
 
   it('does not send success-event after cancel', async () => {

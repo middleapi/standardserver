@@ -33,7 +33,7 @@ describe('toOctetStream', () => {
     const r3 = await reader.read()
     expect(r3.done).toBe(true)
 
-    expect(cleanup).toHaveBeenCalledWith({ isCancelled: false })
+    expect(cleanup).toHaveBeenCalledWith({ kind: 'success' })
   })
 
   it('handles close with no binary', async () => {
@@ -50,7 +50,7 @@ describe('toOctetStream', () => {
     const reader = stream.getReader()
     const r = await reader.read()
     expect(r.done).toBe(true)
-    expect(cleanup).toHaveBeenCalledWith({ isCancelled: false })
+    expect(cleanup).toHaveBeenCalledWith({ kind: 'success' })
   })
 
   it('converts Blob binary to Uint8Array', async () => {
@@ -77,10 +77,10 @@ describe('toOctetStream', () => {
 
     // read close
     await reader.read()
-    expect(cleanup).toHaveBeenCalledWith({ isCancelled: false })
+    expect(cleanup).toHaveBeenCalledWith({ kind: 'success' })
   })
 
-  it('calls cleanup(false) on cancel', async () => {
+  it('calls cleanup(cancelled) on cancel', async () => {
     const queue = new Queue<PeerOctetStreamMessage>()
     const cleanup = vi.fn()
     const stream = toOctetStream(queue, cleanup)
@@ -88,7 +88,7 @@ describe('toOctetStream', () => {
     const reader = stream.getReader()
     await reader.cancel()
 
-    expect(cleanup).toHaveBeenCalledWith({ isCancelled: true })
+    expect(cleanup).toHaveBeenCalledWith({ kind: 'cancelled' })
   })
 
   it('throw on aborted queue', async () => {
@@ -101,7 +101,7 @@ describe('toOctetStream', () => {
 
     const reader = stream.getReader()
     await expect(reader.read()).rejects.toThrow('aborted')
-    expect(cleanup).toHaveBeenCalledWith({ isCancelled: false, error })
+    expect(cleanup).toHaveBeenCalledWith({ kind: 'error', error })
   })
 })
 

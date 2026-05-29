@@ -50,7 +50,7 @@ export class AsyncIteratorClass<T, TReturn = unknown, TNext = unknown> implement
       finally {
         if (this.isDone && !this.isExecuteComplete) {
           this.isExecuteComplete = true
-          await this.cleanup(errorRef ? { isCancelled: false, error: errorRef.value } : { isCancelled: false })
+          await this.cleanup(errorRef ? { kind: 'error', error: errorRef.value } : { kind: 'success' })
         }
       }
     })
@@ -60,7 +60,7 @@ export class AsyncIteratorClass<T, TReturn = unknown, TNext = unknown> implement
     this.isDone = true
     if (!this.isExecuteComplete) {
       this.isExecuteComplete = true
-      await this.cleanup({ isCancelled: true })
+      await this.cleanup({ kind: 'cancelled' })
     }
 
     return { done: true, value }
@@ -71,7 +71,7 @@ export class AsyncIteratorClass<T, TReturn = unknown, TNext = unknown> implement
 
     if (!this.isExecuteComplete) {
       this.isExecuteComplete = true
-      await this.cleanup({ isCancelled: true, error })
+      await this.cleanup({ kind: 'cancelled', error })
     }
 
     throw error
@@ -84,7 +84,7 @@ export class AsyncIteratorClass<T, TReturn = unknown, TNext = unknown> implement
     this.isDone = true
     if (!this.isExecuteComplete) {
       this.isExecuteComplete = true
-      await this.cleanup({ isCancelled: true })
+      await this.cleanup({ kind: 'cancelled' })
     }
   }
 

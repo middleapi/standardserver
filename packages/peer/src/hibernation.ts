@@ -16,8 +16,8 @@ export class HibernationEventIterator<T, TReturn = unknown, TNext = unknown> ext
   ) {
     super(async () => {
       throw new Error('Cannot use hibernating iterator directly')
-    }, async ({ isCancelled }) => {
-      if (isCancelled) {
+    }, async ({ kind }) => {
+      if (kind === 'cancelled') {
         throw new Error('Cannot use hibernating iterator directly')
       }
     })
