@@ -14,7 +14,9 @@ export interface AsyncIteratorClassNextFn<T, TReturn> {
 }
 
 const fallbackAsyncDisposeSymbol: unique symbol = Symbol.for('asyncDispose')
+/* v8 ignore start  */
 const asyncDisposeSymbol: typeof Symbol extends { asyncDispose: infer T } ? T : typeof fallbackAsyncDisposeSymbol = (Symbol as any).asyncDispose ?? fallbackAsyncDisposeSymbol
+/* v8 ignore end  */
 
 export class AsyncIteratorClass<T, TReturn = unknown, TNext = unknown> implements AsyncIteratorObject<T, TReturn, TNext>, AsyncGenerator<T, TReturn, TNext> {
   private isDone = false

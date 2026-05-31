@@ -8,6 +8,13 @@ describe('sleep', () => {
     expect(Date.now() - start).toBeLessThanOrEqual(150)
   })
 
+  it('sleep resolves after the given duration with signal', async () => {
+    const start = Date.now()
+    await sleep(100, { signal: new AbortController().signal })
+    expect(Date.now() - start).toBeGreaterThanOrEqual(90)
+    expect(Date.now() - start).toBeLessThanOrEqual(150)
+  })
+
   it('sleep rejects when signal is already aborted', async () => {
     const controller = new AbortController()
     controller.abort(new Error('cancelled'))

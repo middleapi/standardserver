@@ -5,4 +5,5 @@ it('toStandardUrl', () => {
   expect(toStandardUrl({ url: '/foo' } as any)).toBe('/foo')
   expect(toStandardUrl({ url: '/foo?bar=1#baz' } as any)).toBe('/foo?bar=1#baz')
   expect(toStandardUrl({ url: '/', originalUrl: '/foo?bar=2#baz' } as any)).toBe('/foo?bar=2#baz')
+  expect(toStandardUrl({ url: 'base' } as any)).toBe('/base')
 })
