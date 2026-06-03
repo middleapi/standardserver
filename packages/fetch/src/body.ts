@@ -129,7 +129,7 @@ export function toFetchBody(
       return [body.stream(), headers]
     }
 
-    headers['content-length'] ??= body.size.toString()
+    headers['content-length'] = body.size.toString()
     return [body, headers]
   }
 
