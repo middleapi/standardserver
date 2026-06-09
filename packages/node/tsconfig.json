@@ -5,7 +5,7 @@
     "types": ["node"]
   },
   "references": [], // DON'T reference to DOM lib, because NODE and DOM types is conflict
-  "include": ["src"],
+  "include": ["./package.json", "src"],
   "exclude": [
     "**/*.test.*",
     "**/*.test-d.ts",

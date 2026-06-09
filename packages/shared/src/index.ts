@@ -1,5 +1,4 @@
 export * from './array'
-export * from './consts'
 export * from './error'
 export * from './function'
 export * from './id'
