@@ -44,10 +44,10 @@ The main entry point exposes four transport-agnostic shapes:
 Supporting primitives:
 
 | Export             | Description                                                   |
-| ------------------ | ------------------------------------------------------------- | -------- | ----------- |
+| ------------------ | ------------------------------------------------------------- |
 | `StandardMethod`   | Common HTTP verbs plus any custom string value                |
 | `StandardUrl`      | A request URL that must start with `/` and exclude the origin |
-| `StandardHeaders`  | `Record<string, string                                        | string[] | undefined>` |
+| `StandardHeaders`  | `Record<string, string \| string[] \| undefined>`             |
 | `StandardBodyHint` | Parsing hint for lazy body resolution                         |
 | `StandardBody`     | Shared body union used by requests and responses              |
 
