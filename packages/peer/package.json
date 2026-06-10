@@ -6,7 +6,7 @@
   "homepage": "https://standardserver.dev",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/standardserver/standardserver.git",
+    "url": "git+https://github.com/middleapi/standardserver.git",
     "directory": "packages/peer"
   },
   "sideEffects": false,
