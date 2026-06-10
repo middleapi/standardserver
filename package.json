@@ -25,6 +25,8 @@
     "@types/node": "^25.0.3",
     "@types/ws": "^8.18.1",
     "@vitest/coverage-v8": "^4.1.5",
+    "bumpp": "^11.1.0",
+    "changelogithub": "^14.0.0",
     "eslint": "^9.39.2",
     "eslint-plugin-ban": "^2.0.0",
     "eslint-plugin-format": "^1.1.0",
