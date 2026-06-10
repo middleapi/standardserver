@@ -1,5 +1,5 @@
 import type { PeerEventStreamMessage } from './types'
-import { EventIteratorErrorEvent, unwrapEventIteratorEvent, withEventIteratorEventMeta } from '@standardserver/core/event-stream'
+import { EventIteratorErrorEvent, unwrapEventIteratorEvent, withEventIteratorEventMeta } from '@standardserver/core'
 import { AsyncIteratorClass, Queue } from '@standardserver/shared'
 import { EventStreamTransmitter, toEventIterator } from './event-stream'
 

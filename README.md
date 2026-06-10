@@ -169,8 +169,7 @@ When sending a file or blob body, Standard Server automatically sets the `conten
 Standard Server uses [AsyncIteratorObject](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/AsyncIterator) to represent an event stream body, and you can use `withEventIteratorEventMeta` to attach additional [SSE event metadata](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events#event_stream_format) to each emitted event.
 
 ```ts
-import { StandardResponse } from '@standardserver/core'
-import { EventIteratorErrorEvent, withEventIteratorEventMeta } from '@standardserver/core/event-stream'
+import { EventIteratorErrorEvent, StandardResponse, withEventIteratorEventMeta } from '@standardserver/core'
 
 const response: StandardResponse = {
   status: 200,

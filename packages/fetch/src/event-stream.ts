@@ -1,4 +1,4 @@
-import { encodeEventStreamMessage, EventIteratorErrorEvent, EventStreamDecoderStream, getEventIteratorEventMeta, unwrapEventIteratorEvent, withEventIteratorEventMeta } from '@standardserver/core/event-stream'
+import { encodeEventStreamMessage, EventIteratorErrorEvent, EventStreamDecoderStream, getEventIteratorEventMeta, unwrapEventIteratorEvent, withEventIteratorEventMeta } from '@standardserver/core'
 import { AbortError, AsyncIteratorClass, isTypescriptObject, parseEmptyableJSON, stringifyJSON } from '@standardserver/shared'
 
 export function toEventIterator(

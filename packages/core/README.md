@@ -22,14 +22,13 @@
 
 Standard Server provides a unified interface for client-server communication across HTTP and message-based transports. It lets you keep handler and client code transport-agnostic by working with the same request, response, body, and streaming abstractions whether the transport is Fetch, Node.js HTTP, or a peer-style message channel.
 
-This package is the foundation of that model. It defines the core request and response types, shared runtime validators, small utility helpers, and the `@standardserver/core/event-stream` subpath for Server-Sent Events (SSE) helpers.
+This package is the foundation of that model. It defines the core request and response types, shared runtime validators, small utility helpers, and event stream (SSE) helpers.
 
 ## Entry Points
 
-| Entry point                         | Purpose                                                                               |
-| ----------------------------------- | ------------------------------------------------------------------------------------- |
-| `@standardserver/core`              | Shared request/response types, utilities, and validators                              |
-| `@standardserver/core/event-stream` | SSE message codecs, decoder utilities, metadata helpers, and event-stream error types |
+| Entry point            | Purpose                                                  |
+| ---------------------- | -------------------------------------------------------- |
+| `@standardserver/core` | Shared request/response types, utilities, and validators |
 
 ## Request and response types
 
@@ -195,7 +194,7 @@ export function expectStandardRequest(input: unknown) {
 
 ## Event-Stream Helpers
 
-Use `@standardserver/core/event-stream` when you need explicit SSE encoding, decoding, or metadata handling.
+Use Event-Stream Helpers when you need explicit SSE encoding, decoding, or metadata handling.
 
 ### Message types and codecs
 
@@ -210,7 +209,7 @@ The event-stream entry point exposes:
 import {
   decodeEventStreamMessage,
   encodeEventStreamMessage,
-} from '@standardserver/core/event-stream'
+} from '@standardserver/core'
 
 const encoded = encodeEventStreamMessage({
   comments: ['bootstrap'],
@@ -233,7 +232,7 @@ const decoded = decodeEventStreamMessage(encoded)
 For streaming decode, pipe text chunks through `EventStreamDecoderStream`:
 
 ```ts
-import { EventStreamDecoderStream } from '@standardserver/core/event-stream'
+import { EventStreamDecoderStream } from '@standardserver/core'
 
 const messages = response.body!
   .pipeThrough(new TextDecoderStream())
@@ -249,7 +248,7 @@ import type { StandardResponse } from '@standardserver/core'
 import {
   unwrapEventIteratorEvent,
   withEventIteratorEventMeta,
-} from '@standardserver/core/event-stream'
+} from '@standardserver/core'
 
 const eventValue = withEventIteratorEventMeta(
   { message: 'hello' },
@@ -282,7 +281,7 @@ The subpath also exports:
 - `assertEventStreamMessageId()`, `assertEventStreamMessageName()`, `assertEventStreamMessageRetry()`, and `assertEventStreamMessageComment()` for low-level validation when building custom SSE tooling
 
 ```ts
-import { EventIteratorErrorEvent } from '@standardserver/core/event-stream'
+import { EventIteratorErrorEvent } from '@standardserver/core'
 
 const error = new EventIteratorErrorEvent(
   { code: 'E_STREAM', detail: 'Connection lost' },

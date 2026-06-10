@@ -1,4 +1,4 @@
-import { EventIteratorErrorEvent, getEventIteratorEventMeta, withEventIteratorEventMeta } from '@standardserver/core/event-stream'
+import { EventIteratorErrorEvent, getEventIteratorEventMeta, withEventIteratorEventMeta } from '@standardserver/core'
 import { AbortError, isAsyncIteratorObject, sleep } from '@standardserver/shared'
 import { toEventIterator, toEventStream } from './event-stream'
 

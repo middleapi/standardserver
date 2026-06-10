@@ -4,7 +4,7 @@ import {
   EventIteratorErrorEvent,
   unwrapEventIteratorEvent,
   withEventIteratorEventMeta,
-} from '@standardserver/core/event-stream'
+} from '@standardserver/core'
 import { AsyncIteratorClass, isTypescriptObject } from '@standardserver/shared'
 
 /**

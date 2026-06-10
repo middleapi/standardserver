@@ -17,18 +17,12 @@
         "types": "./dist/index.d.mts",
         "import": "./dist/index.mjs",
         "default": "./dist/index.mjs"
-      },
-      "./event-stream": {
-        "types": "./dist/event-stream/index.d.mts",
-        "import": "./dist/event-stream/index.mjs",
-        "default": "./dist/event-stream/index.mjs"
       }
     }
   },
   "exports": {
     "./package.json": "./package.json",
-    ".": "./src/index.ts",
-    "./event-stream": "./src/event-stream/index.ts"
+    ".": "./src/index.ts"
   },
   "files": [
     "dist"

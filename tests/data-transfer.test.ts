@@ -1,5 +1,5 @@
 import type { StandardUrl } from '@standardserver/core'
-import { EventIteratorErrorEvent, unwrapEventIteratorEvent, withEventIteratorEventMeta } from '@standardserver/core/event-stream'
+import { EventIteratorErrorEvent, unwrapEventIteratorEvent, withEventIteratorEventMeta } from '@standardserver/core'
 import { isAsyncIteratorObject, sleep } from '@standardserver/shared'
 import { createH3WebHandlerClientServerTest } from './client-server.h3-web-handler'
 import { createHonoFetchClientServerTest } from './client-server.hono-fetch'

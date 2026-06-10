@@ -1,5 +1,5 @@
 import { serve } from '@hono/node-server'
-import { withEventIteratorEventMeta } from '@standardserver/core/event-stream'
+import { withEventIteratorEventMeta } from '@standardserver/core'
 import { isAsyncIteratorObject } from '@standardserver/shared'
 import { toStandardLazyRequest } from '../src/request'
 import { toFetchResponse } from '../src/response'

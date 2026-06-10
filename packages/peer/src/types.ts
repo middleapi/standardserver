@@ -1,5 +1,8 @@
-import type { StandardRequest, StandardResponse } from '@standardserver/core'
-import type { EventStreamMessage as EventIteratorEventMessage } from '@standardserver/core/event-stream'
+import type {
+  EventStreamMessage as EventIteratorEventMessage,
+  StandardRequest,
+  StandardResponse,
+} from '@standardserver/core'
 
 /**
  * Base interface for all peer messages.
