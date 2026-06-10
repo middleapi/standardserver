@@ -23,3 +23,11 @@ This package contains shared types and utilities for the `@standardserver` ecosy
 ## Learn more
 
 For the higher-level project overview, see the root [Standard Server README](../../README.md).
+
+## Sponsors
+
+<p align="center">
+  <a href="https://cdn.jsdelivr.net/gh/middleapi/static/sponsors.svg">
+    <img src='https://cdn.jsdelivr.net/gh/middleapi/static/sponsors.svg' alt="Sponsors"/>
+  </a>
+</p>

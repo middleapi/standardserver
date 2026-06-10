@@ -316,3 +316,11 @@ const standardLazyResponse = await clientPeer.request({
 
 > [!TIP]
 > When encoding or decoding peer messages, you can pass additional options, such as `prefix`, to prevent collisions when the same peer is used for multiple purposes.
+
+## Sponsors
+
+<p align="center">
+  <a href="https://cdn.jsdelivr.net/gh/middleapi/static/sponsors.svg">
+    <img src='https://cdn.jsdelivr.net/gh/middleapi/static/sponsors.svg' alt="Sponsors"/>
+  </a>
+</p>
