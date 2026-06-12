@@ -526,5 +526,88 @@ describe('clientPeer', () => {
       expect(send).toHaveBeenCalledTimes(1)
       expect(send).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
     })
+
+    it('terminates ongoing event-stream request and messages', async () => {
+      let cancelled = 0
+      const { resolve, promise } = Promise.withResolvers<void>()
+      async function* gen() {
+        try {
+          yield 'chunk1'
+          await promise
+          yield 'chunk2'
+        }
+        finally {
+          cancelled += 1
+        }
+      }
+      const responsePromise1 = expect(peer.request({
+        url: '/',
+        headers: {},
+        method: 'POST',
+        body: gen(),
+      })).rejects.toThrow()
+      const responsePromise2 = expect(peer.request({
+        url: '/',
+        headers: {},
+        method: 'POST',
+        body: gen(),
+      })).rejects.toThrow()
+
+      await sleep(1)
+      expect(send).toHaveBeenCalledTimes(4)
+
+      const closePromise = peer.close()
+      resolve()
+      await closePromise
+      await responsePromise1
+      await responsePromise2
+
+      expect(cancelled).toBe(2)
+      await sleep(10)
+      expect(send).toHaveBeenCalledTimes(4) // no more messages
+    })
+
+    it('terminates ongoing octet-stream request and messages', async () => {
+      let cancelled = 0
+      const { resolve, promise } = Promise.withResolvers<void>()
+      function gen() {
+        return new ReadableStream({
+          async start(controller) {
+            controller.enqueue(new TextEncoder().encode('chunk1'))
+            await promise
+            controller.enqueue(new TextEncoder().encode('chunk1'))
+          },
+          cancel() {
+            cancelled += 1
+          },
+        })
+      }
+
+      const responsePromise1 = expect(peer.request({
+        url: '/',
+        headers: {},
+        method: 'POST',
+        body: gen(),
+      })).rejects.toThrow()
+      const responsePromise2 = expect(peer.request({
+        url: '/',
+        headers: {},
+        method: 'POST',
+        body: gen(),
+      })).rejects.toThrow()
+
+      await sleep(1)
+      expect(send).toHaveBeenCalledTimes(4)
+
+      const closePromise = peer.close()
+      resolve()
+      await closePromise
+      await responsePromise1
+      await responsePromise2
+
+      expect(cancelled).toBe(2)
+      await sleep(10)
+      expect(send).toHaveBeenCalledTimes(4) // no more messages
+    })
   })
 })
