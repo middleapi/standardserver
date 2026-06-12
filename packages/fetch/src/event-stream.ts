@@ -1,4 +1,4 @@
-import { encodeEventStreamMessage, EventIteratorErrorEvent, EventStreamDecoderStream, getEventMeta, unwrapEvent, withEventMeta } from '@standardserver/core'
+import { encodeEventStreamMessage, ErrorEvent, EventStreamDecoderStream, getEventMeta, unwrapEvent, withEventMeta } from '@standardserver/core'
 import { AbortError, AsyncIteratorClass, isTypescriptObject, parseEmptyableJSON, stringifyJSON } from '@standardserver/shared'
 
 export function toEventIterator(
@@ -51,7 +51,7 @@ export function toEventIterator(
         }
 
         case 'error': {
-          let error = new EventIteratorErrorEvent(parseEmptyableJSON(value.data))
+          let error = new ErrorEvent(parseEmptyableJSON(value.data))
 
           error = withEventMeta(error, value)
 
@@ -185,7 +185,7 @@ export function toEventStream(
           return
         }
 
-        if (err instanceof EventIteratorErrorEvent) {
+        if (err instanceof ErrorEvent) {
           controller.enqueue(encodeEventStreamMessage({
             ...getEventMeta(err),
             event: 'error',

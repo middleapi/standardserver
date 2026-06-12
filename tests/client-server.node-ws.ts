@@ -116,8 +116,8 @@ export function createNodeWsClientServerTest(): ClientServerTest {
 
   afterEach(() => {
     // ensure all resource is cleaned up correctly
-    expect(clientPeer.size).toBe(0)
-    expect(serverPeer.size).toBe(0)
+    expect((clientPeer as any).requests.size).toBe(0)
+    expect((serverPeer as any).requests.size).toBe(0)
   })
 
   return {

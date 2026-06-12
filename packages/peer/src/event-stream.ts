@@ -1,6 +1,6 @@
 import type { AsyncCleanupFn, Queue } from '@standardserver/shared'
 import type { PeerEventStreamMessage } from './types'
-import { EventIteratorErrorEvent, unwrapEvent, withEventMeta } from '@standardserver/core'
+import { ErrorEvent, unwrapEvent, withEventMeta } from '@standardserver/core'
 import { AsyncIteratorClass, isTypescriptObject } from '@standardserver/shared'
 
 /**
@@ -29,7 +29,7 @@ export function toEventIterator(
         case 'error': {
           // Error events are surfaced by throwing a special error type
           throw withEventMeta(
-            new EventIteratorErrorEvent(json.data),
+            new ErrorEvent(json.data),
             json,
           )
         }
@@ -109,7 +109,7 @@ export class EventStreamTransmitter {
          * Error events are part of the protocol and should not be treated
          * as iterator failures.
          */
-        if (error instanceof EventIteratorErrorEvent) {
+        if (error instanceof ErrorEvent) {
           const [resolvedError, meta] = unwrapEvent(error)
 
           await this.send({

@@ -1,4 +1,4 @@
-export interface EventStreamMessageMeta {
+export interface EventMeta {
   /**
    * Event identifier, sent back by the client as `lastEventId` for reconnection attempts.
    *
@@ -19,7 +19,7 @@ export interface EventStreamMessageMeta {
   comments?: string[] | undefined
 }
 
-export interface EventStreamMessage extends EventStreamMessageMeta {
+export interface EventStreamMessage extends EventMeta {
   /**
    * Event name (e.g., `message`, `error`).
    */

@@ -1,5 +1,5 @@
 import type { StandardUrl } from '@standardserver/core'
-import { EventIteratorErrorEvent, unwrapEvent, withEventMeta } from '@standardserver/core'
+import { ErrorEvent, unwrapEvent, withEventMeta } from '@standardserver/core'
 import { isAsyncIteratorObject, sleep } from '@standardserver/shared'
 import { createH3WebHandlerClientServerTest } from './client-server.h3-web-handler'
 import { createHonoFetchClientServerTest } from './client-server.hono-fetch'
@@ -288,7 +288,7 @@ describe.each([
         yield 'order1'
         await sleep(100)
         yield withEventMeta({ order: 2 }, { id: 'id-2' })
-        throw withEventMeta(new EventIteratorErrorEvent({ order: 3 }), { comments: ['order3'] })
+        throw withEventMeta(new ErrorEvent({ order: 3 }), { comments: ['order3'] })
       }()),
     })
 
@@ -317,8 +317,8 @@ describe.each([
     expect(Date.now() - start).toBeLessThan(200)
     start = Date.now()
 
-    await expect(body.next()).rejects.toSatisfy((error: EventIteratorErrorEvent) => {
-      expect(error).toBeInstanceOf(EventIteratorErrorEvent)
+    await expect(body.next()).rejects.toSatisfy((error: ErrorEvent) => {
+      expect(error).toBeInstanceOf(ErrorEvent)
       const [err, errMeta] = unwrapEvent(error)
       expect(err.data).toEqual({ order: 3 })
       expect(errMeta).toEqual({ comments: ['order3'] })

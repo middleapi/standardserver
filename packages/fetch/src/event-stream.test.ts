@@ -1,4 +1,4 @@
-import { EventIteratorErrorEvent, getEventMeta, withEventMeta } from '@standardserver/core'
+import { ErrorEvent, getEventMeta, withEventMeta } from '@standardserver/core'
 import { AbortError, isAsyncIteratorObject, sleep } from '@standardserver/shared'
 import { toEventIterator, toEventStream } from './event-stream'
 
@@ -130,7 +130,7 @@ describe('toEventIterator', () => {
     })
 
     await expect(generator.next()).rejects.toSatisfy((error: any) => {
-      expect(error).toBeInstanceOf(EventIteratorErrorEvent)
+      expect(error).toBeInstanceOf(ErrorEvent)
       expect(error.data).toEqual({ order: 3 })
       expect(getEventMeta(error)).toEqual({ id: 'id-3', retry: 30000 })
 
@@ -260,7 +260,7 @@ describe('toEventStream', () => {
       yield withEventMeta({ order: 1 }, { id: 'id-1' })
       yield withEventMeta({ order: 2 }, { retry: 20000 })
       yield undefined
-      throw withEventMeta(new EventIteratorErrorEvent({ order: 4 }), { id: 'id-4', retry: 40000 })
+      throw withEventMeta(new ErrorEvent({ order: 4 }), { id: 'id-4', retry: 40000 })
     }
 
     const reader = toEventStream(gen())

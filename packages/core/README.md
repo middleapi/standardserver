@@ -200,7 +200,7 @@ Use Event-Stream Helpers when you need explicit SSE encoding, decoding, or metad
 
 The event-stream entry point exposes:
 
-- `EventStreamMessageMeta` for `id`, `retry`, and `comments`
+- `EventMeta` for `id`, `retry`, and `comments`
 - `EventStreamMessage` for complete SSE messages
 - `encodeEventStreamMessage()` and `decodeEventStreamMessage()` for single-message codec operations
 - `EventStreamDecoder` and `EventStreamDecoderStream` for chunked stream decoding
@@ -277,13 +277,13 @@ The subpath also exports:
 
 - `EventStreamEncoderError` for invalid outbound SSE messages
 - `EventStreamDecoderError` for incomplete or invalid inbound stream decoding
-- `EventIteratorErrorEvent` for wrapping structured event-stream error payloads in an `Error`
+- `ErrorEvent` for wrapping structured event-stream error payloads in an `Error`
 - `assertEventStreamMessageId()`, `assertEventStreamMessageName()`, `assertEventStreamMessageRetry()`, and `assertEventStreamMessageComment()` for low-level validation when building custom SSE tooling
 
 ```ts
-import { EventIteratorErrorEvent } from '@standardserver/core'
+import { ErrorEvent } from '@standardserver/core'
 
-const error = new EventIteratorErrorEvent(
+const error = new ErrorEvent(
   { code: 'E_STREAM', detail: 'Connection lost' },
   { message: 'stream error' },
 )

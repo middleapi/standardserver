@@ -1,4 +1,4 @@
-import type { EventStreamMessageMeta } from './types'
+import type { EventMeta } from './types'
 import { getOrBind, isTypescriptObject } from '@standardserver/shared'
 import { assertEventStreamMessageComment, assertEventStreamMessageId, assertEventStreamMessageRetry } from './encoder'
 
@@ -8,8 +8,8 @@ const EVENT_SOURCE_SYMBOL = Symbol.for('STANDARDSERVER_EVENT_SOURCE')
 /**
  * Returns a new iterator *event value* with attached, validated metadata.
  */
-export function withEventMeta<T extends object>(container: T, meta: EventStreamMessageMeta): T {
-  let assertedMeta: EventStreamMessageMeta | undefined
+export function withEventMeta<T extends object>(container: T, meta: EventMeta): T {
+  let assertedMeta: EventMeta | undefined
   if (meta.id !== undefined) {
     assertEventStreamMessageId(meta.id)
     assertedMeta ??= {}
@@ -53,12 +53,12 @@ export function withEventMeta<T extends object>(container: T, meta: EventStreamM
 /**
  * Unwraps an iterator event value and extracts its associated metadata.
  */
-export function unwrapEvent<T>(container: T): [data: T, meta: EventStreamMessageMeta | undefined] {
+export function unwrapEvent<T>(container: T): [data: T, meta: EventMeta | undefined] {
   if (!isTypescriptObject(container)) {
     return [container, undefined]
   }
 
-  const meta = (container as Record<symbol, unknown>)[EVENT_META_SYMBOL] as EventStreamMessageMeta | undefined
+  const meta = (container as Record<symbol, unknown>)[EVENT_META_SYMBOL] as EventMeta | undefined
   const target = (container as Record<symbol, unknown>)[EVENT_SOURCE_SYMBOL] as T | undefined ?? container
 
   return [target, meta]
@@ -67,10 +67,10 @@ export function unwrapEvent<T>(container: T): [data: T, meta: EventStreamMessage
 /**
  * Retrieves metadata attached to a single iterator event value.
  */
-export function getEventMeta(container: unknown): EventStreamMessageMeta | undefined {
+export function getEventMeta(container: unknown): EventMeta | undefined {
   if (!isTypescriptObject(container)) {
     return undefined
   }
 
-  return (container as Record<symbol, unknown>)[EVENT_META_SYMBOL] as EventStreamMessageMeta | undefined
+  return (container as Record<symbol, unknown>)[EVENT_META_SYMBOL] as EventMeta | undefined
 }

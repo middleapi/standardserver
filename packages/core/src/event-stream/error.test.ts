@@ -1,12 +1,12 @@
-import { EventIteratorErrorEvent } from './error'
+import { ErrorEvent } from './error'
 
-it('eventIteratorErrorEvent', () => {
-  const errorEvent = new EventIteratorErrorEvent('data', { cause: 'cause' })
+it('errorEvent', () => {
+  const errorEvent = new ErrorEvent('data', { cause: 'cause' })
 
   expect(errorEvent.message).toBe('Error Event')
   expect(errorEvent.cause).toBe('cause')
   expect(errorEvent.data).toBe('data')
 
-  const errorEventWithCustomMessage = new EventIteratorErrorEvent('data', { message: 'custom message' })
+  const errorEventWithCustomMessage = new ErrorEvent('data', { message: 'custom message' })
   expect(errorEventWithCustomMessage.message).toBe('custom message')
 })
