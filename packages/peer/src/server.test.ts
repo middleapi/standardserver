@@ -48,6 +48,10 @@ function makeAsyncIter(values: unknown[]): AsyncIteratorClass<unknown> {
   )
 }
 
+function getPeerSize(peer: ServerPeer): number {
+  return (peer as any).requests.size
+}
+
 describe('serverPeer', () => {
   let send: ReturnType<typeof vi.fn<(msg: ServerPeerSendMessage) => Promise<void>>>
   let peer: ServerPeer
@@ -58,7 +62,7 @@ describe('serverPeer', () => {
   })
 
   afterEach(() => {
-    expect(peer.size).toBe(0)
+    expect(getPeerSize(peer)).toBe(0)
   })
 
   type HandlerFn = (req: StandardLazyRequest) => Promise<StandardResponse>
@@ -364,7 +368,7 @@ describe('serverPeer', () => {
         await vi.waitFor(() => expect(handler).toHaveBeenCalled())
 
         box.resolve(octetStreamResponse(stream))
-        await vi.waitFor(() => expect(peer.size).toBe(1))
+        await vi.waitFor(() => expect(getPeerSize(peer)).toBe(1))
 
         await peer.close()
         await promise
@@ -399,7 +403,7 @@ describe('serverPeer', () => {
       const p2 = peer.message({ ...makeRequestMessage(), id: '2' }, handler2.handler)
 
       await vi.waitFor(() => expect(handler1.signals.length + handler2.signals.length).toBe(2))
-      expect(peer.size).toBe(2)
+      expect(getPeerSize(peer)).toBe(2)
 
       await peer.close()
 

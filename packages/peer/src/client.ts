@@ -26,13 +26,6 @@ export class ClientPeer {
   }
 
   /**
-   * Use to measure resources usage
-   */
-  get size(): number {
-    return this.requests.size
-  }
-
-  /**
    * Send a request to the server peer
    */
   async request(request: StandardRequest): Promise<StandardLazyResponse> {

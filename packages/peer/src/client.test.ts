@@ -53,6 +53,10 @@ function makeHangingIter(): AsyncIteratorClass<unknown> {
   return new AsyncIteratorClass<unknown>(() => new Promise(() => {}), async () => {})
 }
 
+function getPeerSize(peer: ClientPeer): number {
+  return (peer as any).requests.size
+}
+
 describe('clientPeer', () => {
   let send: ReturnType<typeof vi.fn<(msg: ClientPeerSendMessage) => Promise<void>>>
   let peer: ClientPeer
@@ -63,7 +67,7 @@ describe('clientPeer', () => {
   })
 
   afterEach(() => {
-    expect(peer.size).toBe(0)
+    expect(getPeerSize(peer)).toBe(0)
   })
 
   async function waitForSend(n = 1): Promise<string> {
@@ -156,7 +160,7 @@ describe('clientPeer', () => {
       })
 
       await expect(promise).rejects.toThrow(error)
-      expect(peer.size).toEqual(0) // auto close
+      expect(getPeerSize(peer)).toEqual(0) // auto close
     })
   })
 

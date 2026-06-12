@@ -24,13 +24,6 @@ export class ServerPeer {
   }
 
   /**
-   * Use for measure resources usage
-   */
-  get size(): number {
-    return this.requests.size
-  }
-
-  /**
    * Handle a message from client
    */
   async message(
