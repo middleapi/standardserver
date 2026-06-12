@@ -1,5 +1,5 @@
 import type { StandardUrl } from '@standardserver/core'
-import { EventIteratorErrorEvent, unwrapEventIteratorEvent, withEventIteratorEventMeta } from '@standardserver/core'
+import { EventIteratorErrorEvent, unwrapEvent, withEventMeta } from '@standardserver/core'
 import { isAsyncIteratorObject, sleep } from '@standardserver/shared'
 import { createH3WebHandlerClientServerTest } from './client-server.h3-web-handler'
 import { createHonoFetchClientServerTest } from './client-server.hono-fetch'
@@ -202,9 +202,9 @@ describe.each([
         await sleep(100)
         yield 'order1'
         await sleep(100)
-        yield withEventIteratorEventMeta({ order: 2 }, { id: 'id-2' })
+        yield withEventMeta({ order: 2 }, { id: 'id-2' })
         await sleep(100)
-        return withEventIteratorEventMeta({ order: 3 }, { comments: ['order3'] })
+        return withEventMeta({ order: 3 }, { comments: ['order3'] })
       }()),
     })
 
@@ -216,7 +216,7 @@ describe.each([
 
     await expect(body.next()).resolves.toSatisfy((result) => {
       expect(result.done).toBe(false)
-      const [data, meta] = unwrapEventIteratorEvent(result.value)
+      const [data, meta] = unwrapEvent(result.value)
       expect(data).toEqual('order1')
       expect(meta).toEqual(undefined)
       return true
@@ -226,7 +226,7 @@ describe.each([
 
     await expect(body.next()).resolves.toSatisfy((result) => {
       expect(result.done).toBe(false)
-      const [data, meta] = unwrapEventIteratorEvent(result.value)
+      const [data, meta] = unwrapEvent(result.value)
       expect(data).toEqual({ order: 2 })
       expect(meta).toEqual({ id: 'id-2' })
       return true
@@ -236,7 +236,7 @@ describe.each([
 
     await expect(body.next()).resolves.toSatisfy((result) => {
       expect(result.done).toBe(true)
-      const [data, meta] = unwrapEventIteratorEvent(result.value)
+      const [data, meta] = unwrapEvent(result.value)
       expect(data).toEqual({ order: 3 })
       expect(meta).toEqual({ comments: ['order3'] })
       return true
@@ -287,8 +287,8 @@ describe.each([
         await sleep(100)
         yield 'order1'
         await sleep(100)
-        yield withEventIteratorEventMeta({ order: 2 }, { id: 'id-2' })
-        throw withEventIteratorEventMeta(new EventIteratorErrorEvent({ order: 3 }), { comments: ['order3'] })
+        yield withEventMeta({ order: 2 }, { id: 'id-2' })
+        throw withEventMeta(new EventIteratorErrorEvent({ order: 3 }), { comments: ['order3'] })
       }()),
     })
 
@@ -299,7 +299,7 @@ describe.each([
 
     await expect(body.next()).resolves.toSatisfy((result) => {
       expect(result.done).toBe(false)
-      const [data, meta] = unwrapEventIteratorEvent(result.value)
+      const [data, meta] = unwrapEvent(result.value)
       expect(data).toEqual('order1')
       expect(meta).toEqual(undefined)
       return true
@@ -309,7 +309,7 @@ describe.each([
 
     await expect(body.next()).resolves.toSatisfy((result) => {
       expect(result.done).toBe(false)
-      const [data, meta] = unwrapEventIteratorEvent(result.value)
+      const [data, meta] = unwrapEvent(result.value)
       expect(data).toEqual({ order: 2 })
       expect(meta).toEqual({ id: 'id-2' })
       return true
@@ -319,7 +319,7 @@ describe.each([
 
     await expect(body.next()).rejects.toSatisfy((error: EventIteratorErrorEvent) => {
       expect(error).toBeInstanceOf(EventIteratorErrorEvent)
-      const [err, errMeta] = unwrapEventIteratorEvent(error)
+      const [err, errMeta] = unwrapEvent(error)
       expect(err.data).toEqual({ order: 3 })
       expect(errMeta).toEqual({ comments: ['order3'] })
       return true

@@ -2,13 +2,13 @@ import type { EventStreamMessageMeta } from './types'
 import { getOrBind, isTypescriptObject } from '@standardserver/shared'
 import { assertEventStreamMessageComment, assertEventStreamMessageId, assertEventStreamMessageRetry } from './encoder'
 
-export const EVENT_ITERATOR_EVENT_META_SYMBOL = Symbol.for('STANDARDSERVER_EVENT_ITERATOR_EVENT_META')
-export const EVENT_ITERATOR_EVENT_SOURCE_SYMBOL = Symbol.for('STANDARDSERVER_EVENT_ITERATOR_EVENT_SOURCE')
+const EVENT_META_SYMBOL = Symbol.for('STANDARDSERVER_EVENT_META')
+const EVENT_SOURCE_SYMBOL = Symbol.for('STANDARDSERVER_EVENT_SOURCE')
 
 /**
  * Returns a new iterator *event value* with attached, validated metadata.
  */
-export function withEventIteratorEventMeta<T extends object>(container: T, meta: EventStreamMessageMeta): T {
+export function withEventMeta<T extends object>(container: T, meta: EventStreamMessageMeta): T {
   let assertedMeta: EventStreamMessageMeta | undefined
   if (meta.id !== undefined) {
     assertEventStreamMessageId(meta.id)
@@ -37,11 +37,11 @@ export function withEventIteratorEventMeta<T extends object>(container: T, meta:
 
   return new Proxy(container, {
     get(target, prop, _receiver) {
-      if (prop === EVENT_ITERATOR_EVENT_SOURCE_SYMBOL) {
+      if (prop === EVENT_SOURCE_SYMBOL) {
         return target
       }
 
-      if (prop === EVENT_ITERATOR_EVENT_META_SYMBOL) {
+      if (prop === EVENT_META_SYMBOL) {
         return assertedMeta
       }
 
@@ -53,13 +53,13 @@ export function withEventIteratorEventMeta<T extends object>(container: T, meta:
 /**
  * Unwraps an iterator event value and extracts its associated metadata.
  */
-export function unwrapEventIteratorEvent<T>(container: T): [data: T, meta: EventStreamMessageMeta | undefined] {
+export function unwrapEvent<T>(container: T): [data: T, meta: EventStreamMessageMeta | undefined] {
   if (!isTypescriptObject(container)) {
     return [container, undefined]
   }
 
-  const meta = (container as Record<symbol, unknown>)[EVENT_ITERATOR_EVENT_META_SYMBOL] as EventStreamMessageMeta | undefined
-  const target = (container as Record<symbol, unknown>)[EVENT_ITERATOR_EVENT_SOURCE_SYMBOL] as T ?? container
+  const meta = (container as Record<symbol, unknown>)[EVENT_META_SYMBOL] as EventStreamMessageMeta | undefined
+  const target = (container as Record<symbol, unknown>)[EVENT_SOURCE_SYMBOL] as T | undefined ?? container
 
   return [target, meta]
 }
@@ -67,10 +67,10 @@ export function unwrapEventIteratorEvent<T>(container: T): [data: T, meta: Event
 /**
  * Retrieves metadata attached to a single iterator event value.
  */
-export function getEventIteratorEventMeta(container: unknown): EventStreamMessageMeta | undefined {
+export function getEventMeta(container: unknown): EventStreamMessageMeta | undefined {
   if (!isTypescriptObject(container)) {
     return undefined
   }
 
-  return (container as Record<symbol, unknown>)[EVENT_ITERATOR_EVENT_META_SYMBOL] as EventStreamMessageMeta | undefined
+  return (container as Record<symbol, unknown>)[EVENT_META_SYMBOL] as EventStreamMessageMeta | undefined
 }

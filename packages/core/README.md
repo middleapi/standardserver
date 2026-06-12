@@ -241,29 +241,29 @@ const messages = response.body!
 
 ### Iterator metadata helpers
 
-`StandardBody` uses async iterators for event-stream bodies. To attach SSE metadata to a yielded value without changing its visible shape, use `withEventIteratorEventMeta()`.
+`StandardBody` uses async iterators for event-stream bodies. To attach SSE metadata to a yielded value without changing its visible shape, use `withEventMeta()`.
 
 ```ts
 import type { StandardResponse } from '@standardserver/core'
-import {
-  unwrapEventIteratorEvent,
-  withEventIteratorEventMeta,
-} from '@standardserver/core'
+import { getEventMeta, unwrapEvent, withEventMeta } from '@standardserver/core'
 
-const eventValue = withEventIteratorEventMeta(
+const event = withEventMeta(
   { message: 'hello' },
   { id: '1', retry: 3000, comments: ['bootstrap'] },
 )
 
-const [data, meta] = unwrapEventIteratorEvent(eventValue)
+const [data, meta] = unwrapEvent(event)
 // data => { message: 'hello' }
 // meta => { id: '1', retry: 3000, comments: ['bootstrap'] }
+
+const extractedMeta = getEventMeta(event)
+// { id: '1', retry: 3000, comments: ['bootstrap'] }
 
 const response: StandardResponse = {
   status: 200,
   headers: {},
   async* body() {
-    yield eventValue
+    yield event
   },
 }
 ```

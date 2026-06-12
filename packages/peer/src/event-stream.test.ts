@@ -1,5 +1,5 @@
 import type { PeerEventStreamMessage } from './types'
-import { EventIteratorErrorEvent, unwrapEventIteratorEvent, withEventIteratorEventMeta } from '@standardserver/core'
+import { EventIteratorErrorEvent, unwrapEvent, withEventMeta } from '@standardserver/core'
 import { AsyncIteratorClass, Queue } from '@standardserver/shared'
 import { EventStreamTransmitter, toEventIterator } from './event-stream'
 
@@ -34,7 +34,7 @@ describe('toEventIterator', () => {
     queue.push({ id: '1', kind: 'event-stream', json: { event: 'close', data: undefined } })
 
     const r1 = await iter.next()
-    const [data, meta] = unwrapEventIteratorEvent(r1.value)
+    const [data, meta] = unwrapEvent(r1.value)
     expect(data).toEqual({ val: 42 })
     expect(meta).toEqual({ id: 'ev-1' })
   })
@@ -70,7 +70,7 @@ describe('toEventIterator', () => {
     const assertError = (err: EventIteratorErrorEvent) => {
       expect(err).toBeInstanceOf(EventIteratorErrorEvent)
       expect(err.data).toEqual({ code: 500 })
-      const [, meta] = unwrapEventIteratorEvent(err)
+      const [, meta] = unwrapEvent(err)
       expect(meta).toEqual({ comments: ['oops'] })
       return true
     }
@@ -93,7 +93,7 @@ describe('toEventIterator', () => {
 
     const result = await iter.next()
     expect(result.done).toBe(true)
-    const [data] = unwrapEventIteratorEvent(result.value)
+    const [data] = unwrapEvent(result.value)
     expect(data).toEqual({ final: true })
     expect(cleanup).toHaveBeenCalledWith({ kind: 'success' })
   })
@@ -155,7 +155,7 @@ describe('eventStreamTransmitter', () => {
 
   it('unwraps event metadata on transmission', async () => {
     const send = vi.fn(async () => {})
-    const value = withEventIteratorEventMeta({ x: 1 }, { id: 'meta-id' })
+    const value = withEventMeta({ x: 1 }, { id: 'meta-id' })
     const iter = new AsyncIteratorClass(async () => ({ done: true, value }), async () => {})
 
     const transmitter = new EventStreamTransmitter(iter, 'msg-1', send)

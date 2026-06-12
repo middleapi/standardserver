@@ -1,4 +1,4 @@
-import { encodeEventStreamMessage, EventIteratorErrorEvent, EventStreamDecoderStream, getEventIteratorEventMeta, unwrapEventIteratorEvent, withEventIteratorEventMeta } from '@standardserver/core'
+import { encodeEventStreamMessage, EventIteratorErrorEvent, EventStreamDecoderStream, getEventMeta, unwrapEvent, withEventMeta } from '@standardserver/core'
 import { AbortError, AsyncIteratorClass, isTypescriptObject, parseEmptyableJSON, stringifyJSON } from '@standardserver/shared'
 
 export function toEventIterator(
@@ -44,7 +44,7 @@ export function toEventIterator(
           let message = parseEmptyableJSON(value.data)
 
           if (isTypescriptObject(message)) {
-            message = withEventIteratorEventMeta(message, value)
+            message = withEventMeta(message, value)
           }
 
           return { done: false, value: message }
@@ -53,7 +53,7 @@ export function toEventIterator(
         case 'error': {
           let error = new EventIteratorErrorEvent(parseEmptyableJSON(value.data))
 
-          error = withEventIteratorEventMeta(error, value)
+          error = withEventMeta(error, value)
 
           throw error
         }
@@ -62,7 +62,7 @@ export function toEventIterator(
           let close = parseEmptyableJSON(value.data)
 
           if (isTypescriptObject(close)) {
-            close = withEventIteratorEventMeta(close, value)
+            close = withEventMeta(close, value)
           }
 
           return { done: true, value: close }
@@ -163,7 +163,7 @@ export function toEventStream(
           return
         }
 
-        const [data, meta] = unwrapEventIteratorEvent(result.value)
+        const [data, meta] = unwrapEvent(result.value)
 
         if (!result.done || data !== undefined || meta !== undefined || emptyCloseEventEnabled) {
           const event = result.done ? 'close' : 'message'
@@ -187,7 +187,7 @@ export function toEventStream(
 
         if (err instanceof EventIteratorErrorEvent) {
           controller.enqueue(encodeEventStreamMessage({
-            ...getEventIteratorEventMeta(err),
+            ...getEventMeta(err),
             event: 'error',
             data: stringifyJSON(err.data),
           }))
