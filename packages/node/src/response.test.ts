@@ -16,7 +16,7 @@ describe('sendStandardResponse', () => {
   it('buffered (empty)', async () => {
     let endSpy: any
 
-    const options = { body: { eventStream: { keepAliveEnabled: true } } }
+    const options = { eventStream: { keepAliveEnabled: true } }
     const res = await request(async (req: IncomingMessage, res: ServerResponse) => {
       endSpy = vi.spyOn(res, 'end')
 
@@ -32,7 +32,7 @@ describe('sendStandardResponse', () => {
     expect(toNodeHttpBodySpy).toBeCalledTimes(1)
     expect(toNodeHttpBodySpy).toBeCalledWith(undefined, {
       'x-custom-header': 'custom-value',
-    }, options.body)
+    }, options)
 
     expect(endSpy).toBeCalledTimes(1)
     expect(endSpy).toBeCalledWith()
@@ -47,7 +47,7 @@ describe('sendStandardResponse', () => {
   it('buffered', async () => {
     let endSpy: any
 
-    const options = { body: { eventStream: { keepAliveEnabled: true } } }
+    const options = { eventStream: { keepAliveEnabled: true } }
     const res = await request(async (req: IncomingMessage, res: ServerResponse) => {
       endSpy = vi.spyOn(res, 'end')
 
@@ -63,7 +63,7 @@ describe('sendStandardResponse', () => {
     expect(toNodeHttpBodySpy).toBeCalledTimes(1)
     expect(toNodeHttpBodySpy).toBeCalledWith({ foo: 'bar' }, {
       'x-custom-header': 'custom-value',
-    }, options.body)
+    }, options)
 
     expect(endSpy).toBeCalledTimes(1)
     expect(endSpy).toBeCalledWith((await toNodeHttpBodySpy.mock.results[0]!.value)[0])
@@ -81,7 +81,7 @@ describe('sendStandardResponse', () => {
     const blob = new Blob(['foo'], { type: 'text/plain' })
     let endSpy: any
 
-    const options = { body: { eventStream: { keepAliveEnabled: true } } }
+    const options = { eventStream: { keepAliveEnabled: true } }
     const res = await request(async (req: IncomingMessage, res: ServerResponse) => {
       endSpy = vi.spyOn(res, 'end')
 
@@ -97,7 +97,7 @@ describe('sendStandardResponse', () => {
     expect(toNodeHttpBodySpy).toBeCalledTimes(1)
     expect(toNodeHttpBodySpy).toBeCalledWith(blob, {
       'x-custom-header': 'custom-value',
-    }, options.body)
+    }, options)
 
     expect(endSpy).toBeCalledTimes(1)
     expect(endSpy).toBeCalledWith()
@@ -124,7 +124,7 @@ describe('sendStandardResponse', () => {
 
     let endSpy: any
 
-    const options = { body: { eventStream: { keepAliveEnabled: true } } }
+    const options = { eventStream: { keepAliveEnabled: true } }
 
     const res = await request(async (req: IncomingMessage, res: ServerResponse) => {
       endSpy = vi.spyOn(res, 'end')
@@ -141,7 +141,7 @@ describe('sendStandardResponse', () => {
     expect(toNodeHttpBodySpy).toBeCalledTimes(1)
     expect(toNodeHttpBodySpy).toBeCalledWith(generator, {
       'x-custom-header': 'custom-value',
-    }, options.body)
+    }, options)
 
     expect(endSpy).toBeCalledTimes(1)
     expect(endSpy).toBeCalledWith()

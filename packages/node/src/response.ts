@@ -3,11 +3,7 @@ import type { ToNodeHttpBodyOptions } from './body'
 import type { NodeHttpResponse } from './types'
 import { toNodeHttpBody } from './body'
 
-export interface SendStandardResponseOptions {
-  /**
-   * Options for converting the response body to a Node.js HTTP body.
-   */
-  body?: ToNodeHttpBodyOptions
+export interface SendStandardResponseOptions extends ToNodeHttpBodyOptions {
 }
 
 export async function sendStandardResponse(
@@ -15,7 +11,7 @@ export async function sendStandardResponse(
   standardResponse: StandardResponse,
   options: SendStandardResponseOptions = {},
 ): Promise<void> {
-  const [resBody, resHeaders] = await toNodeHttpBody(standardResponse.body, standardResponse.headers, options.body)
+  const [resBody, resHeaders] = await toNodeHttpBody(standardResponse.body, standardResponse.headers, options)
 
   return new Promise((resolve, reject) => {
     res.once('error', reject)

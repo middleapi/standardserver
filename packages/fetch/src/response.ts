@@ -3,18 +3,14 @@ import type { ToFetchBodyOptions } from './body'
 import { toFetchBody, toStandardBody } from './body'
 import { toFetchHeaders, toStandardHeaders } from './headers'
 
-export interface ToFetchResponseOptions {
-  /**
-   * Options for body conversion, like event iterator options, etc.
-   */
-  body?: ToFetchBodyOptions
+export interface ToFetchResponseOptions extends ToFetchBodyOptions {
 }
 
 export function toFetchResponse(
   standardResponse: StandardResponse,
   options: ToFetchResponseOptions = {},
 ): Response {
-  const [body, standardHeaders] = toFetchBody(standardResponse.body, standardResponse.headers, options.body)
+  const [body, standardHeaders] = toFetchBody(standardResponse.body, standardResponse.headers, options)
   const response = new Response(body, {
     headers: toFetchHeaders(standardHeaders),
     status: standardResponse.status,

@@ -22,7 +22,7 @@ describe('toFetchResponse', () => {
       status: 206,
     }
 
-    const options = { body: { eventStream: { keepAliveEnabled: true } } }
+    const options = { eventStream: { keepAliveEnabled: true } }
     const fetchResponse = toFetchResponse(standardResponse, options)
 
     expect(fetchResponse.status).toBe(206)
@@ -30,7 +30,7 @@ describe('toFetchResponse', () => {
     expect(await fetchResponse.text()).toEqual(toFetchBodySpy.mock.results[0]!.value[0])
 
     expect(toFetchBodySpy).toBeCalledTimes(1)
-    expect(toFetchBodySpy).toBeCalledWith(standardResponse.body, standardResponse.headers, options.body)
+    expect(toFetchBodySpy).toBeCalledWith(standardResponse.body, standardResponse.headers, options)
 
     expect(toFetchHeadersSpy).toBeCalledTimes(1)
     expect(toFetchHeadersSpy).toBeCalledWith(toFetchBodySpy.mock.results[0]!.value[1])
