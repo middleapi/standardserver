@@ -1,6 +1,6 @@
 import type { StandardLazyResponse, StandardRequest } from '@standardserver/core'
 import type { ClientPeerSendMessage, PeerCancelMessage, PeerEventStreamMessage, PeerOctetStreamMessage, PeerRequestMessage, PeerResponseMessage, PeerStreamCancelMessage } from './types'
-import { AbortError, AsyncIteratorClass, emitUnhandledRejection, isAsyncIteratorObject, sleep } from '@standardserver/shared'
+import { AbortError, AsyncIteratorClass, emitUnhandledRejection, isAsyncIteratorObject, promiseWithResolvers, sleep } from '@standardserver/shared'
 import * as Body from './body'
 import { ClientPeer } from './client'
 
@@ -529,7 +529,7 @@ describe('clientPeer', () => {
 
     it('terminates ongoing event-stream request and messages', async () => {
       let cancelled = 0
-      const { resolve, promise } = Promise.withResolvers<void>()
+      const { resolve, promise } = promiseWithResolvers<void>()
       async function* gen() {
         try {
           yield 'chunk1'
@@ -569,7 +569,7 @@ describe('clientPeer', () => {
 
     it('terminates ongoing octet-stream request and messages', async () => {
       let cancelled = 0
-      const { resolve, promise } = Promise.withResolvers<void>()
+      const { resolve, promise } = promiseWithResolvers<void>()
       function gen() {
         return new ReadableStream({
           async start(controller) {
