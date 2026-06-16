@@ -5,13 +5,6 @@
     "lib": ["ESNext"],
     "types": ["node", "vitest/globals"]
   },
-  "references": [
-    { "path": "./packages/core/tsconfig.json" },
-    { "path": "./packages/fetch/tsconfig.json" },
-    { "path": "./packages/node/tsconfig.json" },
-    { "path": "./packages/peer/tsconfig.json" },
-    { "path": "./packages/shared/tsconfig.json" }
-  ],
   "include": [
     "playground",
     "scripts",

@@ -6,3 +6,6 @@ packages:
 preferWorkspacePackages: true
 linkWorkspacePackages: true
 shamefullyHoist: true
+allowBuilds:
+  esbuild: false
+  simple-git-hooks: false

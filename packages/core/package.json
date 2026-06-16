@@ -29,7 +29,7 @@
   ],
   "scripts": {
     "build": "unbuild",
-    "type:check": "tsc -b"
+    "type:check": "tsgo -b"
   },
   "dependencies": {
     "@standardserver/shared": "workspace:*"
