@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  lint_and_typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - run: pnpm i
+
+      - run: pnpm run lint
+
+      - run: pnpm run type:check
+
+  test_node_matrix:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [24, 22, 20]
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - run: pnpm runtime set node ${{ matrix.node-version }}
+
+      - run: pnpm i
+
+      - run: pnpm run test:coverage
+
+      - uses: codecov/codecov-action@v5
+        if: matrix.node-version == 24
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  publish_preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - run: pnpm i
+
+      - run: pnpm --filter='./packages/*' run -r build && pnpm exec pkg-pr-new publish './packages/*' --pnpm --compact
