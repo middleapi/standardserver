@@ -29,6 +29,6 @@
   ],
   "scripts": {
     "build": "unbuild",
-    "type:check": "tsgo -b"
+    "type:check": "tsc -b"
   }
 }

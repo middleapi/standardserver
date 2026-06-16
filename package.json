@@ -6,12 +6,12 @@
   "license": "MIT",
   "scripts": {
     "prepare": "simple-git-hooks",
-    "type:check": "pnpm -r run type:check && tsgo",
+    "type:check": "pnpm -r run type:check && tsc",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "lint": "eslint --max-warnings=0 .",
     "lint:fix": "eslint --max-warnings=0 --fix .",
-    "monorepo:fix": "sherif --fix"
+    "repo:fix": "sherif --fix"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^6.7.3",
@@ -24,7 +24,6 @@
     "@standardserver/shared": "workspace:*",
     "@types/node": "^25.0.3",
     "@types/ws": "^8.18.1",
-    "@typescript/native-preview": "7.0.0-dev.20260614.1",
     "@vitest/coverage-v8": "^4.1.5",
     "bumpp": "^11.1.0",
     "changelogithub": "^14.0.0",
@@ -36,6 +35,7 @@
     "sherif": "^1.9.0",
     "simple-git-hooks": "^2.13.1",
     "srvx": "^0.10.0",
+    "typescript": "^6.0.3",
     "unbuild": "^3.6.1",
     "vitest": "^4.1.5",
     "ws": "^8.19.0"
