@@ -856,4 +856,170 @@ describe.each([
       expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(3, expect.objectContaining({ kind: 'cancel' }))
     }
   })
+
+  it('error happen while sending request event stream and streaming response', async () => {
+    let serverSignal!: AbortSignal
+    let serverError!: unknown
+    let canceled = false
+
+    clientServer.handler.mockImplementationOnce(async (request) => {
+      serverSignal = request.signal!
+
+      ;(async () => {
+        const body = await request.resolveBody() as AsyncGenerator
+        expect(body).toSatisfy(isAsyncIteratorObject)
+        await body.next()
+        try {
+          await body.next() // pull second chunk where error happen
+        }
+        catch (e) {
+          serverError = e
+        }
+      })()
+
+      let time = 0
+      return {
+        headers: {},
+        status: 200,
+        body: new AsyncIteratorClass(async () => {
+          time += 1
+          if (time > 1) {
+            await sleep(300)
+          }
+          return { value: 'chunk' }
+        }, vi.fn()),
+      }
+    })
+
+    let times = 0
+    const responsePromise = clientServer.request({
+      headers: {},
+      body: new AsyncIteratorClass(
+        async () => {
+          times++
+
+          if (times !== 1) {
+            await sleep(200)
+            // throw normal error not event iterator error
+            throw new Error('__TEST__')
+          }
+
+          return { done: false, value: 'Hello' }
+        },
+        async (completed) => {
+          if (!completed) {
+            canceled = true
+          }
+        },
+      ),
+      method: 'POST',
+      url: '/',
+    })
+
+    const response = await responsePromise
+    const iterator = await response.resolveBody() as AsyncIteratorClass<any>
+
+    await expect(iterator.next().then(() => iterator.next())).rejects.toThrow(Error)
+
+    await sleep(100) // wait for server handle abort
+    expect(serverSignal.aborted).toBe(true)
+    expect(serverError).toBeInstanceOf(Error)
+    expect(times).toBe(2) // stop at second chunk
+    expect(canceled).toBe(false) // don't need cancel if error happen
+
+    if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
+      expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(3)
+      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
+      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'event-stream' }))
+      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(3, expect.objectContaining({ kind: 'cancel' }))
+
+      expect(clientServer.sendServerPeerMessage).toHaveBeenCalledTimes(2)
+      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'response' }))
+      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'event-stream' }))
+    }
+  })
+
+  it('error happen while sending request octet stream and streaming response', async () => {
+    let serverSignal!: AbortSignal
+    let serverError!: unknown
+    let canceled = false
+
+    clientServer.handler.mockImplementationOnce(async (request) => {
+      serverSignal = request.signal!
+
+      ;(async () => {
+        const body = await request.resolveBody() as ReadableStream
+        expect(body).toBeInstanceOf(ReadableStream)
+
+        const reader = body.getReader()
+        await reader.read()
+        try {
+          await reader.read() // pull second chunk where error happen
+        }
+        catch (e) {
+          serverError = e
+        }
+      })()
+
+      await sleep(100)
+
+      return {
+        headers: {},
+        status: 200,
+        body: new ReadableStream({
+          pull: async (controller) => {
+            controller.enqueue(new TextEncoder().encode('chunk\n'))
+            // only wait after send first chunk, to ensure response send immediately
+            await sleep(300)
+          },
+        }),
+      }
+    })
+
+    let times = 0
+    const responsePromise = clientServer.request({
+      headers: {},
+      body: new ReadableStream({
+        pull: async (controller) => {
+          times += 1
+
+          if (times !== 1) {
+            await sleep(200)
+            controller.error(new Error('__TEST__'))
+          }
+
+          controller.enqueue(new TextEncoder().encode('chunk\n'))
+        },
+        cancel: async (reason) => {
+          canceled = true
+        },
+      }),
+      method: 'POST',
+      url: '/',
+    })
+
+    const response = await responsePromise
+    const body = await response.resolveBody() as ReadableStream
+
+    const reader = body.getReader()
+
+    await expect(reader.read().then(() => reader.read())).rejects.toThrow(Error)
+
+    await sleep(100) // wait for server handle abort
+    expect(serverSignal.aborted).toBe(true)
+    expect(serverError).toBeInstanceOf(Error)
+    expect(times).toBe(2) // stop at second chunk
+    expect(canceled).toBe(false) // don't need cancel if error happen
+
+    if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
+      expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(3)
+      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
+      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'octet-stream' }))
+      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(3, expect.objectContaining({ kind: 'cancel' }))
+
+      expect(clientServer.sendServerPeerMessage).toHaveBeenCalledTimes(2)
+      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'response' }))
+      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'octet-stream' }))
+    }
+  })
 })
