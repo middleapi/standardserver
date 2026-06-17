@@ -4,6 +4,7 @@ export default defineConfig(() => ({
   test: {
     coverage: {
       include: ['packages/*/src/**'],
+      exclude: ['**.test-d.*', '**.test.*'],
     },
     projects: [
       {
