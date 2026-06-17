@@ -167,12 +167,12 @@ describe('octetStreamTransmitter', () => {
     const send = vi.fn(async () => {})
     const stream = new ReadableStream({
       async pull() {
-        throw new Error('stream error')
+        throw new Error('__TEST__')
       },
     })
 
     const transmitter = new OctetStreamTransmitter(stream, 'msg-1', send)
-    await expect(transmitter.transmit()).rejects.toThrow('stream error')
+    await expect(transmitter.transmit()).rejects.toThrow('__TEST__')
   })
 
   it('rethrow send-error and cleanup during sending enqueue-event', async () => {

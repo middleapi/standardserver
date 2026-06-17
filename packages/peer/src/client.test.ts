@@ -1,15 +1,10 @@
 import type { StandardLazyResponse, StandardRequest } from '@standardserver/core'
 import type { ClientPeerSendMessage, PeerCancelMessage, PeerEventStreamMessage, PeerOctetStreamMessage, PeerRequestMessage, PeerResponseMessage, PeerStreamCancelMessage } from './types'
-import { AbortError, AsyncIteratorClass, emitUnhandledRejection, isAsyncIteratorObject, promiseWithResolvers, sleep } from '@standardserver/shared'
+import { AbortError, AsyncIteratorClass, isAsyncIteratorObject, promiseWithResolvers, sleep } from '@standardserver/shared'
 import * as Body from './body'
 import { ClientPeer } from './client'
 
 const toStandardBodySpy = vi.spyOn(Body, 'toStandardBody')
-
-vi.mock('@standardserver/shared', async origin => ({
-  ...await origin(),
-  emitUnhandledRejection: vi.fn(),
-}))
 
 function makeRequest(overrides: Partial<StandardRequest> = {}): StandardRequest {
   return { method: 'GET', url: '/test', headers: {}, ...overrides }
@@ -250,7 +245,7 @@ describe('clientPeer', () => {
         await promise
       })
 
-      it('reject and send cancel message on non-protocol error', async () => {
+      it('send cancel message and reject request on non-protocol error', async () => {
         const nonProtocolError = new Error('non-protocol error')
         const iter = new AsyncIteratorClass<unknown>(async () => {
           sleep(100)
@@ -261,15 +256,21 @@ describe('clientPeer', () => {
           peer.request(
             makeRequest({ method: 'POST', headers: { 'standard-server': 'event-stream' }, body: iter }),
           ),
-        ).rejects.toThrow(nonProtocolError)
+        ).rejects.toBe(nonProtocolError)
 
+        const id = await waitForSend()
+
+        await vi.waitFor(() => {
+          expect(send).toHaveBeenCalledTimes(2)
+          expect(send).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
+          expect(send).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'cancel' }))
+        })
+
+        await peer.message(makeResponseMessage(id))
         await promise
-        expect(send).toHaveBeenCalledTimes(2)
-        expect(send).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
-        expect(send).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'cancel' }))
       })
 
-      it('does not send cancel on non-protocol error if request was resolved', async () => {
+      it('does not send cancel message on non-protocol error if request was resolved', async () => {
         const nonProtocolError = new Error('non-protocol error')
         const iter = new AsyncIteratorClass<unknown>(async () => {
           await sleep(100)
@@ -285,9 +286,6 @@ describe('clientPeer', () => {
         await peer.message(makeResponseMessage(id))
 
         await promise
-
-        await vi.waitFor(() => expect(emitUnhandledRejection).toHaveBeenCalledTimes(1))
-        expect(emitUnhandledRejection).toHaveBeenCalledWith(nonProtocolError)
 
         expect(send).toHaveBeenCalledTimes(1)
         expect(send).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
@@ -332,6 +330,21 @@ describe('clientPeer', () => {
 
         expect(send).toHaveBeenCalledTimes(2)
         expect(send).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'cancel' }))
+      })
+
+      it('iterator error if receive cancel message', async () => {
+        const { id, promise } = await requestAndGetId()
+        await peer.message(makeStreamingResponse(id, 'event-stream'))
+
+        const response = await promise
+        const iter = await response.resolveBody() as AsyncIterator<unknown>
+        expect(iter).toSatisfy(isAsyncIteratorObject)
+
+        await peer.message(makeEventStreamMessage(id, 'evt1'))
+        await peer.message({ id, kind: 'cancel' })
+        // ensure the previous event remains available; close, do not abort
+        await expect(iter.next()).resolves.toEqual({ done: false, value: 'evt1' })
+        await expect(iter.next()).rejects.toThrow('Server canceled the request')
       })
     })
   })
@@ -378,7 +391,7 @@ describe('clientPeer', () => {
         expect(cancel).toHaveBeenCalled()
       })
 
-      it('reject and send cancel message on stream error', async () => {
+      it('send cancel message and reject request on stream error', async () => {
         const error = new Error('stream error')
         const stream = new ReadableStream<Uint8Array<ArrayBuffer>>({
           async pull(controller) {
@@ -391,12 +404,18 @@ describe('clientPeer', () => {
           peer.request(
             makeRequest({ method: 'POST', headers: { 'standard-server': 'octet-stream' }, body: stream }),
           ),
-        ).rejects.toThrow(error)
+        ).rejects.toBe(error)
 
+        const id = await waitForSend()
+
+        await vi.waitFor(() => {
+          expect(send).toHaveBeenCalledTimes(2)
+          expect(send).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
+          expect(send).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'cancel' }))
+        })
+
+        await peer.message(makeResponseMessage(id))
         await promise
-        expect(send).toHaveBeenCalledTimes(2)
-        expect(send).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
-        expect(send).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'cancel' }))
       })
 
       it('does not send cancel message on error if request was resolved', async () => {
@@ -416,9 +435,6 @@ describe('clientPeer', () => {
         await sleep(10) // wait until stream start
         await peer.message(makeResponseMessage(id))
         await promise
-
-        // await vi.waitFor(() => expect(emitUnhandledRejection).toHaveBeenCalledTimes(1))
-        // expect(emitUnhandledRejection).toHaveBeenCalledWith(error)
 
         expect(send).toHaveBeenCalledTimes(1)
         expect(send).not.toHaveBeenCalledWith(expect.objectContaining({ kind: 'cancel' }))
@@ -464,6 +480,26 @@ describe('clientPeer', () => {
 
         expect(send).toHaveBeenCalledTimes(2)
         expect(send).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'cancel' }))
+      })
+
+      it('readableStream error if receive a cancel message', async () => {
+        const { id, promise } = await requestAndGetId()
+        await peer.message(makeStreamingResponse(id, 'octet-stream'))
+
+        const response = await promise
+        const body = await response.resolveBody()
+        expect(body).toBeInstanceOf(ReadableStream)
+
+        const reader = (body as ReadableStream).getReader()
+
+        await peer.message(makeOctetStreamMessage(id, false, new Uint8Array([5, 6])))
+        await peer.message({ id, kind: 'cancel' })
+
+        const { value } = await reader.read()
+        // ensure the previous event remains available; close, do not abort
+        expect(value).toEqual(new Uint8Array([5, 6]))
+
+        await expect(reader.read()).rejects.toThrow('Server canceled the request')
       })
     })
   })

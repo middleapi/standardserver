@@ -155,6 +155,90 @@ describe('sendStandardResponse', () => {
     expect(res.text).toEqual(': \n\nevent: message\ndata: "foo"\n\nevent: message\ndata: "bar"\n\nevent: close\ndata: "baz"\n\n')
   })
 
+  it('chunked (octet)', async () => {
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode('chunk1'))
+        controller.enqueue(new TextEncoder().encode('chunk2'))
+        controller.enqueue(new TextEncoder().encode('chunk3'))
+        controller.close()
+      },
+    })
+
+    let endSpy: any
+
+    const options = { eventStream: { keepAliveEnabled: true } }
+
+    const res = await request(async (req: IncomingMessage, res: ServerResponse) => {
+      endSpy = vi.spyOn(res, 'end')
+
+      await sendStandardResponse(res, {
+        status: 207,
+        headers: {
+          'x-custom-header': 'custom-value',
+        },
+        body: stream,
+      }, options)
+    }).get('/')
+
+    expect(toNodeHttpBodySpy).toBeCalledTimes(1)
+    expect(toNodeHttpBodySpy).toBeCalledWith(stream, {
+      'x-custom-header': 'custom-value',
+    }, options)
+
+    expect(endSpy).toBeCalledTimes(1)
+    expect(endSpy).toBeCalledWith()
+
+    expect(res.status).toBe(207)
+    expect(res.headers).toMatchObject({
+      'content-type': 'application/octet-stream',
+      'x-custom-header': 'custom-value',
+    })
+
+    expect(Buffer.from(res.body).toString()).toEqual('chunk1chunk2chunk3')
+  })
+
+  it('should destroy response when stream encounters an error during streaming', async () => {
+    const error = new Error('TEST')
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode('chunk1'))
+        controller.enqueue(new TextEncoder().encode('chunk2'))
+        controller.error(error)
+      },
+    })
+
+    let destroySpy: any
+    let thrownError: any
+
+    const options = { }
+    await expect(request(async (req: IncomingMessage, res: ServerResponse) => {
+      destroySpy = vi.spyOn(res, 'destroy')
+
+      try {
+        await sendStandardResponse(res, {
+          status: 207,
+          headers: {
+            'x-custom-header': 'custom-value',
+          },
+          body: stream,
+        }, options)
+      }
+      catch (err) {
+        thrownError = err
+      }
+    }).get('/')).rejects.toThrow()
+
+    expect(toNodeHttpBodySpy).toBeCalledTimes(1)
+    expect(toNodeHttpBodySpy).toBeCalledWith(stream, {
+      'x-custom-header': 'custom-value',
+    }, options)
+
+    expect(destroySpy).toBeCalledTimes(1)
+    expect(destroySpy).toBeCalledWith(error)
+    expect(thrownError).toBe(undefined)
+  })
+
   describe('stream destroy while sending', () => {
     it('with error', async () => {
       let clean = false

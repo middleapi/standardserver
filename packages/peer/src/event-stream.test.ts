@@ -1,6 +1,6 @@
 import type { PeerEventStreamMessage } from './types'
 import { ErrorEvent, unwrapEvent, withEventMeta } from '@standardserver/core'
-import { AsyncIteratorClass, Queue } from '@standardserver/shared'
+import { AsyncIteratorClass, Queue, sleep } from '@standardserver/shared'
 import { EventStreamTransmitter, toEventIterator } from './event-stream'
 
 describe('toEventIterator', () => {
@@ -178,6 +178,7 @@ describe('eventStreamTransmitter', () => {
     await transmitter.transmit()
 
     expect(send).toHaveBeenCalledWith(expect.objectContaining({
+      kind: 'event-stream',
       json: expect.objectContaining({ event: 'error', data: { reason: 'fail' } }),
     }))
   })
@@ -185,11 +186,11 @@ describe('eventStreamTransmitter', () => {
   it('rethrows non-protocol errors', async () => {
     const send = vi.fn(async () => {})
     const iter = new AsyncIteratorClass(async () => {
-      throw new Error('unexpected')
+      throw new Error('__TEST__')
     }, async () => {})
 
     const transmitter = new EventStreamTransmitter(iter, 'msg-1', send)
-    await expect(transmitter.transmit()).rejects.toThrow('unexpected')
+    await expect(transmitter.transmit()).rejects.toThrow('__TEST__')
   })
 
   it('rethrow send-error and cleanup during sending yield-event', async () => {
@@ -267,14 +268,14 @@ describe('eventStreamTransmitter', () => {
     const iter = new AsyncIteratorClass(async () => {
       pullCount++
       // simulate slow iterator so cancel happens mid-stream
-      await new Promise(resolve => setTimeout(resolve, 50))
+      await sleep(50)
       throw new ErrorEvent({ reason: 'fail' })
     }, async () => {})
 
     const transmitter = new EventStreamTransmitter(iter, 'msg-1', send)
     const transmitPromise = transmitter.transmit()
 
-    // cancel immediately
+    await sleep(10)
     await transmitter.cancel()
     await transmitPromise
 

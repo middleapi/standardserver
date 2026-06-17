@@ -52,7 +52,7 @@ export function toEventIterator(
  * Transmits events to a peer event-stream.
  */
 export class EventStreamTransmitter {
-  private isCompleted = false
+  private isDone = false
 
   constructor(
     private readonly iterator: AsyncIterator<unknown>,
@@ -62,8 +62,8 @@ export class EventStreamTransmitter {
   }
 
   async cancel(): Promise<void> {
-    if (!this.isCompleted) {
-      this.isCompleted = true
+    if (!this.isDone) {
+      this.isDone = true
       await this.iterator.return?.()
     }
   }
@@ -73,13 +73,16 @@ export class EventStreamTransmitter {
       try {
         const item = await this.iterator.next()
 
-        if (this.isCompleted) {
+        if (this.isDone) {
           return
         }
 
-        const [data, meta] = unwrapEvent(item.value)
+        if (item.done) {
+          this.isDone = true
+        }
 
         try {
+          const [data, meta] = unwrapEvent(item.value)
           await this.send({
             kind: 'event-stream',
             id: this.messageId,
@@ -87,44 +90,33 @@ export class EventStreamTransmitter {
           })
         }
         catch (error) {
-          if (!item.done) {
-            // only need cancel if iterator hasn't finished yet
-            await this.cancel()
-          }
-
+          await this.cancel()
           throw error
         }
 
-        if (item.done) {
-          this.isCompleted = true
+        if (this.isDone) {
           return
         }
       }
       catch (error) {
-        if (this.isCompleted) {
-          throw error
-        }
-
-        /**
-         * Error events are part of the protocol and should not be treated
-         * as iterator failures.
-         */
+        // ErrorEvent is part of event-stream protocol
         if (error instanceof ErrorEvent) {
-          const [resolvedError, meta] = unwrapEvent(error)
+          if (!this.isDone) {
+            this.isDone = true
 
-          await this.send({
-            kind: 'event-stream',
-            id: this.messageId,
-            json: { ...meta, event: 'error', data: resolvedError.data },
-          })
+            const [resolvedError, meta] = unwrapEvent(error)
+            await this.send({
+              kind: 'event-stream',
+              id: this.messageId,
+              json: { ...meta, event: 'error', data: resolvedError.data },
+            })
+          }
 
-          this.isCompleted = true
           return
         }
-        else {
-          this.isCompleted = true
-          throw error
-        }
+
+        this.isDone = true
+        throw error
       }
     }
   }

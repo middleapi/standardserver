@@ -28,7 +28,7 @@ export async function sendStandardResponse(
     }
 
     if (resBody === undefined) {
-      // NOTE: some custom-runtime not allow pass undefined to `res.end`
+      // NOTE: Lambda functions don't allow passing undefined to `res.end`
       res.end()
     }
     else if (typeof resBody === 'string') {
@@ -41,6 +41,7 @@ export async function sendStandardResponse(
         }
       })
 
+      // WARNING: errors that occur here are silently ignored and not reported to the Promise
       resBody.once('error', error => res.destroy(error))
 
       resBody.pipe(res)

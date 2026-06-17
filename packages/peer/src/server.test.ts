@@ -183,7 +183,7 @@ describe('serverPeer', () => {
 
   describe('event stream', () => {
     describe('request body (incoming)', () => {
-      it('pushes event-stream messages to the handler body', async () => {
+      it('passes incoming event-stream chunks to the handler body as a AsyncIterator and aborts it when a response is sent before completion', async () => {
         const { handler, box } = deferredHandler()
 
         const msg = makeRequestMessage({ headers: { 'standard-server': 'event-stream' } })
@@ -198,11 +198,9 @@ describe('serverPeer', () => {
         await expect(iter.next()).resolves.toEqual({ value: 'hello-data', done: false })
 
         box.resolve(jsonResponse())
-        await promise
-      })
 
-      it('ignores event-stream for non-existing request', async () => {
-        await peer.message(makeEventStreamMessage('nonexist', 'ignored'), vi.fn())
+        await expect(iter.next()).rejects.toThrow('Request was closed')
+        await promise
       })
 
       it('sends stream/cancel when handler stops reading event-stream', async () => {
@@ -222,6 +220,32 @@ describe('serverPeer', () => {
         const msg = makeRequestMessage({ headers: { 'standard-server': 'event-stream' } })
         await peer.message(msg, handler)
         expect(success).toBeTruthy()
+      })
+
+      it('asyncIterator error if receive cancel message', async () => {
+        const { handler, box } = deferredHandler()
+
+        const msg = makeRequestMessage({ headers: { 'standard-server': 'event-stream' } })
+        const promise = peer.message(msg, handler)
+
+        await vi.waitFor(() => expect(handler).toHaveBeenCalled())
+        const request = handler.mock.calls[0]![0]
+        const iter = await request.resolveBody() as AsyncIterator<unknown>
+        expect(iter).toSatisfy(isAsyncIteratorObject)
+
+        await peer.message(makeEventStreamMessage('1', 'hello-data'), vi.fn())
+        await peer.message({ id: '1', kind: 'cancel' }, vi.fn())
+
+        // ensure the previous event remains available; close, do not abort
+        await expect(iter.next()).resolves.toEqual({ value: 'hello-data', done: false })
+        await expect(iter.next()).rejects.toThrow('Client aborted the request')
+
+        box.resolve(jsonResponse())
+        await promise
+      })
+
+      it('ignores event-stream for non-existing request', async () => {
+        await peer.message(makeEventStreamMessage('nonexist', 'ignored'), vi.fn())
       })
     })
 
@@ -279,16 +303,14 @@ describe('serverPeer', () => {
         await promise
       })
 
-      it('sends abort when iterator throws non-protocol error', async () => {
+      it('sends cancel message when iterator throws non-protocol error', async () => {
         const nonProtocolError = new Error('iterator error')
         const iter = new AsyncIteratorClass<unknown>(
           async () => { throw nonProtocolError },
           async () => {},
         )
 
-        await expect(
-          peer.message(makeRequestMessage(), async () => eventStreamResponse(iter)),
-        ).rejects.toThrow(nonProtocolError)
+        await peer.message(makeRequestMessage(), async () => eventStreamResponse(iter))
 
         expect(send).toHaveBeenCalledTimes(2)
         expect(send).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'response' }))
@@ -299,7 +321,7 @@ describe('serverPeer', () => {
 
   describe('octet stream', () => {
     describe('request body (incoming)', () => {
-      it('pushes octet-stream messages to the handler body as a ReadableStream', async () => {
+      it('passes incoming octet-stream chunks to the handler body as a ReadableStream and aborts it when a response is sent before completion', async () => {
         const { handler, box } = deferredHandler()
 
         const msg = makeRequestMessage({ headers: { 'standard-server': 'octet-stream' } })
@@ -316,11 +338,10 @@ describe('serverPeer', () => {
         expect(chunk1).toEqual({ value: new Uint8Array([1, 2, 3]), done: false })
 
         box.resolve(jsonResponse())
-        await promise
-      })
 
-      it('ignores octet-stream for non-existing request', async () => {
-        await peer.message(makeOctetStreamMessage('nonexist', false, new Uint8Array([1, 2, 3])), vi.fn())
+        await expect(reader.read()).rejects.toThrow('Request was closed')
+
+        await promise
       })
 
       it('sends stream/cancel when handler stops reading octet-stream', async () => {
@@ -338,6 +359,34 @@ describe('serverPeer', () => {
           .filter((message): message is PeerStreamCancelMessage => message?.kind === 'stream/cancel')
         expect(cancelMsgs.length).toBe(1)
         expect(cancelMsgs[0]!.id).toBe('1')
+      })
+
+      it('readableStream error if receive cancel message', async () => {
+        const { handler, box } = deferredHandler()
+
+        const msg = makeRequestMessage({ headers: { 'standard-server': 'octet-stream' } })
+        const promise = peer.message(msg, handler)
+
+        await vi.waitFor(() => expect(handler).toHaveBeenCalled())
+        const request = handler.mock.calls[0]![0]
+        const body = await request.resolveBody() as ReadableStream<Uint8Array>
+        expect(body).toBeInstanceOf(ReadableStream)
+
+        await peer.message(makeOctetStreamMessage('1', false, new Uint8Array([1, 2, 3])), vi.fn())
+        await peer.message({ id: '1', kind: 'cancel' }, vi.fn())
+
+        const reader = body.getReader()
+        const chunk1 = await reader.read()
+        // ensure the previous event remains available; close, do not abort
+        expect(chunk1).toEqual({ value: new Uint8Array([1, 2, 3]), done: false })
+        await expect(reader.read()).rejects.toThrow('Client aborted the request')
+
+        box.resolve(jsonResponse())
+        await promise
+      })
+
+      it('ignores octet-stream for non-existing request', async () => {
+        await peer.message(makeOctetStreamMessage('nonexist', false, new Uint8Array([1, 2, 3])), vi.fn())
       })
     })
 
@@ -374,7 +423,7 @@ describe('serverPeer', () => {
         await promise
       })
 
-      it('sends abort when response stream errors', async () => {
+      it('sends cancel message and when response stream errors', async () => {
         const error = new Error('stream error')
         const stream = new ReadableStream<Uint8Array>({
           async start(controller) {
@@ -383,9 +432,7 @@ describe('serverPeer', () => {
           },
         })
 
-        await expect(
-          peer.message(makeRequestMessage(), async () => octetStreamResponse(stream)),
-        ).rejects.toThrow(error)
+        await peer.message(makeRequestMessage(), async () => octetStreamResponse(stream))
 
         expect(send).toHaveBeenCalledTimes(2)
         expect(send).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'response' }))

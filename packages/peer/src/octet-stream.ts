@@ -38,7 +38,7 @@ export function toOctetStream(
  * Transmits binary chunks to a peer octet-stream.
  */
 export class OctetStreamTransmitter {
-  private isCompleted = false
+  private isDone = false
   private readonly reader: ReadableStreamDefaultReader<Uint8Array<ArrayBuffer>>
 
   constructor(
@@ -50,8 +50,8 @@ export class OctetStreamTransmitter {
   }
 
   async cancel(): Promise<void> {
-    if (!this.isCompleted) {
-      this.isCompleted = true
+    if (!this.isDone) {
+      this.isDone = true
       await this.reader.cancel()
     }
   }
@@ -59,36 +59,35 @@ export class OctetStreamTransmitter {
   async transmit(): Promise<void> {
     while (true) {
       try {
-        const { done, value } = await this.reader.read()
+        const item = await this.reader.read()
 
-        if (this.isCompleted) {
+        if (this.isDone) {
           return
+        }
+
+        if (item.done) {
+          this.isDone = true
         }
 
         try {
           await this.send({
-            json: { close: done },
-            binary: value,
+            json: { close: item.done },
+            binary: item.value,
             kind: 'octet-stream',
             id: this.messageId,
           })
         }
         catch (err) {
-          if (!done) {
-            // only need cancel if stream hasn't finished yet
-            await this.cancel()
-          }
-
+          await this.cancel()
           throw err
         }
 
-        if (done) {
-          this.isCompleted = true
+        if (this.isDone) {
           return
         }
       }
       catch (error) {
-        this.isCompleted = true
+        this.isDone = true
         throw error
       }
     }

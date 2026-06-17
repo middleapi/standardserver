@@ -104,13 +104,27 @@ export class ServerPeer {
         else {
           const transmitter = new EventStreamTransmitter(response.body, message.id, this.send)
           state.eventStreamTransmitter = transmitter
-          await transmitter.transmit()
+          await transmitter.transmit().catch(async (reason) => {
+            // only cancel if stream transmitter is still active
+            if (state.eventStreamTransmitter) {
+              await this.cancelById(message.id, reason)
+            }
+
+            // WARNING: errors that occur here are silently ignored.
+          })
         }
       }
       else if (response.body instanceof ReadableStream) {
         const transmitter = new OctetStreamTransmitter(response.body, message.id, this.send)
         state.octetStreamTransmitter = transmitter
-        await transmitter.transmit()
+        await transmitter.transmit().catch(async (reason) => {
+          // only cancel if stream transmitter is still active
+          if (state.octetStreamTransmitter) {
+            await this.cancelById(message.id, reason)
+          }
+
+          // WARNING: errors that occur here are silently ignored.
+        })
       }
 
       // close without aborting, because the request is finished successfully
@@ -118,14 +132,7 @@ export class ServerPeer {
       await this.closeById(id)
     }
     catch (reason) {
-      await Promise.all([
-        /**
-         * Do not need to send cancel message if request was closed or aborted
-         */
-        this.requests.has(message.id) ? this.send({ id: message.id, kind: 'cancel' }) : undefined,
-        this.closeById(id, reason),
-      ])
-
+      await this.cancelById(message.id, reason)
       throw reason
     }
   }
@@ -164,5 +171,15 @@ export class ServerPeer {
     state.octetStreamTransmitter = undefined
 
     await Promise.all(promises)
+  }
+
+  private async cancelById(id: string, reason?: unknown): Promise<void> {
+    await Promise.all([
+      /**
+       * Do not need to send cancel message if request was closed or aborted
+       */
+      this.requests.has(id) ? this.send({ id, kind: 'cancel' }) : undefined,
+      this.closeById(id, reason),
+    ])
   }
 }

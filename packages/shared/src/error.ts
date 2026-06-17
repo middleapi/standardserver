@@ -8,13 +8,3 @@ export class AbortError extends Error {
     this.name = 'AbortError'
   }
 }
-
-/**
- * Forwards an error to the global unhandled rejection handler via a rejected Promise.
- * Useful for routing errors from sync contexts into async error pipelines.
- */
-export function emitUnhandledRejection(error: unknown): void {
-  Promise.reject(error).catch(() => {
-    throw error
-  })
-}

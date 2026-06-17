@@ -1,7 +1,7 @@
 import type { StandardLazyResponse, StandardRequest } from '@standardserver/core'
 import type { Queue } from '@standardserver/shared'
 import type { ClientPeerSendMessage, PeerEventStreamMessage, PeerOctetStreamMessage, ServerPeerSendMessage } from './types'
-import { AbortError, emitUnhandledRejection, isAsyncIteratorObject, omit, SequentialIdGenerator } from '@standardserver/shared'
+import { AbortError, isAsyncIteratorObject, omit, SequentialIdGenerator } from '@standardserver/shared'
 import { encodeAtomicStandardBody, toStandardBody } from './body'
 import { EventStreamTransmitter } from './event-stream'
 import { OctetStreamTransmitter } from './octet-stream'
@@ -76,19 +76,12 @@ export class ClientPeer {
 
         // Do not await here; we don't want it to block response processing.
         void transmitter.transmit().catch(async (error) => {
-          if (state.eventStreamTransmitter) { // stream transmitter is still active
+          // only abort if stream transmitter is still active
+          if (state.eventStreamTransmitter) {
             await this.abortById(id, error)
           }
-          else {
-            /**
-             * The request has already been closed or the stream transmitter
-             * was cancelled earlier.
-             *
-             * This error should not affect the current flow. Instead, forward it
-             * as an unhandled rejection so it can be noticed and fixed.
-             */
-            emitUnhandledRejection(error)
-          }
+
+          // WARNING: errors that occur here are silently ignored.
         })
       }
       else if (request.body instanceof ReadableStream) {
@@ -97,26 +90,12 @@ export class ClientPeer {
 
         // Do not await here; we don't want it to block response processing.
         void transmitter.transmit().catch(async (error) => {
-          if (state.octetStreamTransmitter) { // stream transmitter is still active
+          // only abort if stream transmitter is still active
+          if (state.octetStreamTransmitter) {
             await this.abortById(id, error)
           }
 
-          /**
-           * ReadableStream does not throw after cancel, so this branch is unlikely.
-           * It exists for completeness to cover all edge cases.
-           * v8 ignore start -- @preserve
-           */
-          else {
-            /**
-             * The request has already been closed or the stream transmitter
-             * was cancelled earlier.
-             *
-             * This error should not affect the current flow. Instead, forward it
-             * as an unhandled rejection so it can be noticed and fixed.
-             */
-            emitUnhandledRejection(error)
-          }
-          /* v8 ignore stop -- @preserve */
+          // WARNING: errors that occur here are silently ignored.
         })
       }
     }
