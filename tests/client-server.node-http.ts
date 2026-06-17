@@ -9,20 +9,11 @@ export function createNodeHttpClientServerTest(): ClientServerTest {
     return { status: 404, body: 'Not Found', headers: {} }
   })
 
-  const serverErrorMap = new Map<string, unknown>()
-
   const server = http.createServer(async (req, res) => {
-    try {
-      const standardRequest = toStandardLazyRequest(req, res)
-      const standardResponse = await handler(standardRequest)
+    const standardRequest = toStandardLazyRequest(req, res)
+    const standardResponse = await handler(standardRequest)
 
-      await sendStandardResponse(res, standardResponse)
-    }
-    catch (e) {
-      const id = req.headers.id as string
-      serverErrorMap.set(id, e)
-      throw e
-    }
+    await sendStandardResponse(res, standardResponse)
   })
 
   server.listen(0)
@@ -36,30 +27,21 @@ export function createNodeHttpClientServerTest(): ClientServerTest {
   const request: ClientServerTest['request'] = vi.fn(async (standardRequest) => {
     const id = crypto.randomUUID()
 
-    try {
-      const [body, standardHeaders] = toFetchBody(standardRequest.body, standardRequest.headers)
+    const [body, standardHeaders] = toFetchBody(standardRequest.body, standardRequest.headers)
 
-      standardHeaders.id = id
+    standardHeaders.id = id
 
-      const response = await fetch(`http://localhost:${addressInfo.port}${standardRequest.url}`, {
-        method: standardRequest.method,
-        headers: toFetchHeaders(standardHeaders),
-        body: body ?? null,
-        duplex: 'half',
-        signal: standardRequest.signal ?? null,
-      })
+    const response = await fetch(`http://localhost:${addressInfo.port}${standardRequest.url}`, {
+      method: standardRequest.method,
+      headers: toFetchHeaders(standardHeaders),
+      body: body ?? null,
+      duplex: 'half',
+      signal: standardRequest.signal ?? null,
+    })
 
-      if (serverErrorMap.has(id)) {
-        throw serverErrorMap.get(id)
-      }
+    const standardResponse = toStandardLazyResponse(response)
 
-      const standardResponse = toStandardLazyResponse(response)
-
-      return standardResponse
-    }
-    finally {
-      serverErrorMap.delete(id)
-    }
+    return standardResponse
   })
 
   return {

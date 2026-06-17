@@ -26,18 +26,13 @@ export function createMessagePortClientServerTest(): ClientServerTest {
   })
   const clientPeer = new ClientPeer(sendClientPeerMessage)
   port1.addEventListener('message', async (event) => {
-    try {
-      const { matched, message } = decodePeerMessage(event.data, { prefix })
+    const { matched, message } = decodePeerMessage(event.data, { prefix })
 
-      if (!matched) {
-        return
-      }
+    if (!matched) {
+      return
+    }
 
-      await clientPeer.message(message as any)
-    }
-    catch (e) {
-      console.error(e)
-    }
+    await clientPeer.message(message as any)
   })
   port1.start()
 

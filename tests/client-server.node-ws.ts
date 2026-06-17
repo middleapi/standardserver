@@ -48,26 +48,21 @@ export function createNodeWsClientServerTest(): ClientServerTest {
   })
   const clientPeer = new ClientPeer(sendClientPeerMessage)
   wsc.addEventListener('message', async (event) => {
-    try {
-      const encoded = typeof event.data === 'string'
-        ? event.data
-        : event.data instanceof ArrayBuffer
-          ? new Uint8Array(event.data)
-          : Array.isArray(event.data)
-            ? await (new Blob(event.data as BlobPart[])).bytes()
-            : new Uint8Array(event.data.buffer as ArrayBuffer, event.data.byteOffset, event.data.byteLength)
+    const encoded = typeof event.data === 'string'
+      ? event.data
+      : event.data instanceof ArrayBuffer
+        ? new Uint8Array(event.data)
+        : Array.isArray(event.data)
+          ? await (new Blob(event.data as BlobPart[])).bytes()
+          : new Uint8Array(event.data.buffer as ArrayBuffer, event.data.byteOffset, event.data.byteLength)
 
-      const { matched, message } = decodePeerMessage(encoded, { prefix })
+    const { matched, message } = decodePeerMessage(encoded, { prefix })
 
-      if (!matched) {
-        return
-      }
-
-      await clientPeer.message(message as any)
+    if (!matched) {
+      return
     }
-    catch (e) {
-      console.error(e)
-    }
+
+    await clientPeer.message(message as any)
   })
 
   const handler: ClientServerTest['handler'] = vi.fn(async () => {
@@ -84,28 +79,23 @@ export function createNodeWsClientServerTest(): ClientServerTest {
     sendServerPeerInternal = ws.send.bind(ws)
 
     ws.addEventListener('message', async (event) => {
-      try {
-        const encoded = typeof event.data === 'string'
-          ? event.data
-          : event.data instanceof ArrayBuffer
-            ? new Uint8Array(event.data)
-            : Array.isArray(event.data)
-              ? await (new Blob(event.data as BlobPart[])).bytes()
-              : new Uint8Array(event.data.buffer as ArrayBuffer, event.data.byteOffset, event.data.byteLength)
+      const encoded = typeof event.data === 'string'
+        ? event.data
+        : event.data instanceof ArrayBuffer
+          ? new Uint8Array(event.data)
+          : Array.isArray(event.data)
+            ? await (new Blob(event.data as BlobPart[])).bytes()
+            : new Uint8Array(event.data.buffer as ArrayBuffer, event.data.byteOffset, event.data.byteLength)
 
-        const { matched, message } = decodePeerMessage(encoded, { prefix })
+      const { matched, message } = decodePeerMessage(encoded, { prefix })
 
-        if (!matched) {
-          return
-        }
-
-        await serverPeer.message(message as any, async (request) => {
-          return handler(request)
-        })
+      if (!matched) {
+        return
       }
-      catch (e) {
-        console.error(e)
-      }
+
+      await serverPeer.message(message as any, async (request) => {
+        return handler(request)
+      })
     })
   })
 

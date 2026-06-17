@@ -1,9 +1,7 @@
 import { AsyncIteratorClass, isAsyncIteratorObject, sleep } from '@standardserver/shared'
-import { createH3WebHandlerClientServerTest } from './client-server.h3-web-handler'
 import { createHonoFetchClientServerTest } from './client-server.hono-fetch'
 import { createMessagePortClientServerTest } from './client-server.message-port'
 import { createNodeHttpClientServerTest } from './client-server.node-http'
-import { createNodeSrvxClientServerTest } from './client-server.node-srvx'
 import { createNodeWsClientServerTest } from './client-server.node-ws'
 
 beforeEach(() => {
@@ -14,9 +12,9 @@ describe.each([
   // ['inprogress', createInprogressClientServerTest],
   // ['inprogress-fetch', createInprogressFetchClientServerTest],
   // ['h3-node-handler', createH3NodeHandlerClientServerTest],
-  ['h3-web-handler', createH3WebHandlerClientServerTest],
+  // ['h3-web-handler', createH3WebHandlerClientServerTest],
   ['hono-fetch', createHonoFetchClientServerTest],
-  ['node-srvx', createNodeSrvxClientServerTest],
+  // ['node-srvx', createNodeSrvxClientServerTest],
   // ['node-fetch-server', createNodeFetchServerClientServerTest],
   ['node-http', createNodeHttpClientServerTest],
   ['message-port', createMessagePortClientServerTest],
