@@ -390,10 +390,8 @@ describe('toEventStream', () => {
       }
 
       const stream = toEventStream(gen(), {
-        initialCommentEnabled: false,
-        keepAliveEnabled: true,
-        keepAliveInterval: 40,
-        keepAliveComment: 'ping',
+        initialComment: { enabled: false },
+        keepAlive: { enabled: true, interval: 40, comment: 'ping' },
       })
 
       const reader = stream
@@ -443,10 +441,8 @@ describe('toEventStream', () => {
       }
 
       const stream = toEventStream(gen(), {
-        initialCommentEnabled: false,
-        keepAliveEnabled: false,
-        keepAliveInterval: 40,
-        keepAliveComment: 'ping',
+        initialComment: { enabled: false },
+        keepAlive: { enabled: false, interval: 40, comment: 'ping' },
       })
 
       const reader = stream
@@ -476,9 +472,8 @@ describe('toEventStream', () => {
       }
 
       const stream = toEventStream(gen(), {
-        initialCommentEnabled: true,
-        initialComment: 'stream-started',
-        keepAliveEnabled: false,
+        initialComment: { enabled: true, comment: 'stream-started' },
+        keepAlive: { enabled: false },
       })
 
       const reader = stream
@@ -504,8 +499,8 @@ describe('toEventStream', () => {
       }
 
       const stream = toEventStream(gen(), {
-        initialCommentEnabled: false,
-        keepAliveEnabled: false,
+        initialComment: { enabled: false },
+        keepAlive: { enabled: false },
       })
 
       const reader = stream
@@ -529,8 +524,8 @@ describe('toEventStream', () => {
       }
 
       const stream = toEventStream(gen(), {
-        initialCommentEnabled: false,
-        keepAliveEnabled: false,
+        initialComment: { enabled: false },
+        keepAlive: { enabled: false },
       })
 
       const reader = stream
@@ -548,8 +543,8 @@ describe('toEventStream', () => {
       }
 
       const stream = toEventStream(gen(), {
-        initialCommentEnabled: false,
-        keepAliveEnabled: false,
+        initialComment: { enabled: false },
+        keepAlive: { enabled: false },
         emptyCloseEventEnabled: false,
       })
 
@@ -567,8 +562,8 @@ describe('toEventStream', () => {
       }
 
       const stream = toEventStream(gen(), {
-        initialCommentEnabled: false,
-        keepAliveEnabled: false,
+        initialComment: { enabled: false },
+        keepAlive: { enabled: false },
         emptyCloseEventEnabled: true,
       })
 
@@ -588,8 +583,8 @@ describe('toEventStream', () => {
       }
 
       const stream = toEventStream(gen(), {
-        initialCommentEnabled: false,
-        keepAliveEnabled: false,
+        initialComment: { enabled: false },
+        keepAlive: { enabled: false },
         emptyCloseEventEnabled,
       })
 
@@ -613,7 +608,7 @@ it.each([
       await new Promise(resolve => setTimeout(resolve, 50))
       yield value
     }
-  })(), { keepAliveInterval: 10 }))
+  })(), { keepAlive: { enabled: true, interval: 10 } }))
 
   for (const expectedValue of values) {
     await Promise.all([

@@ -16,7 +16,7 @@ describe('sendStandardResponse', () => {
   it('buffered (empty)', async () => {
     let endSpy: any
 
-    const options = { eventStream: { keepAliveEnabled: true } }
+    const options = { eventStream: { keepAlive: { enabled: true } } }
     const res = await request(async (req: IncomingMessage, res: ServerResponse) => {
       endSpy = vi.spyOn(res, 'end')
 
@@ -47,7 +47,7 @@ describe('sendStandardResponse', () => {
   it('buffered', async () => {
     let endSpy: any
 
-    const options = { eventStream: { keepAliveEnabled: true } }
+    const options = { eventStream: { keepAlive: { enabled: true } } }
     const res = await request(async (req: IncomingMessage, res: ServerResponse) => {
       endSpy = vi.spyOn(res, 'end')
 
@@ -81,7 +81,7 @@ describe('sendStandardResponse', () => {
     const blob = new Blob(['foo'], { type: 'text/plain' })
     let endSpy: any
 
-    const options = { eventStream: { keepAliveEnabled: true } }
+    const options = { eventStream: { keepAlive: { enabled: true } } }
     const res = await request(async (req: IncomingMessage, res: ServerResponse) => {
       endSpy = vi.spyOn(res, 'end')
 
@@ -124,7 +124,7 @@ describe('sendStandardResponse', () => {
 
     let endSpy: any
 
-    const options = { eventStream: { keepAliveEnabled: true } }
+    const options = { eventStream: { keepAlive: { enabled: true } } }
 
     const res = await request(async (req: IncomingMessage, res: ServerResponse) => {
       endSpy = vi.spyOn(res, 'end')
@@ -167,7 +167,7 @@ describe('sendStandardResponse', () => {
 
     let endSpy: any
 
-    const options = { eventStream: { keepAliveEnabled: true } }
+    const options = { eventStream: { keepAlive: { enabled: true } } }
 
     const res = await request(async (req: IncomingMessage, res: ServerResponse) => {
       endSpy = vi.spyOn(res, 'end')

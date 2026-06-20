@@ -80,43 +80,59 @@ export function toEventIterator(
 
 export interface ToEventStreamOptions {
   /**
-   * If true, a ping comment is sent periodically to keep the connection alive.
-   *
-   * @default true
-   */
-  keepAliveEnabled?: boolean
-
-  /**
-   * Interval (in milliseconds) between ping comments sent after the last event.
-   *
-   * @default 5000
-   */
-  keepAliveInterval?: number
-
-  /**
-   * The content of the ping comment. Must not include newline characters.
-   *
-   * @default ''
-   */
-  keepAliveComment?: string
-
-  /**
-   * If true, an initial comment is sent immediately upon stream start to flush headers.
+   * If enabled, an initial comment is sent immediately upon stream start to flush headers.
    * This allows the receiving side to establish the connection without waiting for the first event.
    *
-   * @default true
+   * @default { enabled: true }
    */
-  initialCommentEnabled?: boolean
+  initialComment?: undefined | {
+    /**
+     * If true, an initial comment is sent immediately upon stream start to flush headers.
+     * This allows the receiving side to establish the connection without waiting for the first event.
+     *
+     * @default true
+     */
+    enabled?: boolean
+
+    /**
+     * The content of the initial comment sent upon stream start. Must not include newline characters.
+     *
+     * @default ''
+     */
+    comment?: string
+  }
 
   /**
-   * The content of the initial comment sent upon stream start. Must not include newline characters.
+   * If enabled, a ping comment is sent periodically to keep the connection alive.
    *
-   * @default ''
+   * @default { enabled: true }
    */
-  initialComment?: string
+  keepAlive?: undefined | {
+    /**
+     * If true, a ping comment is sent periodically to keep the connection alive.
+     *
+     * @default true
+     */
+    enabled: boolean
+
+    /**
+     * Interval (in milliseconds) between ping comments sent after the last event.
+     *
+     * @default 5000
+     */
+    interval?: number
+
+    /**
+     * The content of the ping comment. Must not include newline characters.
+     *
+     * @default ''
+     */
+    comment?: string
+  }
 
   /**
-   * If true, a empty `close` event is sent when the iterator completes with `undefined`.
+   * If true, a `close` event is sent even when the iterator completes with `undefined`.
+   * When the iterator returns a value, a `close` event is always emitted regardless of this setting.
    *
    * @default true
    */
@@ -127,11 +143,11 @@ export function toEventStream(
   iterator: AsyncIterator<unknown | void, unknown | void, void>,
   options: ToEventStreamOptions = {},
 ): ReadableStream<Uint8Array<ArrayBuffer>> {
-  const keepAliveEnabled = options.keepAliveEnabled ?? true
-  const keepAliveInterval = options.keepAliveInterval ?? 5000
-  const keepAliveComment = options.keepAliveComment ?? ''
-  const initialCommentEnabled = options.initialCommentEnabled ?? true
-  const initialComment = options.initialComment ?? ''
+  const keepAliveEnabled = options.keepAlive?.enabled ?? true
+  const keepAliveInterval = options.keepAlive?.interval ?? 5000
+  const keepAliveComment = options.keepAlive?.comment ?? ''
+  const initialCommentEnabled = options.initialComment?.enabled ?? true
+  const initialComment = options.initialComment?.comment ?? ''
   const emptyCloseEventEnabled = options.emptyCloseEventEnabled ?? true
 
   let cancelled = false
