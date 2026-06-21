@@ -13,9 +13,9 @@ jobs:
   lint_and_typecheck:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
 
       - run: pnpm i
 
@@ -30,9 +30,9 @@ jobs:
         node-version: [24, 22, 20]
       fail-fast: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
 
       - run: pnpm runtime set node ${{ matrix.node-version }}
 
@@ -40,7 +40,7 @@ jobs:
 
       - run: pnpm run test:coverage
 
-      - uses: codecov/codecov-action@v5
+      - uses: codecov/codecov-action@v7
         if: matrix.node-version == 24
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -48,9 +48,9 @@ jobs:
   publish_preview:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
 
       - run: pnpm i
 
