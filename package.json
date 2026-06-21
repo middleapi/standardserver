@@ -11,7 +11,8 @@
     "test:coverage": "vitest run --coverage",
     "lint": "eslint --max-warnings=0 .",
     "lint:fix": "eslint --max-warnings=0 --fix .",
-    "repo:fix": "sherif --fix"
+    "repo:fix": "sherif --fix",
+    "sponsors:sync": "node scripts/sync-sponsors.ts && eslint --max-warnings=0 --fix **/README.md"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^6.7.3",
