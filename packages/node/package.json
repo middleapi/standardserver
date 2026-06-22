@@ -37,7 +37,7 @@
     "@standardserver/shared": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "^25.0.3",
+    "@types/node": "^26.0.0",
     "@types/supertest": "^6.0.3",
     "supertest": "^7.1.4"
   }

@@ -27,7 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [24, 22, 20]
+        node-version: [26, 24, 22, 20]
       fail-fast: false
     steps:
       - uses: actions/checkout@v7
@@ -41,7 +41,7 @@ jobs:
       - run: pnpm run test:coverage
 
       - uses: codecov/codecov-action@v7
-        if: matrix.node-version == 24
+        if: matrix.node-version == 26
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
 

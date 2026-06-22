@@ -2,6 +2,7 @@
   "name": "@standardserver/repo",
   "type": "module",
   "version": "0.0.25",
+  "private": true,
   "packageManager": "pnpm@11.7.0",
   "license": "MIT",
   "scripts": {
@@ -23,7 +24,7 @@
     "@standardserver/node": "workspace:*",
     "@standardserver/peer": "workspace:*",
     "@standardserver/shared": "workspace:*",
-    "@types/node": "^25.0.3",
+    "@types/node": "^26.0.0",
     "@types/ws": "^8.18.1",
     "@vitest/coverage-v8": "^4.1.5",
     "bumpp": "^11.1.0",
