@@ -17,8 +17,8 @@
   },
   "devDependencies": {
     "@antfu/eslint-config": "^6.7.3",
-    "@hono/node-server": "^2.0.1",
-    "@remix-run/node-fetch-server": "^0.13.0",
+    "@hono/node-server": "^2.0.5",
+    "@remix-run/node-fetch-server": "^0.13.3",
     "@standardserver/core": "workspace:*",
     "@standardserver/fetch": "workspace:*",
     "@standardserver/node": "workspace:*",
@@ -26,7 +26,7 @@
     "@standardserver/shared": "workspace:*",
     "@types/node": "^26.0.0",
     "@types/ws": "^8.18.1",
-    "@vitest/coverage-v8": "^4.1.5",
+    "@vitest/coverage-v8": "^4.1.9",
     "bumpp": "^11.1.0",
     "changelogithub": "^14.0.0",
     "eslint": "^9.39.2",
@@ -35,13 +35,13 @@
     "h3": "2.0.1-rc.7",
     "lint-staged": "^16.2.7",
     "pkg-pr-new": "^0.0.75",
-    "sherif": "^1.9.0",
+    "sherif": "^1.12.0",
     "simple-git-hooks": "^2.13.1",
-    "srvx": "^0.10.0",
+    "srvx": "^0.11.17",
     "typescript": "^6.0.3",
     "unbuild": "^3.6.1",
-    "vitest": "^4.1.5",
-    "ws": "^8.19.0"
+    "vitest": "^4.1.9",
+    "ws": "^8.21.0"
   },
   "simple-git-hooks": {
     "pre-commit": "pnpm lint-staged"
