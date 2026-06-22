@@ -5,6 +5,9 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      # pnpm requires minimumReleaseAge of 1, so the value below should be 1 or more
+      default-days: 1
     versioning-strategy: increase
     groups:
       eslint:
