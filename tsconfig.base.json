@@ -13,7 +13,6 @@
     "types": [],
 
     "strict": true,
-    "exactOptionalPropertyTypes": true,
     "noImplicitOverride": true,
     "noUncheckedIndexedAccess": true,
     "noEmit": true,
