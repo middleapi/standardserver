@@ -43,7 +43,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: pnpm/action-setup@91ab88e2619ed1f46221f0ba42d1492c02baf788
+      - uses: pnpm/action-setup@v6
 
       - run: pnpm i
 
