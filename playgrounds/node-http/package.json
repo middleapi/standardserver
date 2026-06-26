@@ -1,0 +1,17 @@
+{
+  "name": "@standardserver/node-http-playground",
+  "type": "module",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "tsx --watch src/main.ts",
+    "type:check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@standardserver/core": "latest",
+    "@standardserver/node": "latest",
+    "@types/node": "^26.0.0",
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3"
+  }
+}

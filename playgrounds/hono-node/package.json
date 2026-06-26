@@ -1,0 +1,18 @@
+{
+  "name": "@standardserver/hono-node-playground",
+  "type": "module",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "tsx --watch src/main.ts",
+    "type:check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@hono/node-server": "^2.0.1",
+    "@standardserver/core": "latest",
+    "@standardserver/fetch": "latest",
+    "@types/node": "^26.0.0",
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3"
+  }
+}

@@ -1,5 +1,6 @@
 packages:
   - packages/*
+  - playgrounds/*
 preferWorkspacePackages: true
 linkWorkspacePackages: true
 shamefullyHoist: true
