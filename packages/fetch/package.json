@@ -1,7 +1,7 @@
 {
   "name": "@standardserver/fetch",
   "type": "module",
-  "version": "0.0.30",
+  "version": "0.0.31",
   "license": "MIT",
   "homepage": "https://standardserver.dev",
   "repository": {
