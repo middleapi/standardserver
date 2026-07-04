@@ -4,7 +4,7 @@ import type { ClientPeerSendMessage, PeerEventStreamMessage, PeerOctetStreamMess
 import { AbortError, isAsyncIteratorObject } from '@standardserver/shared'
 import { encodeAtomicStandardBody, toStandardBody } from './body'
 import { EventStreamTransmitter } from './event-stream'
-import { HibernationEventIterator } from './hibernation'
+import { HibernationAsyncIteratorClass } from './hibernation'
 import { OctetStreamTransmitter } from './octet-stream'
 
 interface ServerPeerRequestStateInternal {
@@ -98,8 +98,8 @@ export class ServerPeer {
       }
 
       if (isAsyncIteratorObject(response.body)) {
-        if (response.body instanceof HibernationEventIterator) {
-          response.body.hibernationCallback?.(message.id)
+        if (response.body instanceof HibernationAsyncIteratorClass) {
+          response.body['~callback']?.(message.id)
         }
         else {
           const transmitter = new EventStreamTransmitter(response.body, message.id, this.send)

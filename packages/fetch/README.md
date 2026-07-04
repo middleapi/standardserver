@@ -36,11 +36,11 @@ The package exports a single entry point:
 
 The main entry point exposes three groups of helpers:
 
-| Group                   | Exports                                                                     | Purpose                                               |
-| ----------------------- | --------------------------------------------------------------------------- | ----------------------------------------------------- |
-| Request and response    | `toStandardLazyRequest()`, `toStandardLazyResponse()`, `toFetchResponse()`  | Convert between Fetch API objects and Standard Server |
-| Body and stream helpers | `toStandardBody()`, `toFetchBody()`, `toEventIterator()`, `toEventStream()` | Parse and serialize body values, including SSE        |
-| Header and URL helpers  | `toStandardHeaders()`, `toFetchHeaders()`, `toStandardUrl()`                | Normalize Fetch headers and URLs for Standard Server  |
+| Group                   | Exports                                                                           | Purpose                                               |
+| ----------------------- | --------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| Request and response    | `toStandardLazyRequest()`, `toStandardLazyResponse()`, `toFetchResponse()`        | Convert between Fetch API objects and Standard Server |
+| Body and stream helpers | `toStandardBody()`, `toFetchBody()`, `toAsyncIteratorObject()`, `toEventStream()` | Parse and serialize body values, including SSE        |
+| Header and URL helpers  | `toStandardHeaders()`, `toFetchHeaders()`, `toStandardUrl()`                      | Normalize Fetch headers and URLs for Standard Server  |
 
 Use these helpers when you want Standard Server handlers to run in Fetch-based runtimes such as browsers, Cloudflare Workers, Bun, Deno, service workers, or server frameworks that expose the standard Fetch API.
 

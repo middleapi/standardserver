@@ -39,7 +39,7 @@ The main entry point exposes four groups of helpers:
 | Group                   | Exports                                                                                                                | Purpose                                                            |
 | ----------------------- | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
 | Request and response    | `toStandardLazyRequest()`, `sendStandardResponse()`                                                                    | Adapt Node request and response objects to Standard Server         |
-| Body and event streams  | `toStandardBody()`, `toNodeHttpBody()`, `toEventIterator()`, `toEventStream()`                                         | Parse incoming bodies and serialize outgoing bodies, including SSE |
+| Body and event streams  | `toStandardBody()`, `toNodeHttpBody()`, `toAsyncIteratorObject()`, `toEventStream()`                                   | Parse incoming bodies and serialize outgoing bodies, including SSE |
 | Request utilities       | `toStandardMethod()`, `toStandardUrl()`, `toAbortSignal()`                                                             | Normalize Node request metadata and connection lifecycle state     |
 | Types and option shapes | `NodeHttpRequest`, `NodeHttpResponse`, `ToStandardBodyOptions`, `ToNodeHttpBodyOptions`, `SendStandardResponseOptions` | Type request/response inputs and serializer options                |
 

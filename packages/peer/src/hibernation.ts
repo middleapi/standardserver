@@ -1,18 +1,18 @@
 import { AsyncIteratorClass } from '@standardserver/shared'
 
-export interface HibernationEventIteratorCallback {
+export interface HibernationAsyncIteratorClassCallback {
   (id: string): void
 }
 
-export class HibernationEventIterator<T, TReturn = unknown, TNext = unknown> extends AsyncIteratorClass<T, TReturn, TNext> {
+export class HibernationAsyncIteratorClass<T, TReturn = unknown, TNext = unknown> extends AsyncIteratorClass<T, TReturn, TNext> {
   /**
    * In the client library, server results are typically represented by an `AsyncIteratorClass`.
    * Since `AsyncIteratorClass` does not include a `hibernationCallback` property, this property should be optional.
    */
-  readonly hibernationCallback?: HibernationEventIteratorCallback
+  readonly '~callback'?: HibernationAsyncIteratorClassCallback
 
   constructor(
-    hibernationCallback: HibernationEventIteratorCallback,
+    callback: HibernationAsyncIteratorClassCallback,
   ) {
     super(async () => {
       throw new Error('Cannot use hibernating iterator directly')
@@ -22,6 +22,6 @@ export class HibernationEventIterator<T, TReturn = unknown, TNext = unknown> ext
       }
     })
 
-    this.hibernationCallback = hibernationCallback
+    this['~callback'] = callback
   }
 }

@@ -6,7 +6,7 @@ import { Buffer } from 'node:buffer'
 import { Readable } from 'node:stream'
 import { flattenStandardHeader, generateContentDisposition, getFilenameFromContentDisposition } from '@standardserver/core'
 import { isAsyncIteratorObject, parseEmptyableJSON, stringifyJSON } from '@standardserver/shared'
-import { toEventIterator, toEventStream } from './event-stream'
+import { toAsyncIteratorObject, toEventStream } from './event-stream'
 import { toStandardMethod } from './method'
 
 export interface ToStandardBodyOptions {
@@ -65,7 +65,7 @@ export async function toStandardBody(
   }
 
   if (hint === 'event-stream' || (hint === undefined && mimeType === 'text/event-stream')) {
-    return toEventIterator(req)
+    return toAsyncIteratorObject(req)
   }
 
   if (hint === 'file' || (hint === undefined && contentLength !== undefined)) {

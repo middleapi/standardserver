@@ -1,16 +1,16 @@
 import { Readable } from 'node:stream'
 import * as FetchAdapter from '@standardserver/fetch'
 import { isAsyncIteratorObject } from '@standardserver/shared'
-import { toEventIterator, toEventStream } from './event-stream'
+import { toAsyncIteratorObject, toEventStream } from './event-stream'
 
-const toEventIteratorFetch = vi.spyOn(FetchAdapter, 'toEventIterator')
+const toAsyncIteratorObjectFetch = vi.spyOn(FetchAdapter, 'toAsyncIteratorObject')
 const toEventStreamFetch = vi.spyOn(FetchAdapter, 'toEventStream')
 
 beforeEach(() => {
   vi.clearAllMocks()
 })
 
-it('toEventIterator', async () => {
+it('toAsyncIteratorObject', async () => {
   const stream = new ReadableStream<string>({
     async pull(controller) {
       controller.enqueue('event: message\ndata: 1\n\n')
@@ -20,7 +20,7 @@ it('toEventIterator', async () => {
     },
   }).pipeThrough(new TextEncoderStream())
 
-  const generator = toEventIterator(Readable.fromWeb(stream))
+  const generator = toAsyncIteratorObject(Readable.fromWeb(stream))
   expect(generator).toSatisfy(isAsyncIteratorObject)
 
   expect(await generator.next()).toEqual({ done: false, value: 1 })
@@ -28,7 +28,7 @@ it('toEventIterator', async () => {
   expect(await generator.next()).toEqual({ done: false, value: 3 })
   expect(await generator.next()).toEqual({ done: true, value: undefined })
 
-  expect(toEventIteratorFetch).toBeCalledTimes(1)
+  expect(toAsyncIteratorObjectFetch).toBeCalledTimes(1)
 })
 
 it('toEventStream', async () => {

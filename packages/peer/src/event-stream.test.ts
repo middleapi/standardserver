@@ -1,13 +1,13 @@
 import type { PeerEventStreamMessage } from './types'
 import { ErrorEvent, unwrapEvent, withEventMeta } from '@standardserver/core'
 import { AsyncIteratorClass, Queue, sleep } from '@standardserver/shared'
-import { EventStreamTransmitter, toEventIterator } from './event-stream'
+import { EventStreamTransmitter, toAsyncIteratorObject } from './event-stream'
 
-describe('toEventIterator', () => {
+describe('toAsyncIteratorObject', () => {
   it('yields message events', async () => {
     const queue = new Queue<PeerEventStreamMessage>()
     const cleanup = vi.fn()
-    const iter = toEventIterator(queue, cleanup)
+    const iter = toAsyncIteratorObject(queue, cleanup)
 
     queue.push({ id: '1', kind: 'event-stream', json: { event: 'message', data: 'hello' } })
     queue.push({ id: '1', kind: 'event-stream', json: { event: 'close', data: undefined } })
@@ -24,7 +24,7 @@ describe('toEventIterator', () => {
   it('attaches event metadata to object values', async () => {
     const queue = new Queue<PeerEventStreamMessage>()
     const cleanup = vi.fn()
-    const iter = toEventIterator(queue, cleanup)
+    const iter = toAsyncIteratorObject(queue, cleanup)
 
     queue.push({
       id: '1',
@@ -42,7 +42,7 @@ describe('toEventIterator', () => {
   it('does not wrap primitive values with metadata', async () => {
     const queue = new Queue<PeerEventStreamMessage>()
     const cleanup = vi.fn()
-    const iter = toEventIterator(queue, cleanup)
+    const iter = toAsyncIteratorObject(queue, cleanup)
 
     queue.push({
       id: '1',
@@ -59,7 +59,7 @@ describe('toEventIterator', () => {
   it('throws ErrorEvent on error events', async () => {
     const queue = new Queue<PeerEventStreamMessage>()
     const cleanup = vi.fn()
-    const iter = toEventIterator(queue, cleanup)
+    const iter = toAsyncIteratorObject(queue, cleanup)
 
     queue.push({
       id: '1',
@@ -83,7 +83,7 @@ describe('toEventIterator', () => {
   it('returns done with value on close event', async () => {
     const queue = new Queue<PeerEventStreamMessage>()
     const cleanup = vi.fn()
-    const iter = toEventIterator(queue, cleanup)
+    const iter = toAsyncIteratorObject(queue, cleanup)
 
     queue.push({
       id: '1',
@@ -101,7 +101,7 @@ describe('toEventIterator', () => {
   it('calls cleanup({kind: cancelled}) when iterator.return() is called early', async () => {
     const queue = new Queue<PeerEventStreamMessage>()
     const cleanup = vi.fn()
-    const iter = toEventIterator(queue, cleanup)
+    const iter = toAsyncIteratorObject(queue, cleanup)
 
     await iter.return(undefined)
     expect(cleanup).toHaveBeenCalledWith({ kind: 'cancelled' })
@@ -110,7 +110,7 @@ describe('toEventIterator', () => {
   it('throw on aborted queue', async () => {
     const queue = new Queue<PeerEventStreamMessage>()
     const cleanup = vi.fn()
-    const iter = toEventIterator(queue, cleanup)
+    const iter = toAsyncIteratorObject(queue, cleanup)
 
     const error = new Error('aborted')
     queue.abort(error)

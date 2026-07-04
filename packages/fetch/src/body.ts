@@ -2,7 +2,7 @@ import type { StandardBody, StandardBodyHint, StandardHeaders } from '@standards
 import type { ToEventStreamOptions } from './event-stream'
 import { generateContentDisposition, getFilenameFromContentDisposition } from '@standardserver/core'
 import { isAsyncIteratorObject, parseEmptyableJSON, stringifyJSON } from '@standardserver/shared'
-import { toEventIterator, toEventStream } from './event-stream'
+import { toAsyncIteratorObject, toEventStream } from './event-stream'
 
 export interface ToStandardBodyOptions {
   /**
@@ -51,7 +51,7 @@ export async function toStandardBody(re: Request | Response, options?: ToStandar
   }
 
   if (hint === 'event-stream' || (hint === undefined && mimeType === 'text/event-stream')) {
-    return toEventIterator(re.body)
+    return toAsyncIteratorObject(re.body)
   }
 
   if (hint === 'file' || (hint === undefined && contentLength !== null)) {

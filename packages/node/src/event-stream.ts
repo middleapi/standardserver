@@ -1,24 +1,24 @@
 import type {
-  ToEventStreamOptions as BaseToEventStreamOptions,
+  ToEventStreamOptions as ToEventStreamOptionsFetch,
 } from '@standardserver/fetch'
 import type { AsyncIteratorClass } from '@standardserver/shared'
 import { Readable } from 'node:stream'
 import {
-  toEventIterator as baseToEventIterator,
-  toEventStream as baseToEventStream,
+  toAsyncIteratorObject as toAsyncIteratorObjectFetch,
+  toEventStream as toEventStreamFetch,
 } from '@standardserver/fetch'
 
-export function toEventIterator(
+export function toAsyncIteratorObject(
   stream: Readable,
 ): AsyncIteratorClass<unknown> {
-  return baseToEventIterator(Readable.toWeb(stream))
+  return toAsyncIteratorObjectFetch(Readable.toWeb(stream))
 }
 
-export interface ToEventStreamOptions extends BaseToEventStreamOptions {}
+export interface ToEventStreamOptions extends ToEventStreamOptionsFetch {}
 
 export function toEventStream(
   iterator: AsyncIterator<unknown | void, unknown | void, void>,
   options: ToEventStreamOptions = {},
 ): Readable {
-  return Readable.fromWeb(baseToEventStream(iterator, options))
+  return Readable.fromWeb(toEventStreamFetch(iterator, options))
 }

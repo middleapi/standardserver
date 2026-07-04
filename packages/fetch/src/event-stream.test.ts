@@ -1,6 +1,6 @@
 import { ErrorEvent, getEventMeta, withEventMeta } from '@standardserver/core'
 import { AbortError, isAsyncIteratorObject, sleep } from '@standardserver/shared'
-import { toEventIterator, toEventStream } from './event-stream'
+import { toAsyncIteratorObject, toEventStream } from './event-stream'
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -12,7 +12,7 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
-describe('toEventIterator', () => {
+describe('toAsyncIteratorObject', () => {
   it('with close event', async () => {
     const stream = new ReadableStream<string>({
       async pull(controller) {
@@ -24,7 +24,7 @@ describe('toEventIterator', () => {
       },
     }).pipeThrough(new TextEncoderStream())
 
-    const generator = toEventIterator(stream)
+    const generator = toAsyncIteratorObject(stream)
     expect(generator).toSatisfy(isAsyncIteratorObject)
 
     expect(await generator.next()).toSatisfy(({ done, value }) => {
@@ -62,7 +62,7 @@ describe('toEventIterator', () => {
       },
     }).pipeThrough(new TextEncoderStream())
 
-    const generator = toEventIterator(stream)
+    const generator = toAsyncIteratorObject(stream)
     expect(generator).toSatisfy(isAsyncIteratorObject)
 
     expect(await generator.next()).toSatisfy(({ done, value }) => {
@@ -93,7 +93,7 @@ describe('toEventIterator', () => {
   })
 
   it('with empty stream', async () => {
-    const generator = toEventIterator(null)
+    const generator = toAsyncIteratorObject(null)
     expect(generator).toSatisfy(isAsyncIteratorObject)
     expect(await generator.next()).toEqual({ done: true })
     expect(await generator.next()).toEqual({ done: true })
@@ -110,7 +110,7 @@ describe('toEventIterator', () => {
       },
     }).pipeThrough(new TextEncoderStream())
 
-    const generator = toEventIterator(stream)
+    const generator = toAsyncIteratorObject(stream)
     expect(generator).toSatisfy(isAsyncIteratorObject)
 
     expect(await generator.next()).toSatisfy(({ done, value }) => {
@@ -149,7 +149,7 @@ describe('toEventIterator', () => {
       },
     }).pipeThrough(new TextEncoderStream())
 
-    const generator = toEventIterator(stream)
+    const generator = toAsyncIteratorObject(stream)
     expect(generator).toSatisfy(isAsyncIteratorObject)
 
     expect(await generator.next()).toSatisfy(({ done, value }) => {
@@ -180,7 +180,7 @@ describe('toEventIterator', () => {
       },
     }).pipeThrough(new TextEncoderStream())
 
-    const generator = toEventIterator(stream)
+    const generator = toAsyncIteratorObject(stream)
 
     expect(await generator.next()).toSatisfy(({ done, value }) => {
       expect(done).toEqual(false)
@@ -602,8 +602,8 @@ describe('toEventStream', () => {
 it.each([
   [[1, 2, 3, 4, 5, 6]],
   [[{ a: 1 }, { b: 2 }, { c: 3 }, { d: 4 }, { e: 5 }, { f: 6 }]],
-])('toEventStream + toEventIterator: %#', async (...values) => {
-  const iterator = toEventIterator(toEventStream((async function* () {
+])('toEventStream + toAsyncIteratorObject: %#', async (...values) => {
+  const iterator = toAsyncIteratorObject(toEventStream((async function* () {
     for (const value of values) {
       await new Promise(resolve => setTimeout(resolve, 50))
       yield value

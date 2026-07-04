@@ -2,7 +2,7 @@ import type { StandardLazyRequest, StandardResponse } from '@standardserver/core
 import type { PeerCancelMessage, PeerEventStreamMessage, PeerOctetStreamMessage, PeerRequestMessage, PeerResponseMessage, PeerStreamCancelMessage, ServerPeerSendMessage } from './types'
 import { AbortError, AsyncIteratorClass, isAsyncIteratorObject, sleep } from '@standardserver/shared'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { HibernationEventIterator } from './hibernation'
+import { HibernationAsyncIteratorClass } from './hibernation'
 import { ServerPeer } from './server'
 
 function makeRequestMessage(overrides: Partial<PeerRequestMessage['json']> = {}, binary?: Uint8Array<ArrayBuffer>): PeerRequestMessage {
@@ -264,9 +264,9 @@ describe('serverPeer', () => {
         expect(send).toHaveBeenNthCalledWith(4, expect.objectContaining({ kind: 'event-stream', json: expect.objectContaining({ event: 'close' }) }))
       })
 
-      it('handles HibernationEventIterator', async () => {
+      it('handles HibernationAsyncIteratorClass', async () => {
         const callback = vi.fn()
-        const hibernationIter = new HibernationEventIterator(callback)
+        const hibernationIter = new HibernationAsyncIteratorClass(callback)
 
         await peer.message(
           makeRequestMessage(),

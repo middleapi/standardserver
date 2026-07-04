@@ -1,12 +1,12 @@
 import * as StandardServerModule from '@standardserver/core'
 import { isAsyncIteratorObject } from '@standardserver/shared'
 import { toFetchBody, toStandardBody } from './body'
-import * as EventIteratorModule from './event-stream'
+import * as EventStreamModule from './event-stream'
 import { toFetchHeaders } from './headers'
 
 const generateContentDispositionSpy = vi.spyOn(StandardServerModule, 'generateContentDisposition')
 const getFilenameFromContentDispositionSpy = vi.spyOn(StandardServerModule, 'getFilenameFromContentDisposition')
-const toEventStreamSpy = vi.spyOn(EventIteratorModule, 'toEventStream')
+const toEventStreamSpy = vi.spyOn(EventStreamModule, 'toEventStream')
 
 beforeEach(() => {
   vi.resetAllMocks()
@@ -46,7 +46,7 @@ describe('toStandardBody', () => {
     expect(await toStandardBody(request)).toEqual(undefined)
   })
 
-  it('event iterator', async () => {
+  it('async iterator object', async () => {
     const stream = new ReadableStream<string>({
       async pull(controller) {
         controller.enqueue('event: message\ndata: 123\n\n')
@@ -233,7 +233,7 @@ describe('toStandardBody', () => {
       expect(await toStandardBody(request)).toEqual({ foo: 'bar' })
     })
 
-    it('event iterator', async () => {
+    it('async iterator object', async () => {
       const stream = new ReadableStream<string>({
         async pull(controller) {
           controller.enqueue('event: message\ndata: 123\n\n')

@@ -7,7 +7,7 @@ import { AsyncIteratorClass, isTypescriptObject } from '@standardserver/shared'
  * Creates an AsyncIterator from a queue of peer event-stream messages.
  * The iterator yields normal events, throws error events, and completes on done.
  */
-export function toEventIterator(
+export function toAsyncIteratorObject(
   queue: Queue<PeerEventStreamMessage>,
   cleanup: AsyncCleanupFn,
 ): AsyncIteratorClass<unknown> {

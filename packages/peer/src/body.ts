@@ -3,7 +3,7 @@ import type { AsyncCleanupFn } from '@standardserver/shared'
 import type { PeerEventStreamMessage, PeerOctetStreamMessage, PeerRequestMessage, PeerResponseMessage } from './types'
 import { flattenStandardHeader, generateContentDisposition, getFilenameFromContentDisposition } from '@standardserver/core'
 import { isAsyncIteratorObject, Queue } from '@standardserver/shared'
-import { toEventIterator } from './event-stream'
+import { toAsyncIteratorObject } from './event-stream'
 import { toOctetStream } from './octet-stream'
 
 export interface ToStandardBodyResult {
@@ -21,7 +21,7 @@ export function toStandardBody(
   if (bodyHint === 'event-stream' satisfies StandardBodyHint) {
     const eventStreamMessageQueue = new Queue<PeerEventStreamMessage>()
     return {
-      resolveBody: async () => toEventIterator(eventStreamMessageQueue, cleanup),
+      resolveBody: async () => toAsyncIteratorObject(eventStreamMessageQueue, cleanup),
       eventStreamMessageQueue,
     }
   }

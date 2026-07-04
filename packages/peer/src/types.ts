@@ -1,5 +1,5 @@
 import type {
-  EventStreamMessage as EventIteratorEventMessage,
+  EventStreamMessage,
   StandardRequest,
   StandardResponse,
 } from '@standardserver/core'
@@ -7,79 +7,72 @@ import type {
 /**
  * Base interface for all peer messages.
  *
- * SHOULD only contain data that friendly with structure clone algorithm.
+ * All payloads should be compatible with the structured clone algorithm.
  */
 export interface PeerMessage {
   /**
-   * Correlation ID for a single request/response lifecycle.
-   *
-   * The same ID is shared by the initial request, its response,
-   * and any related stream or event messages.
+   * Correlation ID shared by a request, its response, and any related stream messages.
    */
   id: string
   /**
-   * Discriminator that defines the message semantics and payload shape.
+   * Message discriminator. Determines the payload shape and semantics.
    */
   kind: string
   /**
-   * Structured payload.
-   *
-   * Its shape is determined by `kind`.
+   * Structured payload. Shape is determined by `kind`.
    */
   json?: unknown
   /**
-   * Binary payload.
-   *
-   * Only present for message kinds that support binary transfer.
+   * Binary payload. Only present for message kinds that support binary transfer.
    */
   binary?: Uint8Array<ArrayBuffer> | Blob | undefined
 }
 
 /**
- * Starts a new request from client to server.
+ * Initiates a request from client to server.
  *
- * This is always the first message in a request/response cycle.
+ * Always the first message in requesting lifecycle.
  */
 export interface PeerRequestMessage extends PeerMessage {
   /**
-   * The kind of the message.
+   * Message kind.
    */
   kind: 'request'
   /**
-   * The actual content of the message. The structure depends on the `kind`.
+   * Request payload, excluding the abort signal.
    */
   json: Omit<StandardRequest, 'signal'>
 }
 
 /**
- * Sends the final response from server to client.
+ * Delivers the response from server to client.
  *
- * Typically sent once per `PeerRequestMessage`, unless followed by streaming messages.
+ * Always the first message in responding lifecycle.
  */
 export interface PeerResponseMessage extends PeerMessage {
   /**
-   * The kind of the message.
+   * Message kind.
    */
   kind: 'response'
   /**
-   * The actual content of the message. The structure depends on the `kind`.
+   * Response payload.
    */
   json: StandardResponse
 }
 
 /**
- * Indicates that a request/response/stream should be terminated.
+ * Cancels or aborts a request, response, or stream.
  *
  * - **Client → Server**: Cancel an in-flight request or stop consuming a stream.
  * - **Server → Client**: Signal an error or premature termination.
  */
 export interface PeerCancelMessage extends PeerMessage {
   /**
-   * The kind of the message.
+   * Message kind.
    */
   kind: 'cancel'
   /**
-   * This message does not have a JSON payload.
+   * Cancel messages carry no JSON payload.
    */
   json?: undefined
   /**
@@ -89,53 +82,46 @@ export interface PeerCancelMessage extends PeerMessage {
 }
 
 /**
- * Transfers a single event from an event stream/iterator.
+ * Carries one event in an event stream.
  *
- * Can flow in either direction (Client ↔ Server),
- * depending on which side owns the event iterator.
- *
- * **Constraint**:
- * Must be sent after:
- * - `PeerRequestMessage` (client-to-server streaming), or
- * - `PeerResponseMessage` (server-to-client streaming).
+ * Direction depends on which side owns the async iterator.
+ * Must be sent after the owning request or response message has been exchanged.
  */
 export interface PeerEventStreamMessage extends PeerMessage {
   /**
-   * The kind of the message.
+   * Message kind.
    */
   kind: 'event-stream'
   /**
-   * The actual content of the message. The structure depends on the `kind`.
+   * Event payload. `data` is left as `unknown` so it can be decoded by the receiver.
    */
-  json: Omit<EventIteratorEventMessage, 'data'> & {
+  json: Omit<EventStreamMessage, 'data'> & {
     /**
-     * The event data.
+     * Event data.
      */
     data?: unknown
   }
   /**
-   * Event-stream messages never carry binary payloads.
+   * Event-stream messages carry no binary payload.
    */
   binary?: undefined
 }
 
 /**
- * Transfers a binary chunk for an octet-stream.
+ * Carries one binary chunk in an octet stream.
  *
- * Can flow in either direction (Client ↔ Server).
- *
- * **Constraint**:
- * Must be sent after:
- * - `PeerRequestMessage` (client-to-server streaming), or
- * - `PeerResponseMessage` (server-to-client streaming).
+ * Direction depends on which side owns the stream.
+ * Must be sent after the owning request or response message has been exchanged.
  */
 export interface PeerOctetStreamMessage extends PeerMessage {
   /**
-   * The kind of the message.
+   * Message kind.
    */
   kind: 'octet-stream'
   /**
-   * The actual content of the message. The structure depends on the `kind`.
+   * Stream metadata. `close` marks the final chunk.
+   *
+   * @default false
    */
   json: {
     /**
@@ -147,37 +133,35 @@ export interface PeerOctetStreamMessage extends PeerMessage {
   }
 
   /**
-   * Binary payload.
-   *
-   * SHOULD always be present even if `json.close` is `true`.
+   * Binary chunk. Should be present even when `close` is `true`.
    */
   binary?: Uint8Array<ArrayBuffer> | Blob | undefined
 }
 
 /**
- * Indicates that an octet-stream/event-stream should be cancelled.
+ * Tells the remote peer to stop sending octet-stream or event-stream messages.
  *
- * - **Server → Client**: Server no longer needs more octet-stream/event-stream messages.
+ * Sent by the side that no longer needs more stream data.
  */
 export interface PeerStreamCancelMessage extends PeerMessage {
   /**
-   * The kind of the message.
+   * Message kind.
    */
   kind: 'stream/cancel'
 
   /**
-   * This message does not have a JSON payload.
+   * Stream-cancel messages carry no JSON payload.
    */
   json?: undefined
 
   /**
-   * This message does not have a binary payload.
+   * Stream-cancel messages carry no binary payload.
    */
   binary?: undefined
 }
 
 /**
- * Union of all messages a client peer may send to a server peer.
+ * Messages a client peer may send to a server peer.
  */
 export type ClientPeerSendMessage
   = | PeerRequestMessage
@@ -186,7 +170,7 @@ export type ClientPeerSendMessage
     | PeerOctetStreamMessage
 
 /**
- * Union of all messages a server peer may send to a client peer.
+ * Messages a server peer may send to a client peer.
  */
 export type ServerPeerSendMessage
   = | PeerResponseMessage

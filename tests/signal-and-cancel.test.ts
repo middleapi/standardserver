@@ -630,7 +630,7 @@ describe.each([
           await sleep(100)
 
           if (times !== 1) {
-            // throw normal error not event iterator error
+            // throw normal error not async iterator object error
             throw new Error('__TEST__')
           }
 
@@ -754,7 +754,7 @@ describe.each([
             await sleep(100)
 
             if (times !== 1) {
-            // throw normal error not event iterator error
+            // throw normal error not async iterator object error
               throw new Error('__TEST__')
             }
 
@@ -900,7 +900,7 @@ describe.each([
 
           if (times !== 1) {
             await sleep(200)
-            // throw normal error not event iterator error
+            // throw normal error not async iterator object error
             throw new Error('__TEST__')
           }
 
