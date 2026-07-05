@@ -1,10 +1,6 @@
 import type { AsyncCleanupFn, Queue } from '@standardserver/shared'
 import type { PeerOctetStreamMessage } from './types'
 
-/**
- * Creates an AsyncIterator from a queue of peer octet-stream messages.
- * The iterator yields binary chunks on 'enqueue', and completes on 'close'.
- */
 export function toOctetStream(
   queue: Queue<PeerOctetStreamMessage>,
   cleanup: AsyncCleanupFn,
@@ -34,9 +30,6 @@ export function toOctetStream(
   })
 }
 
-/**
- * Transmits binary chunks to a peer octet-stream.
- */
 export class OctetStreamTransmitter {
   private isDone = false
   private readonly reader: ReadableStreamDefaultReader<Uint8Array<ArrayBuffer>>

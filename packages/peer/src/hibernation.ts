@@ -6,8 +6,8 @@ export interface HibernationAsyncIteratorClassCallback {
 
 export class HibernationAsyncIteratorClass<T, TReturn = unknown, TNext = unknown> extends AsyncIteratorClass<T, TReturn, TNext> {
   /**
-   * In the client library, server results are typically represented by an `AsyncIteratorClass`.
-   * Since `AsyncIteratorClass` does not include a `hibernationCallback` property, this property should be optional.
+   * Optional because `AsyncIteratorClass` does not define this property.
+   * The client library represents server results as `AsyncIteratorClass` instances.
    */
   readonly '~callback'?: HibernationAsyncIteratorClassCallback
 

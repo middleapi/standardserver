@@ -3,10 +3,6 @@ import type { PeerEventStreamMessage } from './types'
 import { ErrorEvent, unwrapEvent, withEventMeta } from '@standardserver/core'
 import { AsyncIteratorClass, isTypescriptObject } from '@standardserver/shared'
 
-/**
- * Creates an AsyncIterator from a queue of peer event-stream messages.
- * The iterator yields normal events, throws error events, and completes on done.
- */
 export function toAsyncIteratorObject(
   queue: Queue<PeerEventStreamMessage>,
   cleanup: AsyncCleanupFn,
@@ -48,9 +44,6 @@ export function toAsyncIteratorObject(
   }, cleanup)
 }
 
-/**
- * Transmits events to a peer event-stream.
- */
 export class EventStreamTransmitter {
   private isDone = false
 
