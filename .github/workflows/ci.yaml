@@ -41,7 +41,8 @@ jobs:
       - run: pnpm run test:coverage
 
       - uses: codecov/codecov-action@v7
-        if: matrix.node-version == 26
+        # TODO: use v26, there're tests skipped on v26
+        if: matrix.node-version == 24
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
 
