@@ -1,7 +1,7 @@
 {
   "name": "@standardserver/hono-node-playground",
   "type": "module",
-  "version": "0.0.31",
+  "version": "0.0.32",
   "private": true,
   "scripts": {
     "dev": "tsx --watch src/main.ts",
