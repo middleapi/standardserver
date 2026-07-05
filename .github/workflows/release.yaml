@@ -1,5 +1,5 @@
 name: Release
-
+run-name: ${{ github.workflow }} v${{ inputs.version }}
 on:
   workflow_dispatch:
     inputs:
@@ -53,10 +53,10 @@ jobs:
 
       - run: pnpm exec bumpp -r ${{ github.event.inputs.version }} --yes
 
-      - run: pnpm --filter='./packages/*' run -r build
-
-      - run: pnpm --filter='./packages/*' publish -r --provenance --access=public --tag=${{ steps.version.outputs.preid || 'latest' }}
-
       - run: pnpm exec changelogithub --draft
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - run: pnpm --filter='./packages/*' run -r build
+
+      - run: pnpm --filter='./packages/*' publish -r --provenance --access=public --tag=${{ steps.version.outputs.preid || 'latest' }}
