@@ -1,7 +1,7 @@
 {
   "name": "@standardserver/core",
   "type": "module",
-  "version": "0.0.33",
+  "version": "0.0.34",
   "license": "MIT",
   "homepage": "https://standardserver.dev",
   "repository": {
