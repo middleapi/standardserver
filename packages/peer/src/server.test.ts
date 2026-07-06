@@ -279,6 +279,22 @@ describe('serverPeer', () => {
         expect(send).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'response' }))
       })
 
+      it('reject if HibernationAsyncIteratorClassCallback reject', async () => {
+        const callback = vi.fn().mockRejectedValue(new Error('callback error'))
+        const hibernationIter = new HibernationAsyncIteratorClass(callback)
+
+        await expect(peer.message(
+          makeRequestMessage(),
+          async () => eventStreamResponse(hibernationIter),
+        )).rejects.toThrow('callback error')
+
+        expect(callback).toHaveBeenCalledOnce()
+        expect(callback).toHaveBeenCalledWith('1')
+        expect(send).toHaveBeenCalledTimes(2)
+        expect(send).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'response' }))
+        expect(send).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'cancel' }))
+      })
+
       it('cancels active transmitter on close', async () => {
         let resolveNext!: (v: IteratorResult<unknown>) => void
         const nextFn = vi.fn().mockImplementation(() => new Promise((r) => {

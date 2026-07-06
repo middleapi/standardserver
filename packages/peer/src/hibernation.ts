@@ -1,7 +1,7 @@
 import { AsyncIteratorClass } from '@standardserver/shared'
 
 export interface HibernationAsyncIteratorClassCallback {
-  (id: string): void
+  (id: string): void | Promise<void>
 }
 
 export class HibernationAsyncIteratorClass<T, TReturn = unknown, TNext = unknown> extends AsyncIteratorClass<T, TReturn, TNext> {
