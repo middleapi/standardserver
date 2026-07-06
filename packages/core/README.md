@@ -90,8 +90,8 @@ export async function handle(request: StandardLazyRequest): Promise<StandardResp
 
 `resolveBody(hint?)` determines how to parse the body using the following priority:
 
-1. If the `standard-server` header is present, use it as the `StandardBodyHint`.
-2. Otherwise, if `hint?` is provided, use it as the `StandardBodyHint`.
+1. If `hint?` is provided, use it as the `StandardBodyHint`.
+2. Otherwise, if the `standard-server` header is present, use it as the `StandardBodyHint`.
 3. Otherwise, if `content-type` is one of the common types, parse accordingly.
 4. Otherwise, if `content-length` exists, treat the body as `file`; if not, treat it as `octet-stream`.
 

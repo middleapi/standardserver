@@ -393,7 +393,7 @@ describe('toStandardBody', () => {
       expect(await toStandardBody(req!, { hint: 'none' })).toBe(undefined)
     })
 
-    it('fallback to user defined body hint', async () => {
+    it('prefers user defined body hint over standard-server header', async () => {
       let standardBody: any
 
       await request(async (req: IncomingMessage, res: ServerResponse) => {
@@ -402,6 +402,7 @@ describe('toStandardBody', () => {
       })
         .post('/')
         .set('content-length', '567')
+        .set('standard-server', 'file') // low priority
         .send('hello')
 
       expect(standardBody).toBeInstanceOf(ReadableStream)
@@ -637,5 +638,54 @@ describe('toNodeHttpBody', () => {
     expect(await reader.read()).toEqual({ done: false, value: 'order2' })
     expect(await reader.read()).toEqual({ done: false, value: 'order3' })
     expect(await reader.read()).toEqual({ done: true })
+  })
+
+  describe('override auto-set headers with empty array', () => {
+    it('readable stream: unset content-type, and standard-server', async () => {
+      const stream = new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode('hello'))
+          controller.close()
+        },
+      })
+      const [body, headers] = await toNodeHttpBody(stream, {
+        ...baseHeaders,
+        'content-type': [],
+        'standard-server': [],
+      })
+
+      expect(body).toBeInstanceOf(Readable)
+      expect(headers).toEqual({
+        'content-type': [],
+        'x-custom-header': 'custom-value',
+        'standard-server': [],
+      })
+
+      const fetchHeaders = toFetchHeaders(headers)
+      expect(fetchHeaders.has('content-type')).toBe(false)
+      expect(fetchHeaders.has('standard-server')).toBe(false)
+    })
+
+    it('blob: unset standard-server, and content-disposition', async () => {
+      const blob = new Blob(['foo'], { type: 'application/pdf' })
+      const [body, headers] = await toNodeHttpBody(blob, {
+        ...baseHeaders,
+        'standard-server': [],
+        'content-disposition': [],
+      })
+
+      expect(body).toBeInstanceOf(Readable)
+      expect(headers).toEqual({
+        'content-length': '3',
+        'content-type': 'application/pdf',
+        'x-custom-header': 'custom-value',
+        'standard-server': [],
+        'content-disposition': [],
+      })
+
+      const fetchHeaders = toFetchHeaders(headers)
+      expect(fetchHeaders.has('standard-server')).toBe(false)
+      expect(fetchHeaders.has('content-disposition')).toBe(false)
+    })
   })
 })

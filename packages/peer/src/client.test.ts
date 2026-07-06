@@ -91,7 +91,10 @@ describe('clientPeer', () => {
         json: {
           method: 'POST',
           url: '/test',
-          headers: { 'x-custom': 'val' },
+          headers: {
+            'content-type': 'application/json',
+            'x-custom': 'val',
+          },
           body: { data: 1 },
         },
       })
@@ -221,7 +224,7 @@ describe('clientPeer', () => {
         const id = await waitForSend()
         await vi.waitFor(() => {
           expect(send).toHaveBeenCalledTimes(3)
-          expect(send).toHaveBeenNthCalledWith(1, { id, kind: 'request', json: expect.objectContaining({ headers: { 'standard-server': 'event-stream' } }) })
+          expect(send).toHaveBeenNthCalledWith(1, { id, kind: 'request', json: expect.objectContaining({ headers: { 'content-type': 'text/event-stream' } }) })
           expect(send).toHaveBeenNthCalledWith(2, { id, kind: 'event-stream', json: { event: 'message', data: 'a' } })
           expect(send).toHaveBeenNthCalledWith(3, { id, kind: 'event-stream', json: { event: 'close' } })
         })
@@ -368,7 +371,7 @@ describe('clientPeer', () => {
         await promise
 
         expect(send).toHaveBeenCalledTimes(3)
-        expect(send).toHaveBeenNthCalledWith(1, { id, kind: 'request', json: expect.objectContaining({ headers: { 'standard-server': 'octet-stream' } }) })
+        expect(send).toHaveBeenNthCalledWith(1, { id, kind: 'request', json: expect.objectContaining({ headers: expect.objectContaining({ 'standard-server': 'octet-stream' }) }) })
         expect(send).toHaveBeenNthCalledWith(2, { id, kind: 'octet-stream', json: { close: false }, binary: new Uint8Array([1, 2]) })
         expect(send).toHaveBeenNthCalledWith(3, { id, kind: 'octet-stream', json: { close: true }, binary: undefined })
       })

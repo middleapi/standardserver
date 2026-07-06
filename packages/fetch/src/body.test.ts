@@ -407,6 +407,21 @@ describe('toStandardBody', () => {
       const reader = (standardBody as ReadableStream).pipeThrough(new TextDecoderStream()).getReader()
       expect(await reader.read()).toEqual({ done: false, value: 'raw data' })
     })
+
+    it('prefers user defined body hint over standard-server header', async () => {
+      const request = new Request('https://example.com', {
+        method: 'POST',
+        body: 'raw data',
+        headers: {
+          'standard-server': 'json',
+        },
+      })
+
+      const standardBody = await toStandardBody(request, { hint: 'octet-stream' })
+      expect(standardBody).toBeInstanceOf(ReadableStream)
+      const reader = (standardBody as ReadableStream).pipeThrough(new TextDecoderStream()).getReader()
+      expect(await reader.read()).toEqual({ done: false, value: 'raw data' })
+    })
   })
 })
 

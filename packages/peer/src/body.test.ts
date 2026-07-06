@@ -4,28 +4,348 @@ import { generateContentDisposition } from '@standardserver/core'
 import { AsyncIteratorClass, isAsyncIteratorObject, Queue } from '@standardserver/shared'
 import { encodeAtomicStandardBody, toStandardBody } from './body'
 
-describe('encodeAtomicStandardBody', () => {
-  it.each([
-    ['undefined', undefined, undefined],
-    ['string', 'hello', 'hello'],
-    ['JSON object', { a: 1, b: [2, 3] }, { a: 1, b: [2, 3] }],
-  ] as const)('encodes %s body as JSON (no hint, no binary)', async (_, body, expectedJson) => {
-    const [jsonBody, headers, binary] = await encodeAtomicStandardBody(body, {})
+describe('toStandardBody', () => {
+  function makeMessage(options: {
+    bodyHint?: string
+    contentType?: string
+    contentLength?: string
+    contentDisposition?: string
+    body?: unknown
+    binary?: Uint8Array<ArrayBuffer>
+  }): PeerRequestMessage {
+    const headers: StandardHeaders = {}
+    if (options.bodyHint !== undefined) {
+      headers['standard-server'] = options.bodyHint
+    }
+    if (options.contentType !== undefined) {
+      headers['content-type'] = options.contentType
+    }
+    if (options.contentLength !== undefined) {
+      headers['content-length'] = options.contentLength
+    }
+    if (options.contentDisposition !== undefined) {
+      headers['content-disposition'] = options.contentDisposition
+    }
+    return {
+      id: '1',
+      kind: 'request',
+      json: { method: 'POST', url: '/test', headers, body: options.body },
+      binary: options.binary,
+    }
+  }
 
-    expect(jsonBody).toEqual(expectedJson)
-    expect(headers['standard-server']).toBe(undefined)
-    expect(binary).toBe(undefined)
+  describe('with standard-server hint', () => {
+    it('receives a server-sent event stream', async () => {
+      const cleanup = vi.fn()
+      const { resolveBody, eventStreamMessageQueue } = toStandardBody(makeMessage({ bodyHint: 'event-stream' }), cleanup)
+
+      const body = await resolveBody()
+
+      expect(body).toSatisfy(isAsyncIteratorObject)
+      expect(eventStreamMessageQueue).toBeInstanceOf(Queue)
+      expect(cleanup).not.toHaveBeenCalled()
+
+      eventStreamMessageQueue?.push({ id: '1', kind: 'event-stream', json: { event: 'message', data: 'hello' } })
+      await expect((body as AsyncIteratorClass<any>).next()).resolves.toEqual({ done: false, value: 'hello' })
+
+      eventStreamMessageQueue?.push({ id: '1', kind: 'event-stream', json: { event: 'close', data: 'world' } })
+      await expect((body as AsyncIteratorClass<any>).next()).resolves.toEqual({ done: true, value: 'world' })
+
+      expect(cleanup).toHaveBeenCalledTimes(1)
+      expect(cleanup).toHaveBeenCalledWith({ kind: 'success' })
+    })
+
+    it('receives a binary download stream', async () => {
+      const cleanup = vi.fn()
+      const { resolveBody, octetStreamMessageQueue } = toStandardBody(makeMessage({ bodyHint: 'octet-stream' }), cleanup)
+
+      const body = await resolveBody()
+
+      expect(body).toBeInstanceOf(ReadableStream)
+      expect(octetStreamMessageQueue).toBeInstanceOf(Queue)
+      expect(cleanup).not.toHaveBeenCalled()
+
+      octetStreamMessageQueue?.push({ id: '1', kind: 'octet-stream', json: { close: true }, binary: new Uint8Array([1, 2, 3]) })
+      const reader = (body as ReadableStream<Uint8Array<ArrayBuffer>>).getReader()
+      expect(await reader.read()).toEqual({ done: false, value: new Uint8Array([1, 2, 3]) })
+      expect(await reader.read()).toEqual({ done: true, value: undefined })
+
+      expect(cleanup).toHaveBeenCalledTimes(1)
+      expect(cleanup).toHaveBeenCalledWith({ kind: 'success' })
+    })
+
+    it('receives an uploaded file with filename', async () => {
+      const binary = new TextEncoder().encode('file content')
+      const cleanup = vi.fn()
+      const { resolveBody } = toStandardBody(makeMessage({
+        bodyHint: 'file',
+        contentType: 'text/plain',
+        contentDisposition: 'attachment; filename="test.txt"',
+        binary,
+      }), cleanup)
+
+      const body = await resolveBody()
+
+      expect(body).toBeInstanceOf(File)
+      expect((body as File).name).toBe('test.txt')
+      expect((body as File).type).toBe('text/plain')
+      expect(await (body as File).text()).toBe('file content')
+
+      expect(cleanup).toHaveBeenCalledTimes(1)
+      expect(cleanup).toHaveBeenCalledWith({ kind: 'success' })
+    })
+
+    it('receives an empty file', async () => {
+      const cleanup = vi.fn()
+      const { resolveBody } = toStandardBody(makeMessage({ bodyHint: 'file' }), cleanup)
+
+      const body = await resolveBody()
+
+      expect(body).toBeInstanceOf(File)
+      expect((body as File).size).toBe(0)
+
+      expect(cleanup).toHaveBeenCalledTimes(1)
+      expect(cleanup).toHaveBeenCalledWith({ kind: 'success' })
+    })
+
+    it('receives a blob without explicit filename', async () => {
+      const binary = new TextEncoder().encode('file content')
+      const cleanup = vi.fn()
+      const { resolveBody } = toStandardBody(makeMessage({
+        bodyHint: 'file',
+        contentType: 'text/plain',
+        binary,
+      }), cleanup)
+
+      const body = await resolveBody() as File
+
+      expect(body).toBeInstanceOf(File)
+      expect(body.name).toBe('blob')
+      expect(body.type).toBe('text/plain')
+      expect(await body.text()).toBe('file content')
+
+      expect(cleanup).toHaveBeenCalledTimes(1)
+      expect(cleanup).toHaveBeenCalledWith({ kind: 'success' })
+    })
+
+    it('receives a multipart form submission', async () => {
+      const form = new FormData()
+      form.append('key', 'value')
+      const res = new Response(form)
+      const contentType = res.headers.get('content-type')!
+      const binary = new Uint8Array(await res.arrayBuffer())
+
+      const cleanup = vi.fn()
+      const { resolveBody } = toStandardBody(makeMessage({
+        bodyHint: 'form-data',
+        contentType,
+        binary,
+      }), cleanup)
+
+      const body = await resolveBody()
+
+      expect(body).toBeInstanceOf(FormData)
+      expect((body as FormData).get('key')).toBe('value')
+
+      expect(cleanup).toHaveBeenCalledTimes(1)
+      expect(cleanup).toHaveBeenCalledWith({ kind: 'success' })
+    })
+
+    it('rejects malformed multipart form data', async () => {
+      const binary = new Uint8Array([1, 2, 3])
+      const cleanup = vi.fn()
+      const { resolveBody } = toStandardBody(makeMessage({
+        bodyHint: 'form-data',
+        binary,
+      }), cleanup)
+
+      await expect(resolveBody()).rejects.toThrow()
+      expect(cleanup).toHaveBeenCalledWith({ kind: 'error', error: expect.any(Error) })
+    })
+
+    it('receives URL-encoded form data', async () => {
+      const cleanup = vi.fn()
+      const { resolveBody } = toStandardBody(makeMessage({
+        bodyHint: 'url-search-params',
+        body: 'a=1&b=2',
+      }), cleanup)
+
+      const body = await resolveBody() as URLSearchParams
+
+      expect(body).toBeInstanceOf(URLSearchParams)
+      expect(body.get('a')).toBe('1')
+      expect(body.get('b')).toBe('2')
+
+      expect(cleanup).toHaveBeenCalledTimes(1)
+      expect(cleanup).toHaveBeenCalledWith({ kind: 'success' })
+    })
+
+    it('explicitly empty body', async () => {
+      const cleanup = vi.fn()
+      const { resolveBody } = toStandardBody(makeMessage({ bodyHint: 'none' }), cleanup)
+
+      const body = await resolveBody()
+
+      expect(body).toBe(undefined)
+
+      expect(cleanup).toHaveBeenCalledTimes(1)
+      expect(cleanup).toHaveBeenCalledWith({ kind: 'success' })
+    })
+
+    it('receives a JSON payload', async () => {
+      const cleanup = vi.fn()
+      const { resolveBody } = toStandardBody(makeMessage({
+        bodyHint: 'json',
+        body: { key: 'val' },
+      }), cleanup)
+
+      const body = await resolveBody()
+
+      expect(body).toEqual({ key: 'val' })
+
+      expect(cleanup).toHaveBeenCalledTimes(1)
+      expect(cleanup).toHaveBeenCalledWith({ kind: 'success' })
+    })
   })
 
-  it.each([
-    ['ReadableStream', () => new ReadableStream(), 'octet-stream'],
-    ['AsyncIterator', () => new AsyncIteratorClass(async () => ({ done: true, value: undefined }), async () => {}), 'event-stream'],
-  ])('encodes %s body as streaming (hint=%s, no binary)', async (_, createBody, expectedHint) => {
-    const [jsonBody, headers, binary] = await encodeAtomicStandardBody(createBody() as any, {})
+  describe('without standard-server hint', () => {
+    it('infers event stream from text/event-stream content-type', async () => {
+      const cleanup = vi.fn()
+      const { resolveBody, eventStreamMessageQueue } = toStandardBody(makeMessage({ contentType: 'text/event-stream' }), cleanup)
+
+      const body = await resolveBody()
+
+      expect(body).toSatisfy(isAsyncIteratorObject)
+      expect(eventStreamMessageQueue).toBeInstanceOf(Queue)
+
+      eventStreamMessageQueue?.push({ id: '1', kind: 'event-stream', json: { event: 'close', data: 'data' } })
+      await expect((body as AsyncIteratorClass<any>).next()).resolves.toEqual({ done: true, value: 'data' })
+
+      expect(cleanup).toHaveBeenCalledTimes(1)
+      expect(cleanup).toHaveBeenCalledWith({ kind: 'success' })
+    })
+
+    it('infers binary stream from application/octet-stream content-type', async () => {
+      const cleanup = vi.fn()
+      const { resolveBody, octetStreamMessageQueue } = toStandardBody(makeMessage({ contentType: 'application/octet-stream' }), cleanup)
+
+      const body = await resolveBody()
+
+      expect(body).toBeInstanceOf(ReadableStream)
+      expect(octetStreamMessageQueue).toBeInstanceOf(Queue)
+
+      octetStreamMessageQueue?.push({ id: '1', kind: 'octet-stream', json: { close: true }, binary: new Uint8Array([1, 2, 3]) })
+      const reader = (body as ReadableStream<Uint8Array<ArrayBuffer>>).getReader()
+      expect(await reader.read()).toEqual({ done: false, value: new Uint8Array([1, 2, 3]) })
+      expect(await reader.read()).toEqual({ done: true, value: undefined })
+
+      expect(cleanup).toHaveBeenCalledTimes(1)
+      expect(cleanup).toHaveBeenCalledWith({ kind: 'success' })
+    })
+
+    it('infers form data from multipart/form-data content-type', async () => {
+      const form = new FormData()
+      form.append('key', 'value')
+      const res = new Response(form)
+      const contentType = res.headers.get('content-type')!
+      const binary = new Uint8Array(await res.arrayBuffer())
+
+      const cleanup = vi.fn()
+      const { resolveBody } = toStandardBody(makeMessage({
+        contentType,
+        binary,
+      }), cleanup)
+
+      const body = await resolveBody()
+
+      expect(body).toBeInstanceOf(FormData)
+      expect((body as FormData).get('key')).toBe('value')
+
+      expect(cleanup).toHaveBeenCalledTimes(1)
+      expect(cleanup).toHaveBeenCalledWith({ kind: 'success' })
+    })
+
+    it('infers URL-encoded form data from application/x-www-form-urlencoded content-type', async () => {
+      const cleanup = vi.fn()
+      const { resolveBody } = toStandardBody(makeMessage({
+        contentType: 'application/x-www-form-urlencoded',
+        body: 'a=1&b=2',
+      }), cleanup)
+
+      const body = await resolveBody() as URLSearchParams
+
+      expect(body).toBeInstanceOf(URLSearchParams)
+      expect(body.get('a')).toBe('1')
+      expect(body.get('b')).toBe('2')
+
+      expect(cleanup).toHaveBeenCalledTimes(1)
+      expect(cleanup).toHaveBeenCalledWith({ kind: 'success' })
+    })
+
+    it('returns JSON body when content-type is application/json', async () => {
+      const cleanup = vi.fn()
+      const { resolveBody } = toStandardBody(makeMessage({
+        contentType: 'application/json',
+        body: { key: 'val' },
+      }), cleanup)
+
+      const body = await resolveBody()
+
+      expect(body).toEqual({ key: 'val' })
+
+      expect(cleanup).toHaveBeenCalledTimes(1)
+      expect(cleanup).toHaveBeenCalledWith({ kind: 'success' })
+    })
+
+    it('returns undefined when no content-type and no body', async () => {
+      const cleanup = vi.fn()
+      const { resolveBody } = toStandardBody(makeMessage({}), cleanup)
+
+      const body = await resolveBody()
+
+      expect(body).toBe(undefined)
+
+      expect(cleanup).toHaveBeenCalledTimes(1)
+      expect(cleanup).toHaveBeenCalledWith({ kind: 'success' })
+    })
+  })
+})
+
+describe('encodeAtomicStandardBody', () => {
+  it('encodes undefined body', async () => {
+    const [jsonBody, headers, binary] = await encodeAtomicStandardBody(undefined, {})
 
     expect(jsonBody).toBe(undefined)
-    expect(headers['standard-server']).toBe(expectedHint)
     expect(binary).toBe(undefined)
+    expect(headers['standard-server']).toBe(undefined)
+    expect(headers['content-type']).toBe(undefined)
+  })
+
+  it('encodes null body', async () => {
+    const [jsonBody, headers, binary] = await encodeAtomicStandardBody(null, {})
+
+    expect(jsonBody).toBe(null)
+    expect(binary).toBe(undefined)
+    expect(headers['standard-server']).toBe(undefined)
+    expect(headers['content-type']).toBe('application/json')
+  })
+
+  it('encodes string body', async () => {
+    const [jsonBody, headers, binary] = await encodeAtomicStandardBody('hello', {})
+
+    expect(jsonBody).toBe('hello')
+    expect(binary).toBe(undefined)
+    expect(headers['standard-server']).toBe(undefined)
+    expect(headers['content-type']).toBe('application/json')
+  })
+
+  it('encodes JSON object body', async () => {
+    const [jsonBody, headers, binary] = await encodeAtomicStandardBody({ a: 1, b: [2, 3] }, {})
+
+    expect(jsonBody).toEqual({ a: 1, b: [2, 3] })
+    expect(binary).toBe(undefined)
+    expect(headers['standard-server']).toBe(undefined)
+    expect(headers['content-type']).toBe('application/json')
   })
 
   it('encodes FormData body', async () => {
@@ -35,7 +355,7 @@ describe('encodeAtomicStandardBody', () => {
     const [jsonBody, headers, binary] = await encodeAtomicStandardBody(form, {})
 
     expect(jsonBody).toBe(undefined)
-    expect(headers['standard-server']).toBe('form-data')
+    expect(headers['standard-server']).toBe(undefined)
     expect(headers['content-type']).toContain('multipart/form-data')
     expect(binary).toBeInstanceOf(Blob)
   })
@@ -62,12 +382,71 @@ describe('encodeAtomicStandardBody', () => {
     expect(binary).toBe(file)
   })
 
+  it('encodes Blob body with NaN size without content-length (BunS3 compatibility)', async () => {
+    const blob = new Blob(['data'], { type: 'text/plain' })
+    Object.defineProperty(blob, 'size', { value: Number.NaN })
+
+    const [, headers] = await encodeAtomicStandardBody(blob, {})
+
+    expect(headers['content-length']).toBe(undefined)
+  })
+
+  it('encodes Blob body and preserves existing content-disposition header', async () => {
+    const blob = new Blob(['data'])
+    const [, headers] = await encodeAtomicStandardBody(blob, { 'content-disposition': 'existing' })
+    expect(headers['content-disposition']).toBe('existing')
+  })
+
   it('encodes URLSearchParams body', async () => {
     const params = new URLSearchParams('a=1&b=2')
     const [jsonBody, headers, binary] = await encodeAtomicStandardBody(params, {})
 
     expect(jsonBody).toBe('a=1&b=2')
-    expect(headers['standard-server']).toBe('url-search-params')
+    expect(headers['standard-server']).toBe(undefined)
+    expect(headers['content-type']).toBe('application/x-www-form-urlencoded')
+    expect(binary).toBe(undefined)
+  })
+
+  it('encodes ReadableStream body', async () => {
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode('stream data'))
+        controller.close()
+      },
+    })
+
+    const [jsonBody, headers, binary] = await encodeAtomicStandardBody(stream, {})
+
+    expect(jsonBody).toBe(undefined)
+    expect(headers['standard-server']).toBe('octet-stream')
+    expect(headers['content-type']).toBe('application/octet-stream')
+    expect(binary).toBe(undefined)
+  })
+
+  it('encodes ReadableStream body and preserves existing content-type header', async () => {
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode('stream data'))
+        controller.close()
+      },
+    })
+
+    const [jsonBody, headers, binary] = await encodeAtomicStandardBody(stream, { 'content-type': 'custom/type' })
+
+    expect(jsonBody).toBe(undefined)
+    expect(headers['standard-server']).toBe('octet-stream')
+    expect(headers['content-type']).toBe('custom/type')
+    expect(binary).toBe(undefined)
+  })
+
+  it('encodes AsyncIteratorObject body', async () => {
+    const asyncIterator = new AsyncIteratorClass(async () => ({ done: true, value: undefined }), async () => {})
+
+    const [jsonBody, headers, binary] = await encodeAtomicStandardBody(asyncIterator, {})
+
+    expect(jsonBody).toBe(undefined)
+    expect(headers['standard-server']).toBe(undefined)
+    expect(headers['content-type']).toBe('text/event-stream')
     expect(binary).toBe(undefined)
   })
 
@@ -78,216 +457,5 @@ describe('encodeAtomicStandardBody', () => {
     expect(headers).not.toBe(originalHeaders)
     expect(headers['x-custom']).toBe('value')
     expect(originalHeaders['standard-server']).toBeUndefined()
-  })
-
-  it('preserves existing content-type for FormData', async () => {
-    const form = new FormData()
-    form.append('key', 'val')
-    const [, headers] = await encodeAtomicStandardBody(form, { 'content-type': 'existing' })
-
-    expect(headers['content-type']).toBe('existing')
-  })
-
-  it('preserves existing content-disposition for Blob', async () => {
-    const blob = new Blob(['data'])
-    const [, headers] = await encodeAtomicStandardBody(blob, { 'content-disposition': 'existing' })
-
-    expect(headers['content-disposition']).toBe('existing')
-  })
-})
-
-describe('toStandardBody', () => {
-  function makeMessage(bodyHint: string | undefined, body?: unknown, binary?: Uint8Array<ArrayBuffer>): PeerRequestMessage {
-    const headers: StandardHeaders = {}
-    if (bodyHint) {
-      headers['standard-server'] = bodyHint
-    }
-    return {
-      id: '1',
-      kind: 'request',
-      json: { method: 'POST', url: '/test', headers, body },
-      binary,
-    }
-  }
-
-  it('decodes event-stream hint to AsyncIterator', async () => {
-    const cleanup = vi.fn()
-
-    const { resolveBody, eventStreamMessageQueue } = toStandardBody(makeMessage('event-stream'), cleanup)
-
-    expect(cleanup).toHaveBeenCalledTimes(0)
-    const body = await resolveBody()
-
-    expect(body).toSatisfy(isAsyncIteratorObject)
-    expect(eventStreamMessageQueue).toBeInstanceOf(Queue)
-    expect(cleanup).not.toHaveBeenCalled()
-
-    eventStreamMessageQueue?.push({ id: '1', kind: 'event-stream', json: { event: 'close', data: 'data' } })
-    await expect((body as AsyncIteratorClass<any>).next()).resolves.toEqual({ done: true, value: 'data' })
-
-    expect(cleanup).toHaveBeenCalledTimes(1)
-    expect(cleanup).toHaveBeenCalledWith({ kind: 'success' })
-  })
-
-  it('decodes octet-stream hint to ReadableStream', async () => {
-    const cleanup = vi.fn()
-
-    const { resolveBody, octetStreamMessageQueue } = toStandardBody(makeMessage('octet-stream'), cleanup)
-
-    expect(cleanup).toHaveBeenCalledTimes(0)
-    const body = await resolveBody()
-
-    expect(body).toBeInstanceOf(ReadableStream)
-    expect(octetStreamMessageQueue).toBeInstanceOf(Queue)
-    expect(cleanup).not.toHaveBeenCalled()
-
-    octetStreamMessageQueue?.push({ id: '1', kind: 'octet-stream', json: { close: true }, binary: new Uint8Array([1, 2, 3]) })
-    const reader = (body as ReadableStream<Uint8Array<ArrayBuffer>>).getReader()
-    expect(await reader.read()).toEqual({ done: false, value: new Uint8Array([1, 2, 3]) })
-    expect(await reader.read()).toEqual({ done: true, value: undefined })
-
-    expect(cleanup).toHaveBeenCalledTimes(1)
-    expect(cleanup).toHaveBeenCalledWith({ kind: 'success' })
-  })
-
-  it('decodes file hint to File', async () => {
-    const binary = new TextEncoder().encode('file content')
-    const message = makeMessage('file', undefined, binary)
-    message.json.headers['content-disposition'] = 'attachment; filename="test.txt"'
-    message.json.headers['content-type'] = 'text/plain'
-
-    const cleanup = vi.fn()
-    const { resolveBody } = toStandardBody(message, cleanup)
-
-    expect(cleanup).toHaveBeenCalledTimes(0)
-    const body = await resolveBody()
-
-    expect(body).toBeInstanceOf(File)
-    expect((body as File).name).toBe('test.txt')
-    expect((body as File).type).toBe('text/plain')
-    expect(await (body as File).text()).toBe('file content')
-
-    expect(cleanup).toHaveBeenCalledTimes(1)
-    expect(cleanup).toHaveBeenCalledWith({ kind: 'success' })
-  })
-
-  it('decodes file hint with no binary', async () => {
-    const cleanup = vi.fn()
-    const { resolveBody } = toStandardBody(makeMessage('file'), cleanup)
-
-    expect(cleanup).toHaveBeenCalledTimes(0)
-    const body = await resolveBody()
-
-    expect(body).toBeInstanceOf(File)
-    expect((body as File).size).toBe(0)
-
-    expect(cleanup).toHaveBeenCalledTimes(1)
-    expect(cleanup).toHaveBeenCalledWith({ kind: 'success' })
-  })
-
-  it('decodes file hint to File without content-disposition', async () => {
-    const binary = new TextEncoder().encode('file content')
-    const message = makeMessage('file', undefined, binary)
-    message.json.headers['content-disposition'] = undefined
-    message.json.headers['content-type'] = 'text/plain'
-
-    const cleanup = vi.fn()
-    const { resolveBody } = toStandardBody(message, cleanup)
-
-    expect(cleanup).toHaveBeenCalledTimes(0)
-    const body = await resolveBody() as File
-
-    expect(body).toBeInstanceOf(File)
-    expect(body.name).toBe('blob')
-    expect(body.type).toBe('text/plain')
-    expect(await body.text()).toBe('file content')
-
-    expect(cleanup).toHaveBeenCalledTimes(1)
-    expect(cleanup).toHaveBeenCalledWith({ kind: 'success' })
-  })
-
-  it('decodes form-data hint to FormData', async () => {
-    // Build a proper multipart/form-data binary payload using the Response/FormData API
-    const form = new FormData()
-    form.append('key', 'value')
-    const res = new Response(form)
-    const contentType = res.headers.get('content-type')!
-    const binary = new Uint8Array(await res.arrayBuffer())
-
-    const message = makeMessage('form-data', undefined, binary)
-    message.json.headers['content-type'] = contentType
-
-    const cleanup = vi.fn()
-    const { resolveBody } = toStandardBody(message, cleanup)
-
-    expect(cleanup).toHaveBeenCalledTimes(0)
-    const body = await resolveBody()
-
-    expect(body).toBeInstanceOf(FormData)
-    expect((body as FormData).get('key')).toBe('value')
-
-    expect(cleanup).toHaveBeenCalledTimes(1)
-    expect(cleanup).toHaveBeenCalledWith({ kind: 'success' })
-  })
-
-  it('decodes form-data hint resolveBody throw on invalid data', async () => {
-    const binary = new Uint8Array([1, 2, 3]) // Invalid form-data binary
-
-    const message = makeMessage('form-data', undefined, binary)
-
-    const cleanup = vi.fn()
-    const { resolveBody } = toStandardBody(message, cleanup)
-
-    await expect(resolveBody()).rejects.toThrow()
-    expect(cleanup).toHaveBeenCalledWith({ kind: 'error', error: expect.any(Error) })
-  })
-
-  it('decodes url-search-params hint', async () => {
-    const cleanup = vi.fn()
-    const { resolveBody } = toStandardBody(
-      makeMessage('url-search-params', 'a=1&b=2'),
-      cleanup,
-    )
-
-    expect(cleanup).toHaveBeenCalledTimes(0)
-    const body = await resolveBody() as URLSearchParams
-
-    expect(body).toBeInstanceOf(URLSearchParams)
-    expect(body.get('a')).toBe('1')
-    expect(body.get('b')).toBe('2')
-
-    expect(cleanup).toHaveBeenCalledTimes(1)
-    expect(cleanup).toHaveBeenCalledWith({ kind: 'success' })
-  })
-
-  it('decodes default (JSON) body', async () => {
-    const cleanup = vi.fn()
-    const { resolveBody } = await toStandardBody(
-      makeMessage(undefined, { key: 'val' }),
-      cleanup,
-    )
-
-    expect(cleanup).toHaveBeenCalledTimes(0)
-    const body = await resolveBody()
-
-    expect(body).toEqual({ key: 'val' })
-
-    expect(cleanup).toHaveBeenCalledTimes(1)
-    expect(cleanup).toHaveBeenCalledWith({ kind: 'success' })
-  })
-
-  it('decodes undefined body', async () => {
-    const cleanup = vi.fn()
-    const { resolveBody } = await toStandardBody(
-      makeMessage(undefined, undefined),
-      cleanup,
-    )
-
-    expect(cleanup).toHaveBeenCalledTimes(0)
-    const body = await resolveBody()
-
-    expect(body).toBe(undefined)
-    expect(cleanup).toHaveBeenCalledTimes(1)
-    expect(cleanup).toHaveBeenCalledWith({ kind: 'success' })
   })
 })

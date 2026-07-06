@@ -9,7 +9,7 @@ function makeRequestMessage(overrides: Partial<PeerRequestMessage['json']> = {},
   return {
     id: '1',
     kind: 'request',
-    json: { method: 'POST', url: '/test', headers: {}, body: { data: 'hello' }, ...overrides },
+    json: { method: 'POST', url: '/test', headers: {}, body: undefined, ...overrides },
     binary,
   }
 }
@@ -81,7 +81,7 @@ describe('serverPeer', () => {
     it('calls handler with StandardRequest and sends PeerResponseMessage', async () => {
       const handler = vi.fn<HandlerFn>().mockResolvedValue(jsonResponse('result'))
 
-      const message = makeRequestMessage()
+      const message = makeRequestMessage({ body: { data: 'hello' } })
       await peer.message(message, handler)
 
       expect(handler).toHaveBeenCalledOnce()
@@ -487,6 +487,7 @@ describe('serverPeer', () => {
 
       const request = handler.mock.calls[0]![0]
       const iter = await request.resolveBody() as AsyncIterator<unknown>
+      expect(iter).toSatisfy(isAsyncIteratorObject)
       const readPromise = expect(iter.next()).rejects.toThrow(AbortError)
 
       await peer.close()
@@ -502,7 +503,9 @@ describe('serverPeer', () => {
       const promise = peer.message(msg, handler)
       await vi.waitFor(() => expect(handler).toHaveBeenCalled())
       const request = handler.mock.calls[0]![0]
-      const reader = (await request.resolveBody() as ReadableStream).getReader()
+      const body = await request.resolveBody() as ReadableStream<Uint8Array>
+      expect(body).toBeInstanceOf(ReadableStream)
+      const reader = body.getReader()
       const readPromise = expect(reader.read()).rejects.toThrow(AbortError)
 
       await peer.close()

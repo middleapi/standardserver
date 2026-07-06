@@ -27,7 +27,7 @@ export async function toStandardBody(
   req: NodeHttpRequest,
   options: ToStandardBodyOptions = {},
 ): Promise<StandardBody> {
-  const hint = flattenStandardHeader(req.headers['standard-server']) ?? options?.hint
+  const hint = options?.hint ?? flattenStandardHeader(req.headers['standard-server'])
   const contentType = req.headers['content-type']
   const mimeType = contentType?.split(';')[0]?.trim()
   const contentLength = req.headers['content-length']
@@ -88,6 +88,12 @@ export interface ToNodeHttpBodyOptions {
   eventStream?: ToEventStreamOptions
 }
 
+/**
+ * Convert a standard body to a node http body.
+ *
+ * Binary bodies (Blob, ReadableStream) can override the aut-set standard-server header,
+ * enabling pre-encoded body transmission while preserving client-side type interpretation.
+ */
 export async function toNodeHttpBody(
   body: StandardBody,
   headers: StandardHeaders,
@@ -96,28 +102,15 @@ export async function toNodeHttpBody(
   body: Readable | undefined | string,
   headers: StandardHeaders,
 ]> {
-  const originalContentType = headers['content-type']
-  const originalContentLength = headers['content-length']
-
-  headers = {
-    ...headers,
-    'standard-server': undefined,
-    'content-type': undefined,
-    'content-length': undefined,
-  }
-
-  if (body === undefined) {
-    return [undefined, headers]
-  }
+  headers = { ...headers }
 
   if (body instanceof ReadableStream) {
     // Explicitly set the body hint to avoid misidentification
     // when the stream is empty, the length is predictable, or the content type is common.
-    headers['standard-server'] = 'octet-stream' satisfies StandardBodyHint
+    headers['standard-server'] ??= 'octet-stream' satisfies StandardBodyHint
 
     // content-type is required when body is present
-    headers['content-type'] = originalContentType ?? 'application/octet-stream'
-    headers['content-length'] = originalContentLength
+    headers['content-type'] ??= 'application/octet-stream'
 
     return [Readable.fromWeb(body), headers]
   }
@@ -125,7 +118,7 @@ export async function toNodeHttpBody(
   if (body instanceof Blob) {
     // Explicitly set the body hint to avoid misidentification
     // when the file size is NaN or the content type is common.
-    headers['standard-server'] = 'file' satisfies StandardBodyHint // A File is also a Blob
+    headers['standard-server'] ??= 'file' satisfies StandardBodyHint // A File is also a Blob
 
     headers['content-type'] = body.type
     headers['content-disposition'] ??= generateContentDisposition(body instanceof File ? body.name : 'blob')
@@ -138,10 +131,17 @@ export async function toNodeHttpBody(
     return [Readable.fromWeb(body.stream()), headers]
   }
 
+  headers['standard-server'] = undefined
+  headers['content-length'] = undefined
+
+  if (body === undefined) {
+    headers['content-type'] = undefined
+    return [undefined, headers]
+  }
+
   if (body instanceof FormData) {
     const response = new Response(body)
     headers['content-type'] = response.headers.get('content-type')!
-
     return [Readable.fromWeb(response.body!), headers]
   }
 
