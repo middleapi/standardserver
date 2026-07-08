@@ -9,7 +9,7 @@ function makeRequestMessage(overrides: Partial<PeerRequestMessage['json']> = {},
   return {
     id: '1',
     kind: 'request',
-    json: { method: 'POST', url: '/test', headers: {}, body: undefined, ...overrides },
+    json: { method: 'POST', url: '/test', headers: {}, bodyHint: 'none', body: undefined, ...overrides },
     binary,
   }
 }
@@ -19,11 +19,11 @@ function jsonResponse(body?: unknown, headers: Record<string, string> = {}): Sta
 }
 
 function eventStreamResponse(body: AsyncIterator<unknown> | AsyncIteratorClass<unknown>): StandardResponse {
-  return { status: 200, headers: { 'standard-server': 'event-stream' }, body }
+  return { status: 200, headers: {}, body }
 }
 
 function octetStreamResponse(body: ReadableStream<Uint8Array>): StandardResponse {
-  return { status: 200, headers: { 'standard-server': 'octet-stream' }, body }
+  return { status: 200, headers: {}, body }
 }
 
 function makeCancelMessage(id: string): PeerCancelMessage {
@@ -81,7 +81,7 @@ describe('serverPeer', () => {
     it('calls handler with StandardRequest and sends PeerResponseMessage', async () => {
       const handler = vi.fn<HandlerFn>().mockResolvedValue(jsonResponse('result'))
 
-      const message = makeRequestMessage({ body: { data: 'hello' } })
+      const message = makeRequestMessage({ bodyHint: 'json', body: { data: 'hello' } })
       await peer.message(message, handler)
 
       expect(handler).toHaveBeenCalledOnce()
@@ -186,7 +186,7 @@ describe('serverPeer', () => {
       it('passes incoming event-stream chunks to the handler body as a AsyncIterator and aborts it when a response is sent before completion', async () => {
         const { handler, box } = deferredHandler()
 
-        const msg = makeRequestMessage({ headers: { 'standard-server': 'event-stream' } })
+        const msg = makeRequestMessage({ bodyHint: 'event-stream' })
         const promise = peer.message(msg, handler)
 
         await vi.waitFor(() => expect(handler).toHaveBeenCalled())
@@ -217,7 +217,7 @@ describe('serverPeer', () => {
           return jsonResponse()
         })
 
-        const msg = makeRequestMessage({ headers: { 'standard-server': 'event-stream' } })
+        const msg = makeRequestMessage({ bodyHint: 'event-stream' })
         await peer.message(msg, handler)
         expect(success).toBeTruthy()
       })
@@ -225,7 +225,7 @@ describe('serverPeer', () => {
       it('asyncIterator error if receive cancel message', async () => {
         const { handler, box } = deferredHandler()
 
-        const msg = makeRequestMessage({ headers: { 'standard-server': 'event-stream' } })
+        const msg = makeRequestMessage({ bodyHint: 'event-stream' })
         const promise = peer.message(msg, handler)
 
         await vi.waitFor(() => expect(handler).toHaveBeenCalled())
@@ -340,7 +340,7 @@ describe('serverPeer', () => {
       it('passes incoming octet-stream chunks to the handler body as a ReadableStream and aborts it when a response is sent before completion', async () => {
         const { handler, box } = deferredHandler()
 
-        const msg = makeRequestMessage({ headers: { 'standard-server': 'octet-stream' } })
+        const msg = makeRequestMessage({ bodyHint: 'octet-stream' })
         const promise = peer.message(msg, handler)
 
         await vi.waitFor(() => expect(handler).toHaveBeenCalled())
@@ -367,7 +367,7 @@ describe('serverPeer', () => {
           return jsonResponse()
         })
 
-        const msg = makeRequestMessage({ headers: { 'standard-server': 'octet-stream' } })
+        const msg = makeRequestMessage({ bodyHint: 'octet-stream' })
         await peer.message(msg, handler)
 
         const cancelMsgs = send.mock.calls
@@ -380,7 +380,7 @@ describe('serverPeer', () => {
       it('readableStream error if receive cancel message', async () => {
         const { handler, box } = deferredHandler()
 
-        const msg = makeRequestMessage({ headers: { 'standard-server': 'octet-stream' } })
+        const msg = makeRequestMessage({ bodyHint: 'octet-stream' })
         const promise = peer.message(msg, handler)
 
         await vi.waitFor(() => expect(handler).toHaveBeenCalled())
@@ -497,7 +497,7 @@ describe('serverPeer', () => {
 
     it('closes event-stream message queues', async () => {
       const { handler, box } = deferredHandler()
-      const msg = makeRequestMessage({ headers: { 'standard-server': 'event-stream' } })
+      const msg = makeRequestMessage({ bodyHint: 'event-stream' })
       const promise = peer.message(msg, handler)
       await vi.waitFor(() => expect(handler).toHaveBeenCalled())
 
@@ -515,7 +515,7 @@ describe('serverPeer', () => {
 
     it('closes octet-stream message queues', async () => {
       const { handler, box } = deferredHandler()
-      const msg = makeRequestMessage({ headers: { 'standard-server': 'octet-stream' } })
+      const msg = makeRequestMessage({ bodyHint: 'octet-stream' })
       const promise = peer.message(msg, handler)
       await vi.waitFor(() => expect(handler).toHaveBeenCalled())
       const request = handler.mock.calls[0]![0]

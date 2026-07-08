@@ -1,5 +1,6 @@
 import type {
   EventStreamMessage,
+  StandardBodyHint,
   StandardRequest,
   StandardResponse,
 } from '@standardserver/core'
@@ -41,7 +42,9 @@ export interface PeerRequestMessage extends PeerMessage {
   /**
    * Request payload, excluding the abort signal.
    */
-  json: Omit<StandardRequest, 'signal'>
+  json: Omit<StandardRequest, 'signal'> & {
+    bodyHint: StandardBodyHint
+  }
 }
 
 /**
@@ -57,7 +60,9 @@ export interface PeerResponseMessage extends PeerMessage {
   /**
    * Response payload.
    */
-  json: StandardResponse
+  json: StandardResponse & {
+    bodyHint: StandardBodyHint
+  }
 }
 
 /**

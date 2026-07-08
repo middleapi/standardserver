@@ -68,14 +68,20 @@ export class ServerPeer {
       state.eventStreamMessageQueue = decoded.eventStreamMessageQueue
       state.octetStreamMessageQueue = decoded.octetStreamMessageQueue
 
-      const response = await handleRequest({ ...message.json, signal, resolveBody: decoded.resolveBody })
+      const response = await handleRequest({
+        url: message.json.url,
+        method: message.json.method,
+        headers: message.json.headers,
+        resolveBody: decoded.resolveBody,
+        signal,
+      })
 
       // only send message if still open and not aborted
       if (signal.aborted) {
         return
       }
 
-      const [jsonBody, headers, binary] = await encodeAtomicStandardBody(response.body, response.headers)
+      const encodedAtomicBody = await encodeAtomicStandardBody(response.body, response.headers)
 
       // signal can abort during encode
       if (signal.aborted) {
@@ -85,8 +91,13 @@ export class ServerPeer {
       const responseMessage: PeerResponseMessage = {
         id: message.id,
         kind: 'response',
-        json: { ...response, headers, body: jsonBody },
-        binary,
+        json: {
+          status: response.status,
+          headers: encodedAtomicBody.headers,
+          bodyHint: encodedAtomicBody.bodyHint,
+          body: encodedAtomicBody.jsonBody,
+        },
+        binary: encodedAtomicBody.binary,
       }
 
       // PeerResponseMessage must be sent before stream messages

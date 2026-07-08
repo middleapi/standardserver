@@ -14,41 +14,26 @@ export interface ToStandardBodyResult {
 
 /**
  * Parse a peer message body.
- *
- * For broad compatibility with other peer implementations,
- * this function follows HTTP adapter behavior and handles all body shapes,
- * not just those produced by {@link encodeAtomicStandardBody}.
  */
 export function toStandardBody(
   message: PeerRequestMessage | PeerResponseMessage,
   cleanup: AsyncCleanupFn,
 ): ToStandardBodyResult {
-  const bodyHint = flattenStandardHeader(message.json.headers['standard-server'])
-  const mimeType = flattenStandardHeader(message.json.headers['content-type'])?.split(';')[0]?.trim()
+  const bodyHint = message.json.bodyHint
 
-  if (message.json.body === undefined && message.binary === undefined) {
-    if (
-      bodyHint === 'event-stream' satisfies StandardBodyHint
-      || (bodyHint === undefined && mimeType === 'text/event-stream')
-    ) {
-      const eventStreamMessageQueue = new Queue<PeerEventStreamMessage>()
-      return {
-        resolveBody: async () => toAsyncIteratorObject(eventStreamMessageQueue, cleanup),
-        eventStreamMessageQueue,
-      }
+  if (bodyHint === 'event-stream') {
+    const eventStreamMessageQueue = new Queue<PeerEventStreamMessage>()
+    return {
+      resolveBody: async () => toAsyncIteratorObject(eventStreamMessageQueue, cleanup),
+      eventStreamMessageQueue,
     }
+  }
 
-    if (
-      bodyHint === 'octet-stream' satisfies StandardBodyHint
-      // if mineType is not present, the parsed body should be `undefined`
-      // if content-length is present, the parsed body should be a blob/file
-      || (bodyHint === undefined && mimeType !== undefined && flattenStandardHeader(message.json.headers['content-length']) === undefined)
-    ) {
-      const octetStreamMessageQueue = new Queue<PeerOctetStreamMessage>()
-      return {
-        resolveBody: async () => toOctetStream(octetStreamMessageQueue, cleanup),
-        octetStreamMessageQueue,
-      }
+  if (bodyHint === 'octet-stream') {
+    const octetStreamMessageQueue = new Queue<PeerOctetStreamMessage>()
+    return {
+      resolveBody: async () => toOctetStream(octetStreamMessageQueue, cleanup),
+      octetStreamMessageQueue,
     }
   }
 
@@ -56,53 +41,43 @@ export function toStandardBody(
     let errorRef: { value: unknown } | undefined
 
     try {
-      if (
-        ((bodyHint === 'url-search-params' satisfies StandardBodyHint)
-          || (bodyHint === undefined && mimeType === 'application/x-www-form-urlencoded'))
-        && typeof message.json.body === 'string'
-      ) {
+      if (bodyHint === 'url-search-params') {
+        if (typeof message.json.body !== 'string') {
+          throw new TypeError('Expected body to be a string for url-search-params bodyHint')
+        }
+
         return new URLSearchParams(message.json.body)
       }
 
-      if (
-        (bodyHint === 'none' satisfies StandardBodyHint)
-        // Prefer a binary body over an undefined body when message.binary is present.
-        || (bodyHint === undefined && mimeType === undefined && message.json.body === undefined && message.binary === undefined)
-      ) {
-        return undefined
-      }
-
-      // Keep validation minimal here.
-      // If message.json.body exists and does not match a non-binary type above,
-      // treat it as JSON and return it directly.
-      if (message.json.body !== undefined) {
-        return message.json.body // json body already parsed
-      }
-
-      if (
-        (bodyHint === 'form-data' satisfies StandardBodyHint)
-        || (bodyHint === undefined && mimeType === 'multipart/form-data')
-      ) {
+      if (bodyHint === 'form-data') {
         const res = new Response(message.binary, {
           headers: {
             'content-type': flattenStandardHeader(message.json.headers['content-type']) ?? 'multipart/form-data',
           },
         })
 
-        const body = await res.formData()
-        return body
+        const form = await res.formData()
+        return form
       }
 
-      const contentDisposition = flattenStandardHeader(message.json.headers['content-disposition'])
-      const filename = contentDisposition !== undefined
-        ? getFilenameFromContentDisposition(contentDisposition)
-        : undefined
+      if (bodyHint === 'file') {
+        const contentDisposition = flattenStandardHeader(message.json.headers['content-disposition'])
+        const filename = contentDisposition !== undefined
+          ? getFilenameFromContentDisposition(contentDisposition)
+          : undefined
 
-      const body = new File(message.binary ? [message.binary] : [], filename ?? 'blob', {
-        type: flattenStandardHeader(message.json.headers['content-type']) ?? 'application/octet-stream',
-      })
+        const file = new File(message.binary ? [message.binary] : [], filename ?? 'blob', {
+          type: flattenStandardHeader(message.json.headers['content-type']) ?? 'application/octet-stream',
+        })
+        return file
+      }
 
-      return body
+      if (bodyHint === 'none') {
+        return undefined
+      }
+
+      const _expect: 'json' = bodyHint
+      return message.json.body // json body already parsed
     }
     catch (error) {
       errorRef = { value: error }
@@ -117,37 +92,31 @@ export function toStandardBody(
   return { resolveBody }
 }
 
+export interface EncodedAtomicStandardBody {
+  bodyHint: StandardBodyHint
+  jsonBody: unknown
+  headers: StandardHeaders
+  binary: Uint8Array<ArrayBuffer> | Blob | undefined
+}
+
 /**
  * Encode a `StandardBody` into JSON, binary data, and headers.
  * Event and octet streams are handled separately.
  *
- * Unlike HTTP adapters, binary types (Blob, File, ReadableStream)
- * do not use a custom `standard-server` header, because receivers must parse the body as sent.
- *
- * For compatibility, set headers by body type,
- * following HTTP adapter conventions.
+ * Unlike HTTP adapters, peer adapter do not use a `standard-server` header,
+ * because receivers must parse the body as sent. so we need a explicit `bodyHint` to indicate how the body is sent.
  */
 export async function encodeAtomicStandardBody(
   body: StandardBody,
   headers: StandardHeaders,
-): Promise<[
-  jsonBody: unknown,
-  headers: StandardHeaders,
-  binary: Uint8Array<ArrayBuffer> | Blob | undefined,
-]> {
+): Promise<EncodedAtomicStandardBody> {
   headers = { ...headers }
-  let binary: Uint8Array<ArrayBuffer> | Blob | undefined
-  let json: unknown
 
   if (body instanceof ReadableStream) {
-    headers['standard-server'] = 'octet-stream' satisfies StandardBodyHint
-    // content-type should be set when body is present
-    headers['content-type'] ??= 'application/octet-stream'
+    return { bodyHint: 'octet-stream', jsonBody: undefined, headers, binary: undefined }
   }
-  else if (body instanceof Blob) {
-    binary = body
 
-    headers['standard-server'] = 'file' satisfies StandardBodyHint
+  if (body instanceof Blob) {
     headers['content-type'] = body.type
     headers['content-disposition'] ??= generateContentDisposition(
       body instanceof File ? body.name : 'blob',
@@ -157,32 +126,30 @@ export async function encodeAtomicStandardBody(
     if (!Number.isNaN(body.size)) {
       headers['content-length'] = body.size.toString()
     }
-  }
-  else {
-    headers['standard-server'] = undefined
-    headers['content-length'] = undefined
 
-    if (isAsyncIteratorObject(body)) {
-      headers['content-type'] = 'text/event-stream'
-    }
-    else if (body instanceof FormData) {
-      const res = new Response(body)
-      binary = await res.blob()
-      headers['content-type'] = res.headers.get('content-type')!
-      headers['content-length'] = binary.size.toString()
-    }
-    else if (body instanceof URLSearchParams) {
-      json = body.toString()
-      headers['content-type'] = 'application/x-www-form-urlencoded'
-    }
-    else if (body === undefined) {
-      headers['content-type'] = undefined
-    }
-    else {
-      json = body
-      headers['content-type'] = 'application/json'
-    }
+    return { bodyHint: 'file', jsonBody: undefined, headers, binary: body }
   }
 
-  return [json, headers, binary]
+  if (isAsyncIteratorObject(body)) {
+    return { bodyHint: 'event-stream', jsonBody: undefined, headers, binary: undefined }
+  }
+
+  if (body instanceof FormData) {
+    const res = new Response(body)
+    const blob = await res.blob()
+    headers['content-type'] = res.headers.get('content-type')!
+    headers['content-length'] = blob.size.toString()
+
+    return { bodyHint: 'form-data', jsonBody: undefined, headers, binary: blob }
+  }
+
+  if (body instanceof URLSearchParams) {
+    return { bodyHint: 'url-search-params', jsonBody: body.toString(), headers, binary: undefined }
+  }
+
+  if (body === undefined) {
+    return { bodyHint: 'none', jsonBody: undefined, headers, binary: undefined }
+  }
+
+  return { bodyHint: 'json', jsonBody: body, headers, binary: undefined }
 }

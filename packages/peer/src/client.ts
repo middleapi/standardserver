@@ -1,7 +1,7 @@
 import type { StandardLazyResponse, StandardRequest } from '@standardserver/core'
 import type { Queue } from '@standardserver/shared'
 import type { ClientPeerSendMessage, PeerEventStreamMessage, PeerOctetStreamMessage, ServerPeerSendMessage } from './types'
-import { AbortError, isAsyncIteratorObject, omit, SequentialIdGenerator } from '@standardserver/shared'
+import { AbortError, isAsyncIteratorObject, SequentialIdGenerator } from '@standardserver/shared'
 import { encodeAtomicStandardBody, toStandardBody } from './body'
 import { EventStreamTransmitter } from './event-stream'
 import { OctetStreamTransmitter } from './octet-stream'
@@ -50,7 +50,7 @@ export class ClientPeer {
     })
 
     try {
-      const [jsonBody, headers, binary] = await encodeAtomicStandardBody(request.body, request.headers)
+      const encodedAtomicBody = await encodeAtomicStandardBody(request.body, request.headers)
 
       // signal can be aborted during encode
       signal?.throwIfAborted()
@@ -60,11 +60,13 @@ export class ClientPeer {
         id,
         kind: 'request',
         json: {
-          ...omit(request, ['signal']),
-          headers,
-          body: jsonBody,
+          method: request.method,
+          url: request.url,
+          headers: encodedAtomicBody.headers,
+          bodyHint: encodedAtomicBody.bodyHint,
+          body: encodedAtomicBody.jsonBody,
         },
-        binary,
+        binary: encodedAtomicBody.binary,
       })
 
       // signal can be aborted after sending request message
@@ -169,7 +171,11 @@ export class ClientPeer {
       state.eventStreamMessageQueue = decoded.eventStreamMessageQueue
       state.octetStreamMessageQueue = decoded.octetStreamMessageQueue
 
-      resolve({ ...message.json, resolveBody: decoded.resolveBody })
+      resolve({
+        headers: message.json.headers,
+        status: message.json.status,
+        resolveBody: decoded.resolveBody,
+      })
 
       if (!state.eventStreamMessageQueue && !state.octetStreamMessageQueue) {
         // if there is no stream, we can close the request immediately
