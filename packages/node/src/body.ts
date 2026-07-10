@@ -124,7 +124,7 @@ export async function toNodeHttpBody(
     headers['content-disposition'] ??= generateContentDisposition(body instanceof File ? body.name : 'blob')
 
     // BunS3 can use NaN for the size
-    if (!Number.isNaN(body.size)) {
+    if (Number.isFinite(body.size)) {
       headers['content-length'] = body.size.toString()
     }
 

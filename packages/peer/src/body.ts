@@ -123,7 +123,7 @@ export async function encodeAtomicStandardBody(
     )
 
     // BunS3 can use NaN for the size
-    if (!Number.isNaN(body.size)) {
+    if (Number.isFinite(body.size)) {
       headers['content-length'] = body.size.toString()
     }
 

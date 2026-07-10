@@ -115,7 +115,7 @@ export function toFetchBody(
     headers['content-disposition'] ??= generateContentDisposition(body instanceof File ? body.name : 'blob')
 
     // BunS3 can use NaN for the size
-    if (Number.isNaN(body.size)) {
+    if (!Number.isFinite(body.size)) {
       return [body.stream(), headers]
     }
 
