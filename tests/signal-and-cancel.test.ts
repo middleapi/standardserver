@@ -1,6 +1,7 @@
 import { AsyncIteratorClass, isAsyncIteratorObject, sleep } from '@standardserver/shared'
 import { createHonoFetchClientServerTest } from './client-server.hono-fetch'
 import { createMessagePortClientServerTest } from './client-server.message-port'
+import { createMessagePortFetchStreamedClientServerTest } from './client-server.message-port-fetch-streamed'
 import { createNodeHttpClientServerTest } from './client-server.node-http'
 import { createNodeWsClientServerTest } from './client-server.node-ws'
 import { createNodeWsFetchStreamedClientServerTest } from './client-server.node-ws-fetch-streamed'
@@ -19,6 +20,7 @@ describe.each([
   // ['node-fetch-server', createNodeFetchServerClientServerTest],
   ['node-http', createNodeHttpClientServerTest],
   ['message-port', createMessagePortClientServerTest],
+  ['message-port-fetch-streamed', createMessagePortFetchStreamedClientServerTest],
   ['node-ws', createNodeWsClientServerTest],
   ['node-ws-fetch-streamed', createNodeWsFetchStreamedClientServerTest],
 ] as const)('signal and cancel: $0', async (adapter, createClientServer) => {
@@ -166,7 +168,7 @@ describe.each([
 
     await sleep(100) // wait for server receive abort signal
     // Currently only message-port and node-ws adapters support request stream cancel
-    if (adapter === 'message-port' || adapter === 'node-ws') {
+    if (adapter === 'message-port' || adapter === 'node-ws' || adapter === 'node-ws-fetch-streamed' || adapter === 'message-port-fetch-streamed') {
       expect(canceled).toBe(true)
     }
     expect(serverSignal.aborted).toBe(true)
@@ -227,7 +229,7 @@ describe.each([
 
     await sleep(100) // wait for server receive abort signal
     // Currently only message-port and node-ws adapters trigger request stream cancel
-    if (adapter === 'message-port' || adapter === 'node-ws') {
+    if (adapter === 'message-port' || adapter === 'node-ws' || adapter === 'node-ws-fetch-streamed' || adapter === 'message-port-fetch-streamed') {
       expect(cancelled).toBe(true)
     }
     expect(serverSignal.aborted).toBe(true)
@@ -522,7 +524,7 @@ describe.each([
     expect(response).toMatchObject({ status: 200 })
 
     // Currently only message port and node-ws adapters support trigger request stream cancel
-    expect(canceled).toBe(adapter === 'message-port' || adapter === 'node-ws' || adapter === 'node-ws-fetch-streamed')
+    expect(canceled).toBe(adapter === 'message-port' || adapter === 'node-ws' || adapter === 'node-ws-fetch-streamed' || adapter === 'message-port-fetch-streamed')
     expect(serverSignal.aborted).toBe(false) // DO NOT ABORT IF ONLY CANCEL REQUEST BODY
     expect(times).toBe(2) // the second chunk is being pulled
     expect(Date.now() - start).toBeLessThan(300) // cancelled in parallel without waiting for the second chunk
@@ -580,7 +582,7 @@ describe.each([
     expect(response).toMatchObject({ status: 200 })
 
     // Currently only message-port and node-ws adapters support trigger request stream cancel
-    expect(canceled).toBe(adapter === 'message-port' || adapter === 'node-ws' || adapter === 'node-ws-fetch-streamed')
+    expect(canceled).toBe(adapter === 'message-port' || adapter === 'node-ws' || adapter === 'node-ws-fetch-streamed' || adapter === 'message-port-fetch-streamed')
     expect(serverSignal.aborted).toBe(false) // DO NOT ABORT IF ONLY CANCEL REQUEST BODY
     expect(times).toBe(2) // the second chunk is being pulled
     expect(Date.now() - start).toBeLessThan(300) // cancelled in parallel without waiting for the second chunk
@@ -716,7 +718,7 @@ describe.each([
       url: '/',
     })
 
-    if (adapter === 'message-port' || adapter === 'node-ws') {
+    if (adapter === 'message-port' || adapter === 'node-ws' || adapter === 'node-ws-fetch-streamed' || adapter === 'message-port-fetch-streamed') {
       await expect(responsePromise).rejects.toThrow(error)
     }
     else {

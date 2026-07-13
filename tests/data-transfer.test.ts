@@ -6,6 +6,7 @@ import { createHonoFetchClientServerTest } from './client-server.hono-fetch'
 import { createInprogressClientServerTest } from './client-server.inprogress'
 import { createInprogressFetchClientServerTest } from './client-server.inprogress-fetch'
 import { createMessagePortClientServerTest } from './client-server.message-port'
+import { createMessagePortFetchStreamedClientServerTest } from './client-server.message-port-fetch-streamed'
 import { createNodeHttpClientServerTest } from './client-server.node-http'
 import { createNodeSrvxClientServerTest } from './client-server.node-srvx'
 import { createNodeWsClientServerTest } from './client-server.node-ws'
@@ -21,6 +22,7 @@ describe.each([
   // ['node-fetch-server', createNodeFetchServerClientServerTest],
   ['node-http', createNodeHttpClientServerTest],
   ['message-port', createMessagePortClientServerTest],
+  ['message-port-fetch-streamed', createMessagePortFetchStreamedClientServerTest],
   ['node-ws', createNodeWsClientServerTest],
   ['node-ws-fetch-streamed', createNodeWsFetchStreamedClientServerTest],
 ])('data transfer: $0', (_, createClientServer) => {
