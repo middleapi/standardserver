@@ -9,6 +9,7 @@ import { createMessagePortClientServerTest } from './client-server.message-port'
 import { createNodeHttpClientServerTest } from './client-server.node-http'
 import { createNodeSrvxClientServerTest } from './client-server.node-srvx'
 import { createNodeWsClientServerTest } from './client-server.node-ws'
+import { createNodeWsFetchStreamedClientServerTest } from './client-server.node-ws-fetch-streamed'
 
 describe.each([
   ['inprogress', createInprogressClientServerTest],
@@ -21,6 +22,7 @@ describe.each([
   ['node-http', createNodeHttpClientServerTest],
   ['message-port', createMessagePortClientServerTest],
   ['node-ws', createNodeWsClientServerTest],
+  ['node-ws-fetch-streamed', createNodeWsFetchStreamedClientServerTest],
 ])('data transfer: $0', (_, createClientServer) => {
   const clientServer = createClientServer()
 

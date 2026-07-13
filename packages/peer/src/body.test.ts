@@ -23,6 +23,9 @@ describe('toStandardBody', () => {
     if (options.contentDisposition !== undefined) {
       headers['content-disposition'] = options.contentDisposition
     }
+    if (options.bodyHint !== undefined) {
+      headers['standard-server'] = options.bodyHint
+    }
     return {
       id: '1',
       kind: 'request',
@@ -30,7 +33,6 @@ describe('toStandardBody', () => {
         method: 'POST',
         url: '/test',
         headers,
-        bodyHint: options.bodyHint ?? 'none',
         body: options.body,
       },
       binary: options.binary,
@@ -59,7 +61,7 @@ describe('toStandardBody', () => {
 
   it('receives a binary download stream', async () => {
     const cleanup = vi.fn()
-    const { resolveBody, octetStreamMessageQueue } = toStandardBody(makeMessage({ bodyHint: 'octet-stream' }), cleanup)
+    const { resolveBody, octetStreamMessageQueue } = toStandardBody(makeMessage({ contentType: 'application/octet-stream' }), cleanup)
 
     const body = await resolveBody()
 
@@ -80,7 +82,6 @@ describe('toStandardBody', () => {
     const binary = new TextEncoder().encode('file content')
     const cleanup = vi.fn()
     const { resolveBody } = toStandardBody(makeMessage({
-      bodyHint: 'file',
       contentType: 'text/plain',
       contentDisposition: 'attachment; filename="test.txt"',
       binary,
@@ -99,7 +100,7 @@ describe('toStandardBody', () => {
 
   it('receives an empty file', async () => {
     const cleanup = vi.fn()
-    const { resolveBody } = toStandardBody(makeMessage({ bodyHint: 'file' }), cleanup)
+    const { resolveBody } = toStandardBody(makeMessage({ bodyHint: 'file', binary: new Uint8Array(0) }), cleanup)
 
     const body = await resolveBody()
 
@@ -114,7 +115,6 @@ describe('toStandardBody', () => {
     const binary = new TextEncoder().encode('file content')
     const cleanup = vi.fn()
     const { resolveBody } = toStandardBody(makeMessage({
-      bodyHint: 'file',
       contentType: 'text/plain',
       binary,
     }), cleanup)
@@ -182,9 +182,20 @@ describe('toStandardBody', () => {
     expect(cleanup).toHaveBeenCalledWith({ kind: 'success' })
   })
 
+  it('rejects url-search-params bodyHint with non-string body', async () => {
+    const cleanup = vi.fn()
+    const { resolveBody } = toStandardBody(makeMessage({
+      bodyHint: 'url-search-params',
+      body: { not: 'a string' },
+    }), cleanup)
+
+    await expect(resolveBody()).rejects.toThrow('Expected body to be a string for url-search-params bodyHint')
+    expect(cleanup).toHaveBeenCalledWith({ kind: 'error', error: expect.any(TypeError) })
+  })
+
   it('explicitly empty body', async () => {
     const cleanup = vi.fn()
-    const { resolveBody } = toStandardBody(makeMessage({ bodyHint: 'none' }), cleanup)
+    const { resolveBody } = toStandardBody(makeMessage({}), cleanup)
 
     const body = await resolveBody()
 
@@ -197,7 +208,6 @@ describe('toStandardBody', () => {
   it('receives a JSON payload', async () => {
     const cleanup = vi.fn()
     const { resolveBody } = toStandardBody(makeMessage({
-      bodyHint: 'json',
       body: { key: 'val' },
     }), cleanup)
 
@@ -208,24 +218,12 @@ describe('toStandardBody', () => {
     expect(cleanup).toHaveBeenCalledTimes(1)
     expect(cleanup).toHaveBeenCalledWith({ kind: 'success' })
   })
-
-  it('rejects url-search-params bodyHint with non-string body', async () => {
-    const cleanup = vi.fn()
-    const { resolveBody } = toStandardBody(makeMessage({
-      bodyHint: 'url-search-params',
-      body: { not: 'a string' },
-    }), cleanup)
-
-    await expect(resolveBody()).rejects.toThrow('Expected body to be a string for url-search-params bodyHint')
-    expect(cleanup).toHaveBeenCalledWith({ kind: 'error', error: expect.any(TypeError) })
-  })
 })
 
 describe('encodeAtomicStandardBody', () => {
   it('encodes undefined body', async () => {
-    const { bodyHint, jsonBody, headers, binary } = await encodeAtomicStandardBody(undefined, {})
+    const { jsonBody, headers, binary } = await encodeAtomicStandardBody(undefined, {})
 
-    expect(bodyHint).toBe('none')
     expect(jsonBody).toBe(undefined)
     expect(binary).toBe(undefined)
     expect(headers['standard-server']).toBe(undefined)
@@ -233,9 +231,8 @@ describe('encodeAtomicStandardBody', () => {
   })
 
   it('encodes null body', async () => {
-    const { bodyHint, jsonBody, headers, binary } = await encodeAtomicStandardBody(null, {})
+    const { jsonBody, headers, binary } = await encodeAtomicStandardBody(null, {})
 
-    expect(bodyHint).toBe('json')
     expect(jsonBody).toBe(null)
     expect(binary).toBe(undefined)
     expect(headers['standard-server']).toBe(undefined)
@@ -243,9 +240,8 @@ describe('encodeAtomicStandardBody', () => {
   })
 
   it('encodes string body', async () => {
-    const { bodyHint, jsonBody, headers, binary } = await encodeAtomicStandardBody('hello', {})
+    const { jsonBody, headers, binary } = await encodeAtomicStandardBody('hello', {})
 
-    expect(bodyHint).toBe('json')
     expect(jsonBody).toBe('hello')
     expect(binary).toBe(undefined)
     expect(headers['standard-server']).toBe(undefined)
@@ -253,9 +249,8 @@ describe('encodeAtomicStandardBody', () => {
   })
 
   it('encodes JSON object body', async () => {
-    const { bodyHint, jsonBody, headers, binary } = await encodeAtomicStandardBody({ a: 1, b: [2, 3] }, {})
+    const { jsonBody, headers, binary } = await encodeAtomicStandardBody({ a: 1, b: [2, 3] }, {})
 
-    expect(bodyHint).toBe('json')
     expect(jsonBody).toEqual({ a: 1, b: [2, 3] })
     expect(binary).toBe(undefined)
     expect(headers['standard-server']).toBe(undefined)
@@ -266,20 +261,18 @@ describe('encodeAtomicStandardBody', () => {
     const form = new FormData()
     form.append('key', 'value')
 
-    const { bodyHint, jsonBody, headers, binary } = await encodeAtomicStandardBody(form, {})
+    const { jsonBody, headers, binary } = await encodeAtomicStandardBody(form, {})
 
-    expect(bodyHint).toBe('form-data')
     expect(jsonBody).toBe(undefined)
-    expect(headers['standard-server']).toBe(undefined)
+    expect(headers['standard-server']).toBe('form-data')
     expect(headers['content-type']).toContain('multipart/form-data')
     expect(binary).toBeInstanceOf(Blob)
   })
 
   it('encodes Blob body', async () => {
     const blob = new Blob(['data'], { type: 'text/plain' })
-    const { bodyHint, jsonBody, headers, binary } = await encodeAtomicStandardBody(blob, {})
+    const { jsonBody, headers, binary } = await encodeAtomicStandardBody(blob, {})
 
-    expect(bodyHint).toBe('file')
     expect(jsonBody).toBe(undefined)
     expect(headers['standard-server']).toBe(undefined)
     expect(headers['content-disposition']).toBe(generateContentDisposition('blob'))
@@ -289,9 +282,8 @@ describe('encodeAtomicStandardBody', () => {
 
   it('encodes File body with name', async () => {
     const file = new File(['content'], 'myfile.txt', { type: 'text/plain' })
-    const { bodyHint, jsonBody, headers, binary } = await encodeAtomicStandardBody(file, {})
+    const { jsonBody, headers, binary } = await encodeAtomicStandardBody(file, {})
 
-    expect(bodyHint).toBe('file')
     expect(jsonBody).toBe(undefined)
     expect(headers['standard-server']).toBe(undefined)
     expect(headers['content-disposition']).toBe(generateContentDisposition('myfile.txt'))
@@ -316,11 +308,10 @@ describe('encodeAtomicStandardBody', () => {
 
   it('encodes URLSearchParams body', async () => {
     const params = new URLSearchParams('a=1&b=2')
-    const { bodyHint, jsonBody, headers, binary } = await encodeAtomicStandardBody(params, {})
+    const { jsonBody, headers, binary } = await encodeAtomicStandardBody(params, {})
 
-    expect(bodyHint).toBe('url-search-params')
     expect(jsonBody).toBe('a=1&b=2')
-    expect(headers['standard-server']).toBe(undefined)
+    expect(headers['standard-server']).toBe('url-search-params')
     expect(headers['content-type']).toBe(undefined)
     expect(binary).toBe(undefined)
   })
@@ -333,12 +324,11 @@ describe('encodeAtomicStandardBody', () => {
       },
     })
 
-    const { bodyHint, jsonBody, headers, binary } = await encodeAtomicStandardBody(stream, {})
+    const { jsonBody, headers, binary } = await encodeAtomicStandardBody(stream, {})
 
-    expect(bodyHint).toBe('octet-stream')
     expect(jsonBody).toBe(undefined)
     expect(headers['standard-server']).toBe(undefined)
-    expect(headers['content-type']).toBe(undefined)
+    expect(headers['content-type']).toBe('application/octet-stream')
     expect(binary).toBe(undefined)
   })
 
@@ -350,23 +340,21 @@ describe('encodeAtomicStandardBody', () => {
       },
     })
 
-    const { bodyHint, jsonBody, headers, binary } = await encodeAtomicStandardBody(stream, { 'content-type': 'custom/type' })
+    const { jsonBody, headers, binary } = await encodeAtomicStandardBody(stream, { 'content-type': 'custom/type' })
 
-    expect(bodyHint).toBe('octet-stream')
     expect(jsonBody).toBe(undefined)
     expect(headers['standard-server']).toBe(undefined)
     expect(headers['content-type']).toBe('custom/type')
     expect(binary).toBe(undefined)
   })
 
-  it('encodes AsyncIteratorObject body', async () => {
+  it('encodes AsyncIteratorObject body and remove existing content-type header', async () => {
     const asyncIterator = new AsyncIteratorClass(async () => ({ done: true, value: undefined }), async () => {})
 
-    const { bodyHint, jsonBody, headers, binary } = await encodeAtomicStandardBody(asyncIterator, {})
+    const { jsonBody, headers, binary } = await encodeAtomicStandardBody(asyncIterator, { 'content-type': 'custom/type' })
 
-    expect(bodyHint).toBe('event-stream')
     expect(jsonBody).toBe(undefined)
-    expect(headers['standard-server']).toBe(undefined)
+    expect(headers['standard-server']).toBe('event-stream')
     expect(headers['content-type']).toBe(undefined)
     expect(binary).toBe(undefined)
   })
