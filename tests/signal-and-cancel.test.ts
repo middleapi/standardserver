@@ -3,6 +3,7 @@ import { createHonoFetchClientServerTest } from './client-server.hono-fetch'
 import { createMessagePortClientServerTest } from './client-server.message-port'
 import { createNodeHttpClientServerTest } from './client-server.node-http'
 import { createNodeWsClientServerTest } from './client-server.node-ws'
+import { createNodeWsFetchStreamedClientServerTest } from './client-server.node-ws-fetch-streamed'
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -19,6 +20,7 @@ describe.each([
   ['node-http', createNodeHttpClientServerTest],
   ['message-port', createMessagePortClientServerTest],
   ['node-ws', createNodeWsClientServerTest],
+  ['node-ws-fetch-streamed', createNodeWsFetchStreamedClientServerTest],
 ] as const)('signal and cancel: $0', async (adapter, createClientServer) => {
   const clientServer = createClientServer()
   await sleep(100) // ensure everything is ready
@@ -520,7 +522,7 @@ describe.each([
     expect(response).toMatchObject({ status: 200 })
 
     // Currently only message port and node-ws adapters support trigger request stream cancel
-    expect(canceled).toBe(adapter === 'message-port' || adapter === 'node-ws')
+    expect(canceled).toBe(adapter === 'message-port' || adapter === 'node-ws' || adapter === 'node-ws-fetch-streamed')
     expect(serverSignal.aborted).toBe(false) // DO NOT ABORT IF ONLY CANCEL REQUEST BODY
     expect(times).toBe(2) // the second chunk is being pulled
     expect(Date.now() - start).toBeLessThan(300) // cancelled in parallel without waiting for the second chunk
@@ -578,7 +580,7 @@ describe.each([
     expect(response).toMatchObject({ status: 200 })
 
     // Currently only message-port and node-ws adapters support trigger request stream cancel
-    expect(canceled).toBe(adapter === 'message-port' || adapter === 'node-ws')
+    expect(canceled).toBe(adapter === 'message-port' || adapter === 'node-ws' || adapter === 'node-ws-fetch-streamed')
     expect(serverSignal.aborted).toBe(false) // DO NOT ABORT IF ONLY CANCEL REQUEST BODY
     expect(times).toBe(2) // the second chunk is being pulled
     expect(Date.now() - start).toBeLessThan(300) // cancelled in parallel without waiting for the second chunk

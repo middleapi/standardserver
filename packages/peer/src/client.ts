@@ -63,7 +63,6 @@ export class ClientPeer {
           method: request.method,
           url: request.url,
           headers: encodedAtomicBody.headers,
-          bodyHint: encodedAtomicBody.bodyHint,
           body: encodedAtomicBody.jsonBody,
         },
         binary: encodedAtomicBody.binary,

@@ -94,7 +94,6 @@ export class ServerPeer {
         json: {
           status: response.status,
           headers: encodedAtomicBody.headers,
-          bodyHint: encodedAtomicBody.bodyHint,
           body: encodedAtomicBody.jsonBody,
         },
         binary: encodedAtomicBody.binary,

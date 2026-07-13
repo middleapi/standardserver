@@ -118,7 +118,7 @@ export interface ToEventStreamOptions {
     /**
      * Interval (in milliseconds) between ping comments sent after the last event.
      *
-     * @default 5000
+     * @default 15000
      */
     interval?: number
 
@@ -144,7 +144,7 @@ export function toEventStream(
   options: ToEventStreamOptions = {},
 ): ReadableStream<Uint8Array<ArrayBuffer>> {
   const keepAliveEnabled = options.keepAlive?.enabled ?? true
-  const keepAliveInterval = options.keepAlive?.interval ?? 5000
+  const keepAliveInterval = options.keepAlive?.interval ?? 15000
   const keepAliveComment = options.keepAlive?.comment ?? ''
   const initialCommentEnabled = options.initialComment?.enabled ?? true
   const initialComment = options.initialComment?.comment ?? ''

@@ -10,12 +10,12 @@ function makeRequest(overrides: Partial<StandardRequest> = {}): StandardRequest 
   return { method: 'GET', url: '/test', headers: {}, ...overrides }
 }
 
-function makeResponseMessage(id: string, body?: unknown, headers: Record<string, string> = {}, bodyHint: 'json' | 'none' = body === undefined ? 'none' : 'json'): PeerResponseMessage {
-  return { id, kind: 'response', json: { status: 200, headers, bodyHint, body } }
+function makeResponseMessage(id: string, body?: unknown, headers: Record<string, string> = {}): PeerResponseMessage {
+  return { id, kind: 'response', json: { status: 200, headers, body } }
 }
 
 function makeStreamingResponse(id: string, type: 'event-stream' | 'octet-stream'): PeerResponseMessage {
-  return { id, kind: 'response', json: { status: 200, headers: {}, bodyHint: type, body: undefined } }
+  return { id, kind: 'response', json: { status: 200, headers: { 'standard-server': type === 'event-stream' ? 'event-stream' : undefined, 'content-type': type === 'event-stream' ? undefined : 'application/octet-stream' }, body: undefined } }
 }
 
 function makeCancelMessage(id: string): PeerCancelMessage {
@@ -95,7 +95,6 @@ describe('clientPeer', () => {
           headers: {
             'x-custom': 'val',
           },
-          bodyHint: 'json',
           body: { data: 1 },
         },
       })
@@ -134,7 +133,7 @@ describe('clientPeer', () => {
       await peer.message({
         id,
         kind: 'response',
-        json: { status: 200, headers: {}, bodyHint: 'form-data', body: undefined },
+        json: { status: 200, headers: { 'standard-server': 'form-data' }, body: undefined },
         binary: new Uint8Array([1, 2, 3]),
       })
 
@@ -154,7 +153,7 @@ describe('clientPeer', () => {
       await peer.message({
         id,
         kind: 'response',
-        json: { status: 200, headers: {}, bodyHint: 'form-data', body: undefined },
+        json: { status: 200, headers: { 'standard-server': 'form-data' }, body: undefined },
         binary: new Uint8Array([1, 2, 3]),
       })
 
@@ -225,7 +224,7 @@ describe('clientPeer', () => {
         const id = await waitForSend()
         await vi.waitFor(() => {
           expect(send).toHaveBeenCalledTimes(3)
-          expect(send).toHaveBeenNthCalledWith(1, { id, kind: 'request', binary: undefined, json: expect.objectContaining({ bodyHint: 'event-stream', headers: {} }) })
+          expect(send).toHaveBeenNthCalledWith(1, { id, kind: 'request', binary: undefined, json: expect.objectContaining({ headers: { 'standard-server': 'event-stream' } }) })
           expect(send).toHaveBeenNthCalledWith(2, { id, kind: 'event-stream', json: { event: 'message', data: 'a' } })
           expect(send).toHaveBeenNthCalledWith(3, { id, kind: 'event-stream', json: { event: 'close' } })
         })
@@ -372,7 +371,7 @@ describe('clientPeer', () => {
         await promise
 
         expect(send).toHaveBeenCalledTimes(3)
-        expect(send).toHaveBeenNthCalledWith(1, { id, kind: 'request', binary: undefined, json: expect.objectContaining({ bodyHint: 'octet-stream', headers: {} }) })
+        expect(send).toHaveBeenNthCalledWith(1, { id, kind: 'request', binary: undefined, json: expect.objectContaining({ headers: { 'content-type': 'application/octet-stream' } }) })
         expect(send).toHaveBeenNthCalledWith(2, { id, kind: 'octet-stream', json: { close: false }, binary: new Uint8Array([1, 2]) })
         expect(send).toHaveBeenNthCalledWith(3, { id, kind: 'octet-stream', json: { close: true }, binary: undefined })
       })
