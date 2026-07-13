@@ -372,7 +372,7 @@ describe('clientPeer', () => {
 
         expect(send).toHaveBeenCalledTimes(3)
         expect(send).toHaveBeenNthCalledWith(1, { id, kind: 'request', binary: undefined, json: expect.objectContaining({ headers: { 'content-type': 'application/octet-stream' } }) })
-        expect(send).toHaveBeenNthCalledWith(2, { id, kind: 'octet-stream', json: { close: false }, binary: new Uint8Array([1, 2]) })
+        expect(send).toHaveBeenNthCalledWith(2, { id, kind: 'octet-stream', json: { }, binary: new Uint8Array([1, 2]) })
         expect(send).toHaveBeenNthCalledWith(3, { id, kind: 'octet-stream', json: { close: true }, binary: undefined })
       })
 

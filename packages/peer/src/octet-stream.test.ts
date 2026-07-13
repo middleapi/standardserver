@@ -11,7 +11,7 @@ describe('toOctetStream', () => {
     queue.push({
       id: '1',
       kind: 'octet-stream',
-      json: { close: false },
+      json: {},
       binary: new Uint8Array([1, 2, 3]),
     })
     queue.push({
@@ -61,7 +61,7 @@ describe('toOctetStream', () => {
     queue.push({
       id: '1',
       kind: 'octet-stream',
-      json: { close: false },
+      json: {},
       binary: new Blob([new Uint8Array([10, 20])]),
     })
     queue.push({
@@ -123,13 +123,13 @@ describe('octetStreamTransmitter', () => {
     expect(send).toHaveBeenNthCalledWith(1, {
       id: 'msg-1',
       kind: 'octet-stream',
-      json: { close: false },
+      json: {},
       binary: new Uint8Array([1, 2]),
     })
     expect(send).toHaveBeenNthCalledWith(2, {
       id: 'msg-1',
       kind: 'octet-stream',
-      json: { close: false },
+      json: {},
       binary: new Uint8Array([3, 4]),
     })
     expect(send).toHaveBeenNthCalledWith(3, {

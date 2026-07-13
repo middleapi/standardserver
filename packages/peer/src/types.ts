@@ -129,7 +129,7 @@ export interface PeerOctetStreamMessage extends PeerMessage {
      *
      * @default false
      */
-    close: boolean
+    close?: boolean
   }
 
   /**

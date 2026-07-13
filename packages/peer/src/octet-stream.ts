@@ -64,7 +64,7 @@ export class OctetStreamTransmitter {
 
         try {
           await this.send({
-            json: { close: item.done },
+            json: { close: item.done ? true : undefined },
             binary: item.value,
             kind: 'octet-stream',
             id: this.messageId,
