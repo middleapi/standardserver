@@ -1,7 +1,7 @@
 import type { PeerMessage } from '@standardserver/peer'
 import type { ClientServerTest } from './client-server'
 import { toFetchBody, toFetchHeaders, toStandardBody } from '@standardserver/fetch'
-import { ClientPeer, decodePeerMessage, encodePeerMessage, ServerPeer } from '@standardserver/peer'
+import { ClientPeer, decodePeerMessage, encodePeerMessage, isClientPeerSendMessage, isServerPeerSendMessage, ServerPeer } from '@standardserver/peer'
 
 const prefix = '__PREFIX__'
 
@@ -37,11 +37,11 @@ export function createMessagePortFetchStreamedClientServerTest(): ClientServerTe
   port1.addEventListener('message', async (event) => {
     const { matched, message } = decodePeerMessage(event.data, { prefix })
 
-    if (!matched) {
+    if (!matched || !isServerPeerSendMessage(message)) {
       return
     }
 
-    await clientPeer.message(message as any)
+    await clientPeer.message(message)
   })
   port1.start()
 
@@ -55,11 +55,11 @@ export function createMessagePortFetchStreamedClientServerTest(): ClientServerTe
   port2.addEventListener('message', async (event) => {
     const { matched, message } = decodePeerMessage(event.data, { prefix })
 
-    if (!matched) {
+    if (!matched || !isClientPeerSendMessage(message)) {
       return
     }
 
-    await serverPeer.message(message as any, async (request) => {
+    await serverPeer.message(message, async (request) => {
       return handler({
         ...request,
         resolveBody: async (hint) => {

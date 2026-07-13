@@ -47,7 +47,7 @@ export function isPeerEventStreamMessage(maybe: PeerMessage): maybe is PeerEvent
     return false
   }
 
-  if (maybe.json.event !== undefined && typeof maybe.json.event !== 'string') {
+  if (maybe.json.event !== 'message' && maybe.json.event !== 'error' && maybe.json.event !== 'close') {
     return false
   }
 
@@ -66,7 +66,7 @@ export function isPeerEventStreamMessage(maybe: PeerMessage): maybe is PeerEvent
 }
 
 export function isPeerOctetStreamMessage(maybe: PeerMessage): maybe is PeerOctetStreamMessage {
-  return maybe.kind === 'octet-stream' && isTypescriptObject(maybe.json) && typeof maybe.json.close === 'boolean'
+  return maybe.kind === 'octet-stream' && isTypescriptObject(maybe.json) && (typeof maybe.json.close === 'undefined' || typeof maybe.json.close === 'boolean')
 }
 
 export function isPeerStreamCancelMessage(maybe: PeerMessage): maybe is PeerStreamCancelMessage {

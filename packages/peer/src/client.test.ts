@@ -22,7 +22,7 @@ function makeCancelMessage(id: string): PeerCancelMessage {
   return { id, kind: 'cancel' }
 }
 
-function makeEventStreamMessage(id: string, data: unknown, event = 'message'): PeerEventStreamMessage {
+function makeEventStreamMessage(id: string, data: unknown, event: 'message' | 'error' | 'close' = 'message'): PeerEventStreamMessage {
   return { id, kind: 'event-stream', json: { event, data } }
 }
 

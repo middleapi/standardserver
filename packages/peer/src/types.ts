@@ -1,5 +1,5 @@
 import type {
-  EventStreamMessage,
+  EventMeta,
   StandardRequest,
   StandardResponse,
 } from '@standardserver/core'
@@ -95,7 +95,11 @@ export interface PeerEventStreamMessage extends PeerMessage {
   /**
    * Event payload. `data` is left as `unknown` so it can be decoded by the receiver.
    */
-  json: Omit<EventStreamMessage, 'data'> & {
+  json: EventMeta & {
+    /**
+     * Kind of event
+     */
+    event: 'message' | 'error' | 'close'
     /**
      * Event data.
      */

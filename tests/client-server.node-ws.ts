@@ -2,7 +2,7 @@
 import type { PeerMessage } from '@standardserver/peer'
 import type { BlobPart } from 'node:buffer'
 import type { ClientServerTest } from './client-server'
-import { ClientPeer, decodePeerMessage, encodePeerMessage, ServerPeer } from '@standardserver/peer'
+import { ClientPeer, decodePeerMessage, encodePeerMessage, isClientPeerSendMessage, isServerPeerSendMessage, ServerPeer } from '@standardserver/peer'
 import { WebSocket, WebSocketServer } from 'ws'
 
 const prefix = '__PREFIX__'
@@ -58,11 +58,11 @@ export function createNodeWsClientServerTest(): ClientServerTest {
 
     const { matched, message } = decodePeerMessage(encoded, { prefix })
 
-    if (!matched) {
+    if (!matched || !isServerPeerSendMessage(message)) {
       return
     }
 
-    await clientPeer.message(message as any)
+    await clientPeer.message(message)
   })
 
   const handler: ClientServerTest['handler'] = vi.fn(async () => {
@@ -89,11 +89,11 @@ export function createNodeWsClientServerTest(): ClientServerTest {
 
       const { matched, message } = decodePeerMessage(encoded, { prefix })
 
-      if (!matched) {
+      if (!matched || !isClientPeerSendMessage(message)) {
         return
       }
 
-      await serverPeer.message(message as any, async (request) => {
+      await serverPeer.message(message, async (request) => {
         return handler(request)
       })
     })

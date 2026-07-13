@@ -71,11 +71,17 @@ describe('isPeerEventStreamMessage', () => {
     base({ kind: 'event-stream', json, binary })
 
   it('accepts minimal event', () => {
-    expect(isPeerEventStreamMessage(msg({}))).toBe(true)
+    expect(isPeerEventStreamMessage(msg({ event: 'message' }))).toBe(true)
+    expect(isPeerEventStreamMessage(msg({ event: 'error' }))).toBe(true)
+    expect(isPeerEventStreamMessage(msg({ event: 'close' }))).toBe(true)
   })
 
   it('accepts full valid payload', () => {
-    expect(isPeerEventStreamMessage(msg({ id: 'e1', event: 'update', data: { x: 1 }, retry: 3000, comments: ['ok'] }))).toBe(true)
+    expect(isPeerEventStreamMessage(msg({ id: 'e1', event: 'message', data: { x: 1 }, retry: 3000, comments: ['ok'] }))).toBe(true)
+  })
+
+  it('rejects invalid event', () => {
+    expect(isPeerEventStreamMessage(msg({ event: 'invalid' }))).toBe(false)
   })
 
   it('rejects binary present', () => {
@@ -99,12 +105,16 @@ describe('isPeerOctetStreamMessage', () => {
     expect(isPeerOctetStreamMessage(base({ kind: 'octet-stream', json: { close: false } }))).toBe(true)
   })
 
+  it('accepts empty close', () => {
+    expect(isPeerOctetStreamMessage(base({ kind: 'octet-stream', json: {} }))).toBe(true)
+  })
+
   it('accepts close: true with binary', () => {
     expect(isPeerOctetStreamMessage(base({ kind: 'octet-stream', json: { close: true }, binary: new Uint8Array() }))).toBe(true)
   })
 
   it('rejects wrong field name (end instead of close)', () => {
-    expect(isPeerOctetStreamMessage(base({ kind: 'octet-stream', json: { end: false } as any }))).toBe(false)
+    expect(isPeerOctetStreamMessage(base({ kind: 'octet-stream', json: { close: 'invalid' } as any }))).toBe(false)
   })
 
   it('rejects non-boolean close', () => {
@@ -138,8 +148,8 @@ describe('isClientPeerSendMessage', () => {
   it.each([
     ['request', { kind: 'request', json: validRequest }],
     ['cancel', { kind: 'cancel', json: undefined, binary: undefined }],
-    ['event-stream', { kind: 'event-stream', json: {} }],
-    ['octet-stream', { kind: 'octet-stream', json: { close: false } }],
+    ['event-stream', { kind: 'event-stream', json: { event: 'message' } }],
+    ['octet-stream', { kind: 'octet-stream', json: { } }],
   ])('accepts %s', (_, overrides) => {
     expect(isClientPeerSendMessage(base(overrides))).toBe(true)
   })
@@ -156,8 +166,8 @@ describe('isServerPeerSendMessage', () => {
   it.each([
     ['response', { kind: 'response', json: validResponse }],
     ['cancel', { kind: 'cancel', json: undefined, binary: undefined }],
-    ['event-stream', { kind: 'event-stream', json: {} }],
-    ['octet-stream', { kind: 'octet-stream', json: { close: false } }],
+    ['event-stream', { kind: 'event-stream', json: { event: 'message' } }],
+    ['octet-stream', { kind: 'octet-stream', json: { } }],
     ['stream/cancel', { kind: 'stream/cancel', json: undefined, binary: undefined }],
   ])('accepts %s', (_, overrides) => {
     expect(isServerPeerSendMessage(base(overrides))).toBe(true)
