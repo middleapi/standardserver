@@ -1,4 +1,3 @@
-import type { StandardUrl } from '@standardserver/core'
 import { ErrorEvent, unwrapEvent, withEventMeta } from '@standardserver/core'
 import { isAsyncIteratorObject, sleep } from '@standardserver/shared'
 import { createH3WebHandlerClientServerTest } from './client-server.h3-web-handler'
@@ -30,6 +29,44 @@ describe.each([
 
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  it.each([
+    ['/test', 'POST', {}, 200],
+    ['/test?query=true', 'GET', { h1: 'v1', h2: 'v2' }, 201],
+    ['/hi%2F', 'DELETE', { h3: 'v3' }, 500],
+  ])('url=$0, method=$1, headers=$2, status=$3', async (url, method, headers, status) => {
+    clientServer.handler.mockResolvedValueOnce({
+      headers: {
+        ...headers,
+        'x-from': 'server',
+      },
+      status,
+    })
+
+    const response = await clientServer.request({
+      headers: {
+        ...headers,
+        'x-from': 'client',
+      },
+      method,
+      url: url as any,
+    })
+
+    expect(response.headers).toMatchObject({
+      ...headers,
+      'x-from': 'server',
+    })
+    expect(response.status).toEqual(status)
+
+    expect(clientServer.handler).toHaveBeenCalledTimes(1)
+    const request = clientServer.handler.mock.calls[0]![0]
+    expect(request.url).toEqual(url)
+    expect(request.method).toEqual(method)
+    expect(request.headers).toMatchObject({
+      ...headers,
+      'x-from': 'client',
+    })
   })
 
   it.each([
@@ -131,13 +168,7 @@ describe.each([
       },
     },
   ])('buffered body $name', async ({ createBody, assertBody }) => {
-    const method = Math.random() < 0.5 ? 'POST' : 'PATCH'
-    const status = Math.random() < 0.5 ? 200 : 201
-    const url: StandardUrl = Math.random() < 0.5 ? '/test' : '/test2?query=1'
-
     clientServer.handler.mockImplementationOnce(async (request) => {
-      expect(request.headers['x-from']).toEqual('client')
-
       if (assertBody) {
         await assertBody(await request.resolveBody())
       }
@@ -145,14 +176,9 @@ describe.each([
         expect(await request.resolveBody()).toEqual(createBody())
       }
 
-      expect(request.method).toEqual(method)
-      expect(request.url).toEqual(url)
-
       return {
-        headers: {
-          'x-from': 'server',
-        },
-        status,
+        headers: {},
+        status: 200,
         body: createBody(),
       }
     })
@@ -161,13 +187,12 @@ describe.each([
       headers: {
         'x-from': 'client',
       },
-      method,
-      url,
+      method: 'POST',
+      url: '/test',
       body: createBody(),
     })
 
-    expect(response.headers['x-from']).toEqual('server')
-    expect(response.status).toEqual(status)
+    expect(response.status).toEqual(200)
 
     if (assertBody) {
       await assertBody(await response.resolveBody())
@@ -179,17 +204,11 @@ describe.each([
 
   it('event stream in parallel', async () => {
     clientServer.handler.mockImplementationOnce(async (request) => {
-      expect(request.headers['x-from']).toEqual('client')
-      expect(request.method).toEqual('DELETE')
-      expect(request.url).toEqual('/event-stream')
-
       const body = await request.resolveBody() as AsyncGenerator
       expect(body).toSatisfy(isAsyncIteratorObject)
 
       return {
-        headers: {
-          'x-from': 'server',
-        },
+        headers: {},
         status: 200,
         body,
       }
@@ -212,7 +231,6 @@ describe.each([
       }()),
     })
 
-    expect(response.headers['x-from']).toEqual('server')
     expect(response.status).toEqual(200)
 
     const body = await response.resolveBody() as AsyncGenerator
@@ -264,17 +282,11 @@ describe.each([
 
   it('event stream with error event in parallel', async () => {
     clientServer.handler.mockImplementationOnce(async (request) => {
-      expect(request.headers['x-from']).toEqual('client')
-      expect(request.method).toEqual('DELETE')
-      expect(request.url).toEqual('/event-stream')
-
       const actualBody = await request.resolveBody() as AsyncGenerator
       expect(actualBody).toSatisfy(isAsyncIteratorObject)
 
       return {
-        headers: {
-          'x-from': 'server',
-        },
+        headers: {},
         status: 200,
         body: actualBody,
       }
@@ -296,7 +308,6 @@ describe.each([
       }()),
     })
 
-    expect(response.headers['x-from']).toEqual('server')
     expect(response.status).toEqual(200)
     const body = await response.resolveBody() as AsyncGenerator
     expect(body).toSatisfy(isAsyncIteratorObject)
