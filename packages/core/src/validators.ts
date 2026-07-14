@@ -21,6 +21,10 @@ export function isStandardHeaders(maybe: unknown): maybe is StandardHeaders {
   )
 }
 
+export function isStandardStatus(maybe: unknown): maybe is number {
+  return Number.isInteger(maybe)
+}
+
 export function isStandardRequest(maybe: unknown): maybe is StandardRequest {
   if (!isTypescriptObject(maybe)) {
     return false
@@ -38,7 +42,7 @@ export function isStandardResponse(maybe: unknown): maybe is StandardResponse {
     return false
   }
 
-  if (!Number.isInteger(maybe.status)) {
+  if (!isStandardStatus(maybe.status)) {
     return false
   }
 

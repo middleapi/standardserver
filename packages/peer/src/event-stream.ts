@@ -12,6 +12,7 @@ export function toAsyncIteratorObject(
       const { json } = await queue.pull()
 
       switch (json.event) {
+        case undefined:
         case 'message': {
           let data = json.data
 
@@ -79,7 +80,7 @@ export class EventStreamTransmitter {
           await this.send({
             kind: 'event-stream',
             id: this.messageId,
-            json: { ...meta, event: item.done ? 'close' : 'message', data },
+            json: { ...meta, event: item.done ? 'close' : undefined, data },
           })
         }
         catch (error) {

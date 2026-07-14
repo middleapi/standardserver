@@ -9,13 +9,13 @@ function makeRequestMessage(overrides: Partial<PeerRequestMessage['json']> = {},
   return {
     id: '1',
     kind: 'request',
-    json: { method: 'POST', url: '/test', headers: {}, body: undefined, ...overrides },
+    json: { url: '/test', ...overrides },
     binary,
   }
 }
 
-function jsonResponse(body?: unknown, headers: Record<string, string> = {}): StandardResponse {
-  return { status: 200, headers, body }
+function jsonResponse(body?: unknown, headers: Record<string, string> = {}, status: number = 200): StandardResponse {
+  return { status, headers, body }
 }
 
 function eventStreamResponse(body: AsyncIterator<unknown> | AsyncIteratorClass<unknown>): StandardResponse {
@@ -30,11 +30,11 @@ function makeCancelMessage(id: string): PeerCancelMessage {
   return { id, kind: 'cancel' }
 }
 
-function makeEventStreamMessage(id: string, data: unknown, event: 'message' | 'error' | 'close' = 'message'): PeerEventStreamMessage {
+function makeEventStreamMessage(id: string, data: unknown, event?: 'message' | 'error' | 'close'): PeerEventStreamMessage {
   return { id, kind: 'event-stream', json: { event, data } }
 }
 
-function makeOctetStreamMessage(id: string, close: boolean, binary?: Uint8Array<ArrayBuffer>): PeerOctetStreamMessage {
+function makeOctetStreamMessage(id: string, close?: boolean, binary?: Uint8Array<ArrayBuffer>): PeerOctetStreamMessage {
   return { id, kind: 'octet-stream', json: { close }, binary }
 }
 
@@ -79,22 +79,47 @@ describe('serverPeer', () => {
 
   describe('request / response', () => {
     it('calls handler with StandardRequest and sends PeerResponseMessage', async () => {
-      const handler = vi.fn<HandlerFn>().mockResolvedValue(jsonResponse('result'))
+      const handler = vi.fn<HandlerFn>().mockResolvedValue(jsonResponse())
 
-      const message = makeRequestMessage({ body: { data: 'hello' } })
+      const message = makeRequestMessage({})
       await peer.message(message, handler)
 
       expect(handler).toHaveBeenCalledOnce()
       const req = handler.mock.calls[0]![0]
       expect(req.method).toBe('POST')
       expect(req.url).toBe('/test')
-      expect(await req.resolveBody()).toEqual({ data: 'hello' })
+      expect(req.headers).toEqual({})
+      expect(await req.resolveBody()).toEqual(undefined)
       expect(req.signal).toBeInstanceOf(AbortSignal)
 
       const sentMsg = send.mock.calls[0]![0] as PeerResponseMessage
-      expect(sentMsg.id).toBe(message.id)
-      expect(sentMsg.json.status).toBe(200)
-      expect(sentMsg.json.body).toBe('result')
+      expect(sentMsg).toEqual({
+        kind: 'response',
+        id: message.id,
+        json: { },
+      })
+    })
+
+    it('calls handler with StandardRequest and sends PeerResponseMessage (with full messages)', async () => {
+      const handler = vi.fn<HandlerFn>().mockResolvedValue(jsonResponse('response-body', { 'x-server': 'true' }, 201))
+
+      const message = makeRequestMessage({ method: 'DELETE', url: '/test', headers: { 'x-client': 'true' }, body: 'request-body' })
+      await peer.message(message, handler)
+
+      expect(handler).toHaveBeenCalledOnce()
+      const req = handler.mock.calls[0]![0]
+      expect(req.method).toBe('DELETE')
+      expect(req.url).toBe('/test')
+      expect(req.headers).toEqual({ 'x-client': 'true' })
+      expect(await req.resolveBody()).toEqual('request-body')
+      expect(req.signal).toBeInstanceOf(AbortSignal)
+
+      const sentMsg = send.mock.calls[0]![0] as PeerResponseMessage
+      expect(sentMsg).toEqual({
+        kind: 'response',
+        id: message.id,
+        json: { status: 201, headers: { 'x-server': 'true' }, body: 'response-body' },
+      })
     })
 
     it('ignores duplicate request messages for the same id', async () => {
@@ -259,8 +284,8 @@ describe('serverPeer', () => {
 
         expect(send).toHaveBeenCalledTimes(4)
         expect(send).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'response' }))
-        expect(send).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'event-stream', json: expect.objectContaining({ event: 'message', data: 'event1' }) }))
-        expect(send).toHaveBeenNthCalledWith(3, expect.objectContaining({ kind: 'event-stream', json: expect.objectContaining({ event: 'message', data: 'event2' }) }))
+        expect(send).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'event-stream', json: expect.objectContaining({ event: undefined, data: 'event1' }) }))
+        expect(send).toHaveBeenNthCalledWith(3, expect.objectContaining({ kind: 'event-stream', json: expect.objectContaining({ event: undefined, data: 'event2' }) }))
         expect(send).toHaveBeenNthCalledWith(4, expect.objectContaining({ kind: 'event-stream', json: expect.objectContaining({ event: 'close' }) }))
       })
 
@@ -348,7 +373,7 @@ describe('serverPeer', () => {
         const body = await request.resolveBody() as ReadableStream<Uint8Array>
         expect(body).toBeInstanceOf(ReadableStream)
 
-        await peer.message(makeOctetStreamMessage('1', false, new Uint8Array([1, 2, 3])), vi.fn())
+        await peer.message(makeOctetStreamMessage('1', undefined, new Uint8Array([1, 2, 3])), vi.fn())
         const reader = body.getReader()
         const chunk1 = await reader.read()
         expect(chunk1).toEqual({ value: new Uint8Array([1, 2, 3]), done: false })
@@ -388,7 +413,7 @@ describe('serverPeer', () => {
         const body = await request.resolveBody() as ReadableStream<Uint8Array>
         expect(body).toBeInstanceOf(ReadableStream)
 
-        await peer.message(makeOctetStreamMessage('1', false, new Uint8Array([1, 2, 3])), vi.fn())
+        await peer.message(makeOctetStreamMessage('1', undefined, new Uint8Array([1, 2, 3])), vi.fn())
         await peer.message({ id: '1', kind: 'cancel' }, vi.fn())
 
         const reader = body.getReader()
@@ -402,7 +427,7 @@ describe('serverPeer', () => {
       })
 
       it('ignores octet-stream for non-existing request', async () => {
-        await peer.message(makeOctetStreamMessage('nonexist', false, new Uint8Array([1, 2, 3])), vi.fn())
+        await peer.message(makeOctetStreamMessage('nonexist', undefined, new Uint8Array([1, 2, 3])), vi.fn())
       })
     })
 

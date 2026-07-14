@@ -1,7 +1,9 @@
 import type {
   EventMeta,
-  StandardRequest,
-  StandardResponse,
+  StandardBody,
+  StandardHeaders,
+  StandardMethod,
+  StandardUrl,
 } from '@standardserver/core'
 
 /**
@@ -41,7 +43,26 @@ export interface PeerRequestMessage extends PeerMessage {
   /**
    * Request payload, excluding the abort signal.
    */
-  json: Omit<StandardRequest, 'signal'>
+  json: {
+    /**
+     * @example 'GET', 'POST', etc.
+     * @default 'POST'
+     */
+    method?: undefined | StandardMethod
+    /**
+     * @example `/example`, `/example?query=param#fragment`
+     */
+    url: StandardUrl
+    /**
+     * @example { 'content-type': 'application/json' }
+     * @default {}
+     */
+    headers?: undefined | StandardHeaders
+    /**
+     * The JSON-parsed body of the request.
+     */
+    body?: undefined | StandardBody
+  }
 }
 
 /**
@@ -57,7 +78,22 @@ export interface PeerResponseMessage extends PeerMessage {
   /**
    * Response payload.
    */
-  json: StandardResponse
+  json: {
+    /**
+     * @example 200, 404, 500, etc.
+     * @default 200
+     */
+    status?: undefined | number
+    /**
+     * @example { 'set-cookie': ['sessionId=abc123; HttpOnly'] }
+     * @default {}
+     */
+    headers?: undefined | StandardHeaders
+    /**
+     * The JSON-parsed body of the response.
+     */
+    body?: undefined | StandardBody
+  }
 }
 
 /**
@@ -98,8 +134,10 @@ export interface PeerEventStreamMessage extends PeerMessage {
   json: EventMeta & {
     /**
      * Kind of event
+     *
+     * @default 'message'
      */
-    event: 'message' | 'error' | 'close'
+    event?: undefined | 'message' | 'error' | 'close'
     /**
      * Event data.
      */

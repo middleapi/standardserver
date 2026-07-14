@@ -5,9 +5,6 @@ function base(overrides?: Partial<PeerMessage>): PeerMessage {
   return { id: 'abc', kind: 'request', ...overrides }
 }
 
-const validRequest = { method: 'GET', url: '/path', headers: {} }
-const validResponse = { status: 200, headers: {} }
-
 describe('isPeerMessage', () => {
   it('accepts minimal valid message', () => expect(isPeerMessage(base())).toBe(true))
   it('accepts binary as Uint8Array', () => expect(isPeerMessage(base({ binary: new Uint8Array() }))).toBe(true))
@@ -22,29 +19,62 @@ describe('isPeerMessage', () => {
 })
 
 describe('isPeerRequestMessage', () => {
-  it('accepts valid request message', () => {
-    expect(isPeerRequestMessage(base({ kind: 'request', json: validRequest }))).toBe(true)
+  it('accepts minimal valid request message', () => {
+    expect(isPeerRequestMessage(base({ kind: 'request', json: { url: '/path' } }))).toBe(true)
+  })
+
+  it('accepts full valid request message', () => {
+    expect(isPeerRequestMessage(base({ kind: 'request', json: { method: 'GET', url: '/path', headers: {}, body: 'json' } }))).toBe(true)
   })
 
   it('rejects wrong kind', () => {
-    expect(isPeerRequestMessage(base({ kind: 'response', json: validRequest }))).toBe(false)
+    expect(isPeerRequestMessage(base({ kind: 'response', json: {} }))).toBe(false)
   })
 
-  it('rejects invalid json', () =>
-    expect(isPeerRequestMessage(base({ kind: 'request', json: {} }))).toBe(false))
+  it('rejects invalid jsn', () => {
+    expect(isPeerRequestMessage(base({ kind: 'request', json: 'invalid' }))).toBe(false)
+  })
+
+  it('rejects missing url', () => {
+    expect(isPeerRequestMessage(base({ kind: 'request', json: { method: 'GET', headers: {}, body: 'json' } }))).toBe(false)
+  })
+
+  it('rejects invalid url', () => {
+    expect(isPeerRequestMessage(base({ kind: 'request', json: { url: 'invalid' } }))).toBe(false)
+  })
+
+  it('rejects invalid method', () => {
+    expect(isPeerRequestMessage(base({ kind: 'request', json: { url: '/path', method: 123 } }))).toBe(false)
+  })
+
+  it('rejects invalid headers', () => {
+    expect(isPeerRequestMessage(base({ kind: 'request', json: { url: '/path', headers: 'invalid' as any } }))).toBe(false)
+  })
 })
 
 describe('isPeerResponseMessage', () => {
-  it('accepts valid response message', () => {
-    expect(isPeerResponseMessage(base({ kind: 'response', json: validResponse }))).toBe(true)
+  it('accepts minimal valid response message', () => {
+    expect(isPeerResponseMessage(base({ kind: 'response', json: { } }))).toBe(true)
+  })
+
+  it('accepts full valid response message', () => {
+    expect(isPeerResponseMessage(base({ kind: 'response', json: { status: 200, headers: {}, body: 'json' } }))).toBe(true)
   })
 
   it('rejects wrong kind', () => {
-    expect(isPeerResponseMessage(base({ kind: 'request', json: validResponse }))).toBe(false)
+    expect(isPeerResponseMessage(base({ kind: 'request', json: {} }))).toBe(false)
+  })
+
+  it('rejects invalid json', () => {
+    expect(isPeerResponseMessage(base({ kind: 'response', json: 'invalid' }))).toBe(false)
   })
 
   it('rejects invalid status', () => {
     expect(isPeerResponseMessage(base({ kind: 'response', json: { status: 'invalid', headers: {} } }))).toBe(false)
+  })
+
+  it('rejects invalid headers', () => {
+    expect(isPeerResponseMessage(base({ kind: 'response', json: { status: 200, headers: 'invalid' } }))).toBe(false)
   })
 })
 
@@ -71,17 +101,22 @@ describe('isPeerEventStreamMessage', () => {
     base({ kind: 'event-stream', json, binary })
 
   it('accepts minimal event', () => {
-    expect(isPeerEventStreamMessage(msg({ event: 'message' }))).toBe(true)
-    expect(isPeerEventStreamMessage(msg({ event: 'error' }))).toBe(true)
-    expect(isPeerEventStreamMessage(msg({ event: 'close' }))).toBe(true)
+    expect(isPeerEventStreamMessage(msg({ }))).toBe(true)
   })
 
   it('accepts full valid payload', () => {
     expect(isPeerEventStreamMessage(msg({ id: 'e1', event: 'message', data: { x: 1 }, retry: 3000, comments: ['ok'] }))).toBe(true)
   })
 
+  it('accepts valid event', () => {
+    expect(isPeerEventStreamMessage(msg({ event: 'message' }))).toBe(true)
+    expect(isPeerEventStreamMessage(msg({ event: 'error' }))).toBe(true)
+    expect(isPeerEventStreamMessage(msg({ event: 'close' }))).toBe(true)
+  })
+
   it('rejects invalid event', () => {
     expect(isPeerEventStreamMessage(msg({ event: 'invalid' }))).toBe(false)
+    expect(isPeerEventStreamMessage(msg({ event: 123 }))).toBe(false)
   })
 
   it('rejects binary present', () => {
@@ -146,7 +181,7 @@ describe('isPeerStreamCancelMessage', () => {
 
 describe('isClientPeerSendMessage', () => {
   it.each([
-    ['request', { kind: 'request', json: validRequest }],
+    ['request', { kind: 'request', json: { url: '/path' } }],
     ['cancel', { kind: 'cancel', json: undefined, binary: undefined }],
     ['event-stream', { kind: 'event-stream', json: { event: 'message' } }],
     ['octet-stream', { kind: 'octet-stream', json: { } }],
@@ -155,7 +190,7 @@ describe('isClientPeerSendMessage', () => {
   })
 
   it.each([
-    ['response', { kind: 'response', json: validResponse }],
+    ['response', { kind: 'response', json: {} }],
     ['stream/cancel', { kind: 'stream/cancel', json: undefined, binary: undefined }],
   ])('rejects %s', (_, overrides) => {
     expect(isClientPeerSendMessage(base(overrides))).toBe(false)
@@ -164,7 +199,7 @@ describe('isClientPeerSendMessage', () => {
 
 describe('isServerPeerSendMessage', () => {
   it.each([
-    ['response', { kind: 'response', json: validResponse }],
+    ['response', { kind: 'response', json: {} }],
     ['cancel', { kind: 'cancel', json: undefined, binary: undefined }],
     ['event-stream', { kind: 'event-stream', json: { event: 'message' } }],
     ['octet-stream', { kind: 'octet-stream', json: { } }],
@@ -174,6 +209,6 @@ describe('isServerPeerSendMessage', () => {
   })
 
   it('rejects request', () => {
-    expect(isServerPeerSendMessage(base({ kind: 'request', json: validRequest }))).toBe(false)
+    expect(isServerPeerSendMessage(base({ kind: 'request', json: { url: '/path' } }))).toBe(false)
   })
 })

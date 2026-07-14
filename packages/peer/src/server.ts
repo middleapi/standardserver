@@ -70,8 +70,8 @@ export class ServerPeer {
 
       const response = await handleRequest({
         url: message.json.url,
-        method: message.json.method,
-        headers: message.json.headers,
+        method: message.json.method ?? 'POST',
+        headers: message.json.headers ?? {},
         resolveBody: decoded.resolveBody,
         signal,
       })
@@ -92,8 +92,8 @@ export class ServerPeer {
         id: message.id,
         kind: 'response',
         json: {
-          status: response.status,
-          headers: encodedAtomicBody.headers,
+          status: response.status === 200 ? undefined : response.status,
+          headers: Object.entries(encodedAtomicBody.headers).every(([,v]) => v === undefined) ? undefined : encodedAtomicBody.headers,
           body: encodedAtomicBody.jsonBody,
         },
         binary: encodedAtomicBody.binary,

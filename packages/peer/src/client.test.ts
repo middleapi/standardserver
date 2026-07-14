@@ -7,26 +7,26 @@ import { ClientPeer } from './client'
 const toStandardBodySpy = vi.spyOn(Body, 'toStandardBody')
 
 function makeRequest(overrides: Partial<StandardRequest> = {}): StandardRequest {
-  return { method: 'GET', url: '/test', headers: {}, ...overrides }
+  return { method: 'POST', url: '/test', headers: {}, ...overrides }
 }
 
-function makeResponseMessage(id: string, body?: unknown, headers: Record<string, string> = {}): PeerResponseMessage {
-  return { id, kind: 'response', json: { status: 200, headers, body } }
+function makeResponseMessage(id: string, body?: unknown, headers?: Record<string, string>, status?: number): PeerResponseMessage {
+  return { id, kind: 'response', json: { headers, body, status } }
 }
 
 function makeStreamingResponse(id: string, type: 'event-stream' | 'octet-stream'): PeerResponseMessage {
-  return { id, kind: 'response', json: { status: 200, headers: { 'standard-server': type === 'event-stream' ? 'event-stream' : undefined, 'content-type': type === 'event-stream' ? undefined : 'application/octet-stream' }, body: undefined } }
+  return { id, kind: 'response', json: { headers: { 'standard-server': type === 'event-stream' ? 'event-stream' : undefined, 'content-type': type === 'event-stream' ? undefined : 'application/octet-stream' }, body: undefined } }
 }
 
 function makeCancelMessage(id: string): PeerCancelMessage {
   return { id, kind: 'cancel' }
 }
 
-function makeEventStreamMessage(id: string, data: unknown, event: 'message' | 'error' | 'close' = 'message'): PeerEventStreamMessage {
+function makeEventStreamMessage(id: string, data: unknown, event?: 'message' | 'error' | 'close'): PeerEventStreamMessage {
   return { id, kind: 'event-stream', json: { event, data } }
 }
 
-function makeOctetStreamMessage(id: string, close: boolean, binary?: Uint8Array<ArrayBuffer>): PeerOctetStreamMessage {
+function makeOctetStreamMessage(id: string, close?: boolean, binary?: Uint8Array<ArrayBuffer>): PeerOctetStreamMessage {
   return { id, kind: 'octet-stream', json: { close }, binary }
 }
 
@@ -78,9 +78,9 @@ describe('clientPeer', () => {
   }
 
   describe('request / response', () => {
-    it('sends PeerRequestMessage and resolves on response', async () => {
+    it('sends PeerRequestMessage and resolves on PeerResponseMessage', async () => {
       const { id, promise } = await requestAndGetId(
-        makeRequest({ method: 'POST', url: '/test', headers: { 'x-custom': 'val' }, body: { data: 1 } }),
+        makeRequest({}),
       )
 
       expect(send).toHaveBeenCalledTimes(1)
@@ -88,21 +88,41 @@ describe('clientPeer', () => {
       expect(sentMsg).toEqual({
         id,
         kind: 'request',
-        binary: undefined,
         json: {
-          method: 'POST',
           url: '/test',
-          headers: {
-            'x-custom': 'val',
-          },
-          body: { data: 1 },
         },
       })
 
-      await peer.message(makeResponseMessage(id, 'result'))
+      await peer.message(makeResponseMessage(id, undefined))
       const response = await promise
       expect(response.status).toBe(200)
-      expect(await response.resolveBody()).toBe('result')
+      expect(response.headers).toEqual({})
+      expect(await response.resolveBody()).toBe(undefined)
+    })
+
+    it('sends PeerRequestMessage and resolves on PeerRespnseMessage (with full message)', async () => {
+      const { id, promise } = await requestAndGetId(
+        makeRequest({ method: 'DELETE', headers: { 'x-client': 'true' }, body: 'client-body' }),
+      )
+
+      expect(send).toHaveBeenCalledTimes(1)
+      const sentMsg = send.mock.calls[0]![0] as PeerRequestMessage
+      expect(sentMsg).toEqual({
+        id,
+        kind: 'request',
+        json: {
+          url: '/test',
+          method: 'DELETE',
+          headers: { 'x-client': 'true' },
+          body: 'client-body',
+        },
+      })
+
+      await peer.message(makeResponseMessage(id, 'server-body', { 'x-server': 'true' }, 201))
+      const response = await promise
+      expect(response.status).toBe(201)
+      expect(response.headers).toEqual({ 'x-server': 'true' })
+      expect(await response.resolveBody()).toBe('server-body')
     })
 
     it('ignores response for non-existing request', async () => {
@@ -225,7 +245,7 @@ describe('clientPeer', () => {
         await vi.waitFor(() => {
           expect(send).toHaveBeenCalledTimes(3)
           expect(send).toHaveBeenNthCalledWith(1, { id, kind: 'request', binary: undefined, json: expect.objectContaining({ headers: { 'standard-server': 'event-stream' } }) })
-          expect(send).toHaveBeenNthCalledWith(2, { id, kind: 'event-stream', json: { event: 'message', data: 'a' } })
+          expect(send).toHaveBeenNthCalledWith(2, { id, kind: 'event-stream', json: { data: 'a' } })
           expect(send).toHaveBeenNthCalledWith(3, { id, kind: 'event-stream', json: { event: 'close' } })
         })
 

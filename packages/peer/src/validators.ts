@@ -1,5 +1,5 @@
 import type { ClientPeerSendMessage, PeerCancelMessage, PeerEventStreamMessage, PeerMessage, PeerOctetStreamMessage, PeerRequestMessage, PeerResponseMessage, PeerStreamCancelMessage, ServerPeerSendMessage } from './types'
-import { isStandardRequest, isStandardResponse } from '@standardserver/core'
+import { isStandardHeaders, isStandardMethod, isStandardStatus, isStandardUrl } from '@standardserver/core'
 import { isTypescriptObject } from '@standardserver/shared'
 
 export function isPeerMessage(maybe: unknown): maybe is PeerMessage {
@@ -23,11 +23,43 @@ export function isPeerMessage(maybe: unknown): maybe is PeerMessage {
 }
 
 export function isPeerRequestMessage(maybe: PeerMessage): maybe is PeerRequestMessage {
-  return maybe.kind === 'request' && isStandardRequest(maybe.json)
+  if (maybe.kind !== 'request') {
+    return false
+  }
+
+  if (!isTypescriptObject(maybe.json)) {
+    return false
+  }
+
+  if (maybe.json.method !== undefined && !isStandardMethod(maybe.json.method)) {
+    return false
+  }
+
+  if (maybe.json.headers !== undefined && !isStandardHeaders(maybe.json.headers)) {
+    return false
+  }
+
+  return isStandardUrl(maybe.json.url)
 }
 
 export function isPeerResponseMessage(maybe: PeerMessage): maybe is PeerResponseMessage {
-  return maybe.kind === 'response' && isStandardResponse(maybe.json)
+  if (maybe.kind !== 'response') {
+    return false
+  }
+
+  if (!isTypescriptObject(maybe.json)) {
+    return false
+  }
+
+  if (maybe.json.status !== undefined && !isStandardStatus(maybe.json.status)) {
+    return false
+  }
+
+  if (maybe.json.headers !== undefined && !isStandardHeaders(maybe.json.headers)) {
+    return false
+  }
+
+  return true
 }
 
 export function isPeerCancelMessage(maybe: PeerMessage): maybe is PeerCancelMessage {
@@ -47,7 +79,7 @@ export function isPeerEventStreamMessage(maybe: PeerMessage): maybe is PeerEvent
     return false
   }
 
-  if (maybe.json.event !== 'message' && maybe.json.event !== 'error' && maybe.json.event !== 'close') {
+  if (maybe.json.event !== undefined && maybe.json.event !== 'message' && maybe.json.event !== 'error' && maybe.json.event !== 'close') {
     return false
   }
 

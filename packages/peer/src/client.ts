@@ -60,9 +60,9 @@ export class ClientPeer {
         id,
         kind: 'request',
         json: {
-          method: request.method,
+          method: request.method === 'POST' ? undefined : request.method,
           url: request.url,
-          headers: encodedAtomicBody.headers,
+          headers: Object.entries(encodedAtomicBody.headers).every(([,v]) => v === undefined) ? undefined : encodedAtomicBody.headers,
           body: encodedAtomicBody.jsonBody,
         },
         binary: encodedAtomicBody.binary,
@@ -171,8 +171,8 @@ export class ClientPeer {
       state.octetStreamMessageQueue = decoded.octetStreamMessageQueue
 
       resolve({
-        headers: message.json.headers,
-        status: message.json.status,
+        headers: message.json.headers ?? {},
+        status: message.json.status ?? 200,
         resolveBody: decoded.resolveBody,
       })
 

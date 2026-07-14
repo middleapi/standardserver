@@ -19,8 +19,8 @@ export function toStandardBody(
   message: PeerRequestMessage | PeerResponseMessage,
   cleanup: AsyncCleanupFn,
 ): ToStandardBodyResult {
-  const contentType = flattenStandardHeader(message.json.headers['content-type'])
-  const bodyHint = flattenStandardHeader(message.json.headers['standard-server'])
+  const contentType = flattenStandardHeader(message.json.headers?.['content-type'])
+  const bodyHint = flattenStandardHeader(message.json.headers?.['standard-server'])
 
   if (message.json.body === undefined && message.binary === undefined) {
     if (contentType === undefined && bodyHint === 'event-stream' satisfies StandardBodyHint) {
@@ -60,13 +60,13 @@ export function toStandardBody(
           return form
         }
 
-        const contentDisposition = flattenStandardHeader(message.json.headers['content-disposition'])
+        const contentDisposition = flattenStandardHeader(message.json.headers?.['content-disposition'])
         const filename = contentDisposition !== undefined
           ? getFilenameFromContentDisposition(contentDisposition)
           : undefined
 
         const file = new File(message.binary ? [message.binary] : [], filename ?? 'blob', {
-          type: flattenStandardHeader(message.json.headers['content-type']) ?? 'application/octet-stream',
+          type: flattenStandardHeader(message.json.headers?.['content-type']) ?? 'application/octet-stream',
         })
         return file
       }

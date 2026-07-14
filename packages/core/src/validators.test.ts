@@ -1,4 +1,4 @@
-import { isStandardHeaders, isStandardMethod, isStandardRequest, isStandardResponse, isStandardUrl } from './validators'
+import { isStandardHeaders, isStandardMethod, isStandardRequest, isStandardResponse, isStandardStatus, isStandardUrl } from './validators'
 
 describe('isStandardMethod', () => {
   it('accepts standard & custom HTTP verbs', () => {
@@ -64,6 +64,23 @@ describe('isStandardHeaders', () => {
     expect(isStandardHeaders(null)).toBe(false)
     expect(isStandardHeaders('string')).toBe(false)
     expect(isStandardHeaders(1)).toBe(false)
+  })
+})
+
+describe('isStandardStatus', () => {
+  it('accepts valid status codes', () => {
+    expect(isStandardStatus(-3000)).toBe(true)
+    expect(isStandardStatus(200)).toBe(true)
+    expect(isStandardStatus(404)).toBe(true)
+    expect(isStandardStatus(500)).toBe(true)
+  })
+
+  it('rejects invalid status codes', () => {
+    expect(isStandardStatus(10.1)).toBe(false)
+    expect(isStandardStatus(Number.NaN)).toBe(false)
+    expect(isStandardStatus('200')).toBe(false)
+    expect(isStandardStatus(null)).toBe(false)
+    expect(isStandardStatus(undefined)).toBe(false)
   })
 })
 

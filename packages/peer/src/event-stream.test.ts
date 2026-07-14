@@ -9,15 +9,14 @@ describe('toAsyncIteratorObject', () => {
     const cleanup = vi.fn()
     const iter = toAsyncIteratorObject(queue, cleanup)
 
-    queue.push({ id: '1', kind: 'event-stream', json: { event: 'message', data: 'hello' } })
+    queue.push({ id: '1', kind: 'event-stream', json: { data: 'hello1' } })
+    queue.push({ id: '1', kind: 'event-stream', json: { event: 'message', data: 'hello2' } })
     queue.push({ id: '1', kind: 'event-stream', json: { event: 'close', data: undefined } })
 
-    const r1 = await iter.next()
-    expect(r1.done).toBe(false)
-    expect(r1.value).toBe('hello')
+    await expect(iter.next()).resolves.toEqual({ done: false, value: 'hello1' })
+    await expect(iter.next()).resolves.toEqual({ done: false, value: 'hello2' })
+    await expect(iter.next()).resolves.toEqual({ done: true, value: undefined })
 
-    const r2 = await iter.next()
-    expect(r2.done).toBe(true)
     expect(cleanup).toHaveBeenCalledWith({ kind: 'success' })
   })
 
@@ -29,7 +28,7 @@ describe('toAsyncIteratorObject', () => {
     queue.push({
       id: '1',
       kind: 'event-stream',
-      json: { event: 'message', data: { val: 42 }, id: 'ev-1' },
+      json: { data: { val: 42 }, id: 'ev-1' },
     })
     queue.push({ id: '1', kind: 'event-stream', json: { event: 'close', data: undefined } })
 
@@ -47,7 +46,7 @@ describe('toAsyncIteratorObject', () => {
     queue.push({
       id: '1',
       kind: 'event-stream',
-      json: { event: 'message', data: 'primitive', id: 'ev-1' },
+      json: { data: 'primitive', id: 'ev-1' },
     })
     queue.push({ id: '1', kind: 'event-stream', json: { event: 'close', data: undefined } })
 
@@ -139,12 +138,12 @@ describe('eventStreamTransmitter', () => {
     expect(send).toHaveBeenNthCalledWith(1, {
       id: 'msg-1',
       kind: 'event-stream',
-      json: { event: 'message', data: 'a' },
+      json: { data: 'a' },
     })
     expect(send).toHaveBeenNthCalledWith(2, {
       id: 'msg-1',
       kind: 'event-stream',
-      json: { event: 'message', data: 'b' },
+      json: { data: 'b' },
     })
     expect(send).toHaveBeenNthCalledWith(3, {
       id: 'msg-1',
