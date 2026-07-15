@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { stringifyJSON } from '@standardserver/shared'
 
 const KB = 1024
-const SIZES = { '1KB': KB, '100KB': 100 * KB, '10MB': 100 * 100 * KB } as const
+const SIZES = { '1KB': KB, '100KB': 100 * KB, '5MB': 50 * 100 * KB } as const
 type SizeLabel = keyof typeof SIZES
 export const BODY_SIZE_ENTRIES = Object.entries(SIZES) as [SizeLabel, number][]
 
@@ -192,8 +192,8 @@ const BYTES1KB = bytes(SIZES['1KB'], 0xB001)
 assert.equal(BYTES1KB.byteLength, SIZES['1KB'])
 const BYTES100KB = repeatBytes(BYTES1KB, 100)
 assert.equal(BYTES100KB.byteLength, SIZES['100KB'])
-const BYTES10MB = repeatBytes(BYTES100KB, 100)
-assert.equal(BYTES10MB.byteLength, SIZES['10MB'])
+const BYTES5MB = repeatBytes(BYTES100KB, 50)
+assert.equal(BYTES5MB.byteLength, SIZES['5MB'])
 
 const JSON1KB = padJson(record(0xA001), SIZES['1KB'], 0xA101)
 assert.equal(jlen(JSON1KB), SIZES['1KB'])
@@ -203,43 +203,43 @@ const JSON100KB = padJson(
   0xA201,
 )
 assert.equal(jlen(JSON100KB), SIZES['100KB'])
-const JSON10MB = fitJson(JSON100KB, SIZES['10MB'], 0xA301)
-assert.equal(jlen(JSON10MB), SIZES['10MB'])
+const JSON5MB = fitJson(JSON100KB, SIZES['5MB'], 0xA301)
+assert.equal(jlen(JSON5MB), SIZES['5MB'])
 
 const BLOB1KB = new Blob([BYTES1KB], { type: 'application/octet-stream' })
 assert.equal(BLOB1KB.size, SIZES['1KB'])
 const BLOB100KB = new Blob([BYTES100KB], { type: 'application/octet-stream' })
 assert.equal(BLOB100KB.size, SIZES['100KB'])
-const BLOB10MB = new Blob([BYTES10MB], { type: 'application/octet-stream' })
-assert.equal(BLOB10MB.size, SIZES['10MB'])
+const BLOB5MB = new Blob([BYTES5MB], { type: 'application/octet-stream' })
+assert.equal(BLOB5MB.size, SIZES['5MB'])
 
 const FORM1KB = makeForm(SIZES['1KB'], BYTES1KB, 0xF001)
 assert.equal(formSize(FORM1KB), SIZES['1KB'])
 const FORM100KB = makeForm(SIZES['100KB'], BYTES100KB, 0xF101)
 assert.equal(formSize(FORM100KB), SIZES['100KB'])
-const FORM10MB = makeForm(SIZES['10MB'], BYTES10MB, 0xF201)
-assert.equal(formSize(FORM10MB), SIZES['10MB'])
+const FORM5MB = makeForm(SIZES['5MB'], BYTES5MB, 0xF201)
+assert.equal(formSize(FORM5MB), SIZES['5MB'])
 
 const USP1KB = makeParams(SIZES['1KB'], 0xC001)
 assert.equal(USP1KB.toString().length, SIZES['1KB'])
 const USP100KB = makeParams(SIZES['100KB'], 0xC101)
 assert.equal(USP100KB.toString().length, SIZES['100KB'])
-const USP10MB = makeParams(SIZES['10MB'], 0xC201)
-assert.equal(USP10MB.toString().length, SIZES['10MB'])
+const USP5MB = makeParams(SIZES['5MB'], 0xC201)
+assert.equal(USP5MB.toString().length, SIZES['5MB'])
 
 const EVENTS1KB = makeEvents(SIZES['1KB'], 0xE001)
 assert.equal(eventSize(EVENTS1KB), SIZES['1KB'])
 const EVENTS100KB = Array.from({ length: 100 }, (_, i) => i === 0 ? EVENTS1KB : makeEvents(SIZES['1KB'], 0xE100 + i)).flat()
 assert.equal(eventSize(EVENTS100KB), SIZES['100KB'])
-const EVENTS10MB = fitEvents(JSON100KB, SIZES['10MB'], 0xE201)
-assert.equal(eventSize(EVENTS10MB), SIZES['10MB'])
+const EVENTS5MB = fitEvents(JSON100KB, SIZES['5MB'], 0xE201)
+assert.equal(eventSize(EVENTS5MB), SIZES['5MB'])
 
 const OCTET1KB = split(BYTES1KB, 8)
 assert.equal(OCTET1KB.reduce((n, c) => n + c.byteLength, 0), SIZES['1KB'])
 const OCTET100KB = split(BYTES100KB, 32)
 assert.equal(OCTET100KB.reduce((n, c) => n + c.byteLength, 0), SIZES['100KB'])
-const OCTET10MB = split(BYTES10MB, 64)
-assert.equal(OCTET10MB.reduce((n, c) => n + c.byteLength, 0), SIZES['10MB'])
+const OCTET5MB = split(BYTES5MB, 64)
+assert.equal(OCTET5MB.reduce((n, c) => n + c.byteLength, 0), SIZES['5MB'])
 
 export function asEventStream(parts: readonly Event[]): AsyncGenerator<Event, void, undefined> {
   return (async function* () {
@@ -275,12 +275,12 @@ export const BODY_PAYLOADS = {
     eventParts: EVENTS100KB,
     octetParts: OCTET100KB,
   },
-  '10MB': {
-    json: JSON10MB,
-    blob: BLOB10MB,
-    formData: FORM10MB,
-    urlSearchParams: USP10MB,
-    eventParts: EVENTS10MB,
-    octetParts: OCTET10MB,
+  '5MB': {
+    json: JSON5MB,
+    blob: BLOB5MB,
+    formData: FORM5MB,
+    urlSearchParams: USP5MB,
+    eventParts: EVENTS5MB,
+    octetParts: OCTET5MB,
   },
 } as const
