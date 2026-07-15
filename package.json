@@ -10,6 +10,7 @@
     "type:check": "pnpm -r run type:check && tsc",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
+    "bench": "vitest bench --run",
     "lint": "eslint --max-warnings=0 .",
     "lint:fix": "eslint --max-warnings=0 --fix .",
     "repo:fix": "sherif --fix",
@@ -17,6 +18,7 @@
   },
   "devDependencies": {
     "@antfu/eslint-config": "^6.7.3",
+    "@codspeed/vitest-plugin": "^5.7.1",
     "@hono/node-server": "^2.0.1",
     "@remix-run/node-fetch-server": "^0.13.0",
     "@standardserver/core": "workspace:*",
