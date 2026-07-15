@@ -10,6 +10,7 @@
     "type:check": "pnpm -r run type:check && tsc",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
+    "bench": "vitest bench --run",
     "lint": "eslint --max-warnings=0 .",
     "lint:fix": "eslint --max-warnings=0 --fix .",
     "repo:fix": "sherif --fix",

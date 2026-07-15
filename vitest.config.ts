@@ -10,13 +10,9 @@ export default defineConfig(() => ({
     },
     projects: [
       {
-        plugins: [codspeedPlugin()],
         test: {
           globals: true,
           include: ['**/*.test.ts'],
-          benchmark: {
-            include: ['**/*.bench.ts'],
-          },
         },
       },
     ],

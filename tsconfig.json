@@ -8,6 +8,7 @@
     "playground",
     "scripts",
     "tests",
+    "bench",
     "*",
 
     "*/*/src/**/*.bench.*",
@@ -19,6 +20,7 @@
     "*/*/playground",
     "*/*/scripts",
     "*/*/tests",
+    "*/*/bench",
     "*/*/*"
   ],
   "exclude": [
