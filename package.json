@@ -34,7 +34,7 @@
     "eslint": "^9.39.2",
     "eslint-plugin-ban": "^2.0.0",
     "eslint-plugin-format": "^1.1.0",
-    "h3": "2.0.1-rc.7",
+    "h3": "2.0.1-rc.25",
     "lint-staged": "^16.2.7",
     "pkg-pr-new": "^0.0.75",
     "sherif": "^1.9.0",
