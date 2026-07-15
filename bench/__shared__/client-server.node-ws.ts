@@ -5,10 +5,8 @@ import type { ClientServer } from './client-server'
 import { ClientPeer, decodePeerMessage, encodePeerMessage, isClientPeerSendMessage, isServerPeerSendMessage, ServerPeer } from '@standardserver/peer'
 import { WebSocket, WebSocketServer } from 'ws'
 
-const prefix = 'bench:'
-
 async function encode(message: PeerMessage) {
-  return encodePeerMessage(message, { prefix })
+  return encodePeerMessage(message)
 }
 
 async function normalizeWsData(data: unknown): Promise<string | Uint8Array<ArrayBuffer>> {
@@ -64,7 +62,7 @@ export function createNodeWsClientServer(): ClientServer {
 
   wsc.addEventListener('message', async (event) => {
     const encoded = await normalizeWsData(event.data)
-    const { matched, message } = decodePeerMessage(encoded, { prefix })
+    const { matched, message } = decodePeerMessage(encoded)
 
     if (!matched || !isServerPeerSendMessage(message)) {
       return
@@ -96,7 +94,7 @@ export function createNodeWsClientServer(): ClientServer {
 
     ws.addEventListener('message', async (event) => {
       const encoded = await normalizeWsData(event.data)
-      const { matched, message } = decodePeerMessage(encoded, { prefix })
+      const { matched, message } = decodePeerMessage(encoded)
 
       if (!matched || !isClientPeerSendMessage(message)) {
         return

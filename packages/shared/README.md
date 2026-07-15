@@ -7,6 +7,9 @@
   <a href="https://www.npmjs.com/package/@standardserver/shared">
     <img alt="weekly downloads" src="https://img.shields.io/npm/dw/%40standardserver%2Fshared?logo=npm" />
   </a>
+  <a href="https://app.codspeed.io/middleapi/standardserver?utm_source=badge">
+    <img src="https://img.shields.io/endpoint?url=https://codspeed.io/badge.json" alt="CodSpeed" />
+  </a>
   <a href="https://github.com/middleapi/standardserver/blob/main/LICENSE">
     <img alt="MIT License" src="https://img.shields.io/github/license/middleapi/standardserver?logo=open-source-initiative" />
   </a>
