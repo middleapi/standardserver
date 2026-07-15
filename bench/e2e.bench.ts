@@ -1,17 +1,13 @@
 import { bench, describe } from 'vitest'
 import { echoHandler, roundTrip } from './__shared__/client-server'
 import { createHonoFetchClientServer } from './__shared__/client-server.hono-fetch'
-import { createInprogressFetchClientServer } from './__shared__/client-server.inprogress-fetch'
-import { createMessagePortClientServer } from './__shared__/client-server.message-port'
 import { createNodeHttpClientServer } from './__shared__/client-server.node-http'
 import { createNodeWsClientServer } from './__shared__/client-server.node-ws'
 import { asEventStream, asOctetStream, BODY_PAYLOADS, BODY_SIZE_ENTRIES } from './__shared__/payloads'
 
 const adapters = [
-  ['inprogress-fetch', createInprogressFetchClientServer],
   ['node-http', createNodeHttpClientServer],
   ['hono-fetch', createHonoFetchClientServer],
-  ['message-port', createMessagePortClientServer],
   ['node-ws', createNodeWsClientServer],
 ] as const
 
@@ -41,7 +37,7 @@ describe.each(adapters)('e2e client-server: $0', async (_, create) => {
       })
     })
 
-    bench('mixed formData', async () => {
+    bench('form data', async () => {
       await roundTrip(clientServer, {
         method: 'POST',
         url: `/${label}/form-data`,
