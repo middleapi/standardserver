@@ -1,4 +1,4 @@
-name: CodSpeed Benchmarks
+name: CodSpeed
 
 on:
   push:
