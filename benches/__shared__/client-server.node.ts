@@ -1,12 +1,10 @@
 import type { AddressInfo } from 'node:net'
 import type { ClientServer } from './client-server'
-import { serve } from '@hono/node-server'
-import { toFetchBody, toFetchHeaders, toFetchResponse, toStandardLazyRequest, toStandardLazyResponse } from '@standardserver/fetch'
+import * as http from 'node:http'
+import { toFetchBody, toFetchHeaders, toStandardLazyResponse } from '@standardserver/fetch'
+import { sendStandardResponse, toStandardLazyRequest } from '@standardserver/node'
 
-/**
- * Real Hono/node-server + fetch adapter round-trip.
- */
-export function createHonoFetchClientServer(): ClientServer {
+export function createNodeClientServer(): ClientServer {
   const clientServer: ClientServer = {
     handler: async () => ({ status: 404, body: 'Not Found', headers: {} }),
     request: async () => {
@@ -14,14 +12,13 @@ export function createHonoFetchClientServer(): ClientServer {
     },
   }
 
-  const server = serve({
-    fetch: async (request: Request) => {
-      const standardRequest = toStandardLazyRequest(request)
-      const standardResponse = await clientServer.handler(standardRequest)
-      return toFetchResponse(standardResponse)
-    },
-    port: 0,
+  const server = http.createServer(async (req, res) => {
+    const standardRequest = toStandardLazyRequest(req, res)
+    const standardResponse = await clientServer.handler(standardRequest)
+    await sendStandardResponse(res, standardResponse)
   })
+
+  server.listen(0)
 
   afterAll(() => {
     server.close()
@@ -34,9 +31,9 @@ export function createHonoFetchClientServer(): ClientServer {
 
     const init: RequestInit = {
       method: standardRequest.method,
-      signal: standardRequest.signal ?? null,
       headers: toFetchHeaders(standardHeaders),
       body: body ?? null,
+      signal: standardRequest.signal ?? null,
     }
 
     if (body instanceof ReadableStream) {

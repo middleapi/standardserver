@@ -1,76 +1,81 @@
 import { bench, describe } from 'vitest'
 import { echoHandler, roundTrip } from './__shared__/client-server'
-import { createHonoFetchClientServer } from './__shared__/client-server.hono-fetch'
-import { createNodeHttpClientServer } from './__shared__/client-server.node-http'
-import { createNodeWsClientServer } from './__shared__/client-server.node-ws'
-import { asEventStream, asOctetStream, BODY_PAYLOADS, BODY_SIZE_ENTRIES } from './__shared__/payloads'
+import { createFetchClientServer } from './__shared__/client-server.fetch'
+import { createNodeClientServer } from './__shared__/client-server.node'
+import { createPeerClientServer } from './__shared__/client-server.peer'
+import {
+  asAsyncIteratorObject,
+  asReadableStream,
+  BLOB_10KB,
+  BYTES_10KB,
+  EVENTS_10KB,
+  FORM_10KB,
+  JSON_10KB,
+  USP_10KB,
+} from './__shared__/payloads'
 
 const adapters = [
-  ['node-http', createNodeHttpClientServer],
-  ['hono-fetch', createHonoFetchClientServer],
-  ['node-ws', createNodeWsClientServer],
+  ['node-adapter', createNodeClientServer],
+  ['fetch-adapter', createFetchClientServer],
+  ['peer-adapter', createPeerClientServer],
 ] as const
 
 describe.each(adapters)('e2e client-server: $0', async (_, create) => {
   const clientServer = create()
   clientServer.handler = echoHandler
-  await roundTrip(clientServer, { method: 'GET', url: '/', headers: {} })
+  await roundTrip(clientServer, { method: 'GET', url: '/', headers: {} }) // ensure client-server is ready
 
-  describe.each(BODY_SIZE_ENTRIES)('body size $0', (label) => {
-    const payloads = BODY_PAYLOADS[label]
-
-    bench('json', async () => {
-      await roundTrip(clientServer, {
-        method: 'POST',
-        url: `/${label}/json`,
-        headers: {},
-        body: payloads.json,
-      })
+  bench('json 10KB', async () => {
+    await roundTrip(clientServer, {
+      method: 'POST',
+      url: '/10KB/json',
+      headers: {},
+      body: JSON_10KB,
     })
+  })
 
-    bench('blob', async () => {
-      await roundTrip(clientServer, {
-        method: 'POST',
-        url: `/${label}/blob`,
-        headers: {},
-        body: payloads.blob,
-      })
+  bench('blob 10KB', async () => {
+    await roundTrip(clientServer, {
+      method: 'POST',
+      url: '/10KB/blob',
+      headers: {},
+      body: BLOB_10KB,
     })
+  })
 
-    bench('form data', async () => {
-      await roundTrip(clientServer, {
-        method: 'POST',
-        url: `/${label}/form-data`,
-        headers: {},
-        body: payloads.formData,
-      })
+  bench('form data 10KB', async () => {
+    await roundTrip(clientServer, {
+      method: 'POST',
+      url: '/10KB/form-data',
+      headers: {},
+      body: FORM_10KB,
     })
+  })
 
-    bench('url search params', async () => {
-      await roundTrip(clientServer, {
-        method: 'POST',
-        url: `/${label}/url-search-params`,
-        headers: {},
-        body: payloads.urlSearchParams,
-      })
+  bench('url search params 10KB', async () => {
+    await roundTrip(clientServer, {
+      method: 'POST',
+      url: '/10KB/url-search-params',
+      headers: {},
+      body: USP_10KB,
     })
+  })
 
-    bench('event stream', async () => {
-      await roundTrip(clientServer, {
-        method: 'POST',
-        url: `/${label}/event-stream`,
-        headers: {},
-        body: asEventStream(payloads.eventParts),
-      })
+  bench('event stream 10KB', async () => {
+    await roundTrip(clientServer, {
+      method: 'POST',
+      url: '/10KB/event-stream',
+      headers: {},
+      body: asAsyncIteratorObject(EVENTS_10KB),
     })
+  })
 
-    bench('octet stream', async () => {
-      await roundTrip(clientServer, {
-        method: 'POST',
-        url: `/${label}/octet-stream`,
-        headers: {},
-        body: asOctetStream(payloads.octetParts),
-      })
+  bench('octet stream 10KB', async () => {
+    await roundTrip(clientServer, {
+      method: 'POST',
+      url: '/10KB/octet-stream',
+      headers: {},
+      body: asReadableStream(BYTES_10KB),
     })
   })
 })

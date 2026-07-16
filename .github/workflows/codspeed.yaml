@@ -1,4 +1,4 @@
-name: CodSpeed Benchmarks
+name: CodSpeed
 
 on:
   push:
@@ -25,5 +25,5 @@ jobs:
 
       - uses: CodSpeedHQ/action@v4
         with:
-          mode: walltime
+          mode: simulation
           run: pnpm run bench
