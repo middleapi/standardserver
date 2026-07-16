@@ -7,8 +7,8 @@
   "include": [
     "playground",
     "scripts",
+    "benches",
     "tests",
-    "bench",
     "*",
 
     "*/*/src/**/*.bench.*",
@@ -19,8 +19,8 @@
     "*/*/src/**/__snapshots__",
     "*/*/playground",
     "*/*/scripts",
+    "*/*/benches",
     "*/*/tests",
-    "*/*/bench",
     "*/*/*"
   ],
   "exclude": [
