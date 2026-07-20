@@ -5,6 +5,7 @@
 !.*.example
 !.vscode/
 !.github/
+!.zed/
 
 # Common generated folders
 logs/
@@ -27,3 +28,4 @@ vitest.config.ts.timestamp-*
 # Common manual ignore files
 *.local
 *.pem
+*.local.*
