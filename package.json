@@ -17,7 +17,7 @@
     "sponsors:sync": "node scripts/sync-sponsors.ts && eslint --max-warnings=0 --fix **/README.md"
   },
   "devDependencies": {
-    "@antfu/eslint-config": "^6.7.3",
+    "@antfu/eslint-config": "^9.2.0",
     "@codspeed/vitest-plugin": "^5.7.1",
     "@hono/node-server": "^2.0.1",
     "@remix-run/node-fetch-server": "^0.13.0",
@@ -31,9 +31,9 @@
     "@vitest/coverage-v8": "^4.1.5",
     "bumpp": "^11.1.0",
     "changelogithub": "^14.0.0",
-    "eslint": "^9.39.2",
+    "eslint": "^10.7.0",
     "eslint-plugin-ban": "^2.0.0",
-    "eslint-plugin-format": "^1.1.0",
+    "eslint-plugin-format": "^2.0.1",
     "h3": "2.0.1-rc.7",
     "lint-staged": "^16.2.7",
     "pkg-pr-new": "^0.0.75",
