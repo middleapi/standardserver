@@ -57,7 +57,10 @@ export function decodeEventStreamMessage(encoded: string): EventStreamMessage {
 }
 
 export class EventStreamDecoder {
-  private incomplete: string = ''
+  private pending: string[] = []
+  // Last up-to-3 characters of the pending buffer. A delimiter is at most 4
+  // characters ('\r\n\r\n'), so one crossing a chunk boundary must start here.
+  private tail: string = ''
   private trailingCR: boolean = false
 
   constructor(
@@ -73,10 +76,30 @@ export class EventStreamDecoder {
     }
 
     this.trailingCR = chunk.endsWith('\r')
-    this.incomplete += chunk
 
-    const parts = this.incomplete.split(EVENT_STREAM_DELIMITER_REGEX)
-    this.incomplete = parts.pop()!
+    if (chunk === '') {
+      return
+    }
+
+    const scan = this.tail + chunk
+
+    if (!EVENT_STREAM_DELIMITER_REGEX.test(scan)) {
+      this.pending.push(chunk)
+      this.tail = scan.length > 3 ? scan.slice(-3) : scan
+      return
+    }
+
+    this.pending.push(chunk)
+    const buffered = this.pending.length === 1 ? chunk : this.pending.join('')
+
+    const parts = buffered.split(EVENT_STREAM_DELIMITER_REGEX)
+    const incomplete = parts.pop()!
+
+    this.pending.length = 0
+    this.tail = incomplete.length > 3 ? incomplete.slice(-3) : incomplete
+    if (incomplete !== '') {
+      this.pending.push(incomplete)
+    }
 
     for (const encoded of parts) {
       const message = decodeEventStreamMessage(encoded)
@@ -85,7 +108,7 @@ export class EventStreamDecoder {
   }
 
   end(): void {
-    if (this.incomplete) {
+    if (this.pending.length !== 0) {
       throw new EventStreamDecoderError('Event Stream ended before complete')
     }
   }
