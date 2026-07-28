@@ -61,7 +61,9 @@ export class EventStreamDecoder {
   // Last up-to-3 characters of the pending buffer. A delimiter is at most 4
   // characters ('\r\n\r\n'), so one crossing a chunk boundary must start here.
   private tail: string = ''
-  private trailingCR: boolean = false
+  // Set when a chunk-ending '\r' was already consumed as a line ending, so a
+  // leading '\n' in the next chunk is the second half of that CRLF pair.
+  private discardLeadingLF: boolean = false
 
   constructor(
     private readonly onEvent: (event: EventStreamMessage) => void,
@@ -69,15 +71,11 @@ export class EventStreamDecoder {
   }
 
   feed(chunk: string): void {
-    // If the previous chunk ended with a '\r' that was already consumed as a
-    // line ending, a leading '\n' in this chunk is the second half of that CRLF
-    // pair and must be discarded. If the '\r' is still buffered, keep the '\n'
-    // so the pair naturally reads as a single CRLF line ending.
-    if (this.trailingCR && chunk.startsWith('\n') && !this.tail.endsWith('\r')) {
+    if (this.discardLeadingLF && chunk.startsWith('\n')) {
       chunk = chunk.slice(1)
     }
 
-    this.trailingCR = chunk.endsWith('\r')
+    this.discardLeadingLF = false
 
     if (chunk === '') {
       return
@@ -99,7 +97,13 @@ export class EventStreamDecoder {
 
     this.pending.length = 0
     this.tail = incomplete.length > 3 ? incomplete.slice(-3) : incomplete
-    if (incomplete !== '') {
+
+    if (incomplete === '') {
+      // A chunk-ending '\r' consumed as the delimiter's last line ending may
+      // still be completed into a CRLF by a '\n' opening the next chunk.
+      this.discardLeadingLF = chunk.endsWith('\r')
+    }
+    else {
       this.pending.push(incomplete)
     }
 
