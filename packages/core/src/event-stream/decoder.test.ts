@@ -121,7 +121,7 @@ describe('eventStreamDecoder', () => {
         'data: hello1\n',
         'data: world\n\n',
         'event: message\ndata: hello2\ndata: world\n\n',
-        // NOTE: a chunk contain 1,5 events is important test, carefully when modify
+        // NOTE: a chunk can contain 1.5 events (a partial message); this is an important test—be careful when modifying.
         'event: message\ndata: hello3\ndata: world\n\nevent: message\ndata: hello4\n',
         'data: world\nid: 123\nretry: 10000\n\nevent: done\ndata: hello5\ndata: world\nid: 123\nretry: 10000\n',
         '\n',
