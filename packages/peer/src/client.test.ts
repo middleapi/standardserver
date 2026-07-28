@@ -100,7 +100,7 @@ describe('clientPeer', () => {
       expect(await response.resolveBody()).toBe(undefined)
     })
 
-    it('sends PeerRequestMessage and resolves on PeerRespnseMessage (with full message)', async () => {
+    it('sends PeerRequestMessage and resolves on PeerResponseMessage (with full message)', async () => {
       const { id, promise } = await requestAndGetId(
         makeRequest({ method: 'DELETE', headers: { 'x-client': 'true' }, body: 'client-body' }),
       )
@@ -271,7 +271,6 @@ describe('clientPeer', () => {
       it('send cancel message and reject request on non-protocol error', async () => {
         const nonProtocolError = new Error('non-protocol error')
         const iter = new AsyncIteratorClass<unknown>(async () => {
-          sleep(100)
           throw nonProtocolError
         }, async () => {})
 
@@ -295,8 +294,9 @@ describe('clientPeer', () => {
 
       it('does not send cancel message on non-protocol error if request was resolved', async () => {
         const nonProtocolError = new Error('non-protocol error')
+        const { resolve: triggerError, promise: errorTrigger } = promiseWithResolvers<void>()
         const iter = new AsyncIteratorClass<unknown>(async () => {
-          await sleep(100)
+          await errorTrigger
           throw nonProtocolError
         }, async () => {})
 
@@ -305,10 +305,12 @@ describe('clientPeer', () => {
         )
 
         const id = await waitForSend()
-        await sleep(10) // wait until iterator start consuming
         await peer.message(makeResponseMessage(id))
-
         await promise
+
+        // the iterator errors only after the request already completed
+        triggerError()
+        await sleep(1)
 
         expect(send).toHaveBeenCalledTimes(1)
         expect(send).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
@@ -443,9 +445,10 @@ describe('clientPeer', () => {
 
       it('does not send cancel message on error if request was resolved', async () => {
         const error = new Error('stream error')
+        const { resolve: triggerError, promise: errorTrigger } = promiseWithResolvers<void>()
         const stream = new ReadableStream<Uint8Array>({
-          async start(controller) {
-            await sleep(100)
+          async pull(controller) {
+            await errorTrigger
             controller.error(error)
           },
         })
@@ -455,12 +458,45 @@ describe('clientPeer', () => {
         )
 
         const id = await waitForSend()
-        await sleep(10) // wait until stream start
         await peer.message(makeResponseMessage(id))
         await promise
 
+        // the stream errors only after the request already completed
+        triggerError()
+        await sleep(1)
+
         expect(send).toHaveBeenCalledTimes(1)
         expect(send).not.toHaveBeenCalledWith(expect.objectContaining({ kind: 'cancel' }))
+      })
+
+      it('does not send cancel message when transport fails after server already canceled the upload', async () => {
+        const transportError = new Error('transport failed')
+        send.mockImplementation(async (message) => {
+          if (message.kind === 'octet-stream') {
+            // server stops consuming the upload right as the transport breaks
+            await peer.message(makeStreamCancelMessage(message.id))
+            throw transportError
+          }
+        })
+
+        const stream = new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(new Uint8Array([1, 2]))
+          },
+        })
+
+        const { id, promise } = await requestAndGetId(
+          makeRequest({ method: 'POST', headers: {}, body: stream }),
+        )
+
+        await vi.waitFor(() => expect(send.mock.calls.some(([m]) => m.kind === 'octet-stream')).toBe(true))
+        await sleep(1)
+
+        await peer.message(makeResponseMessage(id, 'ok'))
+        const response = await promise
+        expect(await response.resolveBody()).toBe('ok')
+
+        expect(send.mock.calls.map(([m]) => m.kind)).toEqual(['request', 'octet-stream'])
       })
     })
 

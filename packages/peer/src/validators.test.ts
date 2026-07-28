@@ -11,6 +11,7 @@ describe('isPeerMessage', () => {
   it('accepts binary as Blob', () => expect(isPeerMessage(base({ binary: new Blob() }))).toBe(true))
 
   it.each([
+    ['non-string id', base({ id: 123 as any })],
     ['invalid kind', base({ kind: 123 as any })],
     ['binary as string', base({ binary: 'data' as any })],
     ['null', null],
@@ -31,7 +32,7 @@ describe('isPeerRequestMessage', () => {
     expect(isPeerRequestMessage(base({ kind: 'response', json: {} }))).toBe(false)
   })
 
-  it('rejects invalid jsn', () => {
+  it('rejects invalid json', () => {
     expect(isPeerRequestMessage(base({ kind: 'request', json: 'invalid' }))).toBe(false)
   })
 
@@ -148,12 +149,11 @@ describe('isPeerOctetStreamMessage', () => {
     expect(isPeerOctetStreamMessage(base({ kind: 'octet-stream', json: { close: true }, binary: new Uint8Array() }))).toBe(true)
   })
 
-  it('rejects wrong field name (end instead of close)', () => {
-    expect(isPeerOctetStreamMessage(base({ kind: 'octet-stream', json: { close: 'invalid' } as any }))).toBe(false)
-  })
-
-  it('rejects non-boolean close', () => {
-    expect(isPeerOctetStreamMessage(base({ kind: 'octet-stream', json: { close: 1 } as any }))).toBe(false)
+  it.each([
+    ['string close', 'invalid'],
+    ['numeric close', 1],
+  ])('rejects non-boolean close (%s)', (_, close) => {
+    expect(isPeerOctetStreamMessage(base({ kind: 'octet-stream', json: { close } as any }))).toBe(false)
   })
 
   it('rejects wrong kind', () => {
