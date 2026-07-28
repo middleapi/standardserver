@@ -1,9 +1,7 @@
 import type { EventStreamMessage } from './types'
 import { EventStreamDecoderError } from './error'
 
-// A line ending is CR, LF or CRLF. The lookahead stops a CR from matching on
-// its own when it is really the first half of a CRLF pair — without it,
-// `{2}` would backtrack and treat a single '\r\n' as a message delimiter.
+// A line ending is CR, LF or CRLF.
 const LINE_ENDING_REGEX = /\r\n|\r(?!\n)|\n/
 const MESSAGE_DELIMITER_REGEX = /(?:\r\n|\r(?!\n)|\n){2}/
 const MESSAGE_DELIMITER_GLOBAL_REGEX = /(?:\r\n|\r(?!\n)|\n){2}/g
@@ -102,9 +100,6 @@ export class EventStreamDecoder {
       }
     }
 
-    // Everything before `tail` was scanned by an earlier feed and holds no
-    // delimiter, so only this window needs scanning — even when messages
-    // complete, the joined buffer is only sliced, never re-scanned.
     const scan = this.tail + chunk
 
     if (!MESSAGE_DELIMITER_REGEX.test(scan)) {
@@ -115,29 +110,21 @@ export class EventStreamDecoder {
 
     this.pending.push(chunk)
     const buffered = this.pending.length === 1 ? chunk : this.pending.join('')
-    // `scan` is a suffix of `buffered`; this maps scan indexes onto it.
     const offset = buffered.length - scan.length
 
     const parts: string[] = []
     let start = 0
 
-    // matchAll iterates a private copy of the regex, so no lastIndex state is
-    // shared or mutated.
     for (const match of scan.matchAll(MESSAGE_DELIMITER_GLOBAL_REGEX)) {
       parts.push(buffered.slice(start, offset + match.index))
       start = offset + match.index + match[0].length
     }
 
     const incomplete = buffered.slice(start)
-
-    // All state is settled before emitting so `onEvent` may safely re-enter
-    // `feed`.
     this.pending.length = 0
     this.tail = incomplete.slice(-MAX_DELIMITER_OVERLAP)
 
     if (incomplete === '') {
-      // A chunk-ending '\r' consumed as the delimiter's last line ending may
-      // still be completed into a CRLF by a '\n' opening the next chunk.
       this.discardLeadingLF = chunk.charCodeAt(chunk.length - 1) === CR
     }
     else {
