@@ -1,54 +1,66 @@
 import type { EventStreamMessage } from './types'
 import { EventStreamDecoderError } from './error'
 
-const EVENT_STREAM_LINE_DELIMITER_REGEX = /\r\n|[\n\r]/
-const EVENT_STREAM_DELIMITER_REGEX = /(?:\r\n|\r(?!\n)|\n)(?:\r\n|\r(?!\n)|\n)/
-const LEADING_WHITESPACE_REGEX = /^\s/
+// A line ending is CR, LF or CRLF. The lookahead stops a CR from matching on
+// its own when it is really the first half of a CRLF pair — without it,
+// `{2}` would backtrack and treat a single '\r\n' as a message delimiter.
+const LINE_ENDING_REGEX = /\r\n|\r(?!\n)|\n/
+const MESSAGE_DELIMITER_REGEX = /(?:\r\n|\r(?!\n)|\n){2}/g
+
+// A delimiter is at most 4 characters ('\r\n\r\n'), so one crossing a chunk
+// boundary must start within the last 3 characters of what came before.
+const MAX_DELIMITER_OVERLAP = 3
+
+const CR = 0x0D
+const LF = 0x0A
+const SPACE = 0x20
 
 export function decodeEventStreamMessage(encoded: string): EventStreamMessage {
-  const lines = encoded.split(EVENT_STREAM_LINE_DELIMITER_REGEX)
-
   const message: EventStreamMessage & { comments?: string[] } = {}
 
-  for (const line of lines) {
+  for (const line of encoded.split(LINE_ENDING_REGEX)) {
+    if (line === '') {
+      continue
+    }
+
     const index = line.indexOf(':')
 
-    const key = index === -1
-      ? line
-      : line.slice(0, index)
+    // The value may be prefixed by a single space
+    // https://html.spec.whatwg.org/multipage/server-sent-events.html#event-stream-interpretation
     const value = index === -1
       ? ''
-      : line.slice(index + 1).replace(LEADING_WHITESPACE_REGEX, '') // value may be prefixed by a single space https://html.spec.whatwg.org/multipage/server-sent-events.html#event-stream-interpretation
+      : line.slice(line.charCodeAt(index + 1) === SPACE ? index + 2 : index + 1)
 
     if (index === 0) { // comment starting with ':'
-      message.comments ??= []
-      message.comments.push(value)
+      (message.comments ??= []).push(value)
+      continue
     }
 
-    else if (key === 'data') {
-      if (message.data !== undefined) {
+    switch (index === -1 ? line : line.slice(0, index)) {
+      case 'data':
         // data can be sent in multiple lines if containing newlines
         // https://html.spec.whatwg.org/multipage/server-sent-events.html#event-stream-interpretation
-        message.data += `\n${value}`
-      }
-      else {
-        message.data = value
-      }
-    }
+        message.data = message.data === undefined
+          ? value
+          : `${message.data}\n${value}`
+        break
 
-    else if (key === 'event') {
-      message.event = value
-    }
+      case 'event':
+        message.event = value
+        break
 
-    else if (key === 'id') {
-      message.id = value
-    }
+      case 'id':
+        message.id = value
+        break
 
-    else if (key === 'retry') {
-      const maybeInteger = Number.parseInt(value)
+      case 'retry': {
+        const maybeInteger = Number.parseInt(value, 10)
 
-      if (Number.isInteger(maybeInteger) && maybeInteger >= 0 && maybeInteger.toString() === value) {
-        message.retry = maybeInteger
+        // The round-trip check already rejects NaN, signs, padding and floats.
+        if (maybeInteger >= 0 && maybeInteger.toString() === value) {
+          message.retry = maybeInteger
+        }
+        break
       }
     }
   }
@@ -58,8 +70,8 @@ export function decodeEventStreamMessage(encoded: string): EventStreamMessage {
 
 export class EventStreamDecoder {
   private pending: string[] = []
-  // Last up-to-3 characters of the pending buffer. A delimiter is at most 4
-  // characters ('\r\n\r\n'), so one crossing a chunk boundary must start here.
+  // Last up-to-3 characters of the pending buffer, prefixed to the next chunk
+  // so a delimiter straddling the boundary is still found.
   private tail: string = ''
   // Set when a chunk-ending '\r' was already consumed as a line ending, so a
   // leading '\n' in the next chunk is the second half of that CRLF pair.
@@ -71,49 +83,70 @@ export class EventStreamDecoder {
   }
 
   feed(chunk: string): void {
-    if (this.discardLeadingLF && chunk.startsWith('\n')) {
-      chunk = chunk.slice(1)
-      this.discardLeadingLF = false
-    }
-
-    // An empty chunk carries no stream bytes, so it must not close the
-    // discard window: the next stream character may still be the LF half
-    // of an already-consumed CRLF pair.
+    // An empty chunk carries no stream characters, so it must not close the
+    // discard window: the next stream character may still be the LF half of an
+    // already-consumed CRLF pair.
     if (chunk === '') {
       return
     }
 
-    this.discardLeadingLF = false
+    if (this.discardLeadingLF) {
+      this.discardLeadingLF = false
 
+      if (chunk.charCodeAt(0) === LF) {
+        chunk = chunk.slice(1)
+
+        if (chunk === '') {
+          return
+        }
+      }
+    }
+
+    // Everything before `tail` was scanned by an earlier feed and holds no
+    // delimiter, so only this window needs scanning — even when messages
+    // complete, the joined buffer is only sliced, never re-scanned.
     const scan = this.tail + chunk
+    MESSAGE_DELIMITER_REGEX.lastIndex = 0
+    let match = MESSAGE_DELIMITER_REGEX.exec(scan)
 
-    if (!EVENT_STREAM_DELIMITER_REGEX.test(scan)) {
+    if (match === null) {
       this.pending.push(chunk)
-      this.tail = scan.length > 3 ? scan.slice(-3) : scan
+      this.tail = scan.slice(-MAX_DELIMITER_OVERLAP)
       return
     }
 
     this.pending.push(chunk)
     const buffered = this.pending.length === 1 ? chunk : this.pending.join('')
+    // `scan` is a suffix of `buffered`; this maps scan indexes onto it.
+    const offset = buffered.length - scan.length
 
-    const parts = buffered.split(EVENT_STREAM_DELIMITER_REGEX)
-    const incomplete = parts.pop()!
+    const parts: string[] = []
+    let start = 0
 
+    do {
+      parts.push(buffered.slice(start, offset + match.index))
+      start = offset + MESSAGE_DELIMITER_REGEX.lastIndex
+      match = MESSAGE_DELIMITER_REGEX.exec(scan)
+    } while (match !== null)
+
+    const incomplete = buffered.slice(start)
+
+    // All state is settled before emitting so `onEvent` may safely re-enter
+    // `feed`, which shares MESSAGE_DELIMITER_REGEX's lastIndex.
     this.pending.length = 0
-    this.tail = incomplete.length > 3 ? incomplete.slice(-3) : incomplete
+    this.tail = incomplete.slice(-MAX_DELIMITER_OVERLAP)
 
     if (incomplete === '') {
       // A chunk-ending '\r' consumed as the delimiter's last line ending may
       // still be completed into a CRLF by a '\n' opening the next chunk.
-      this.discardLeadingLF = chunk.endsWith('\r')
+      this.discardLeadingLF = chunk.charCodeAt(chunk.length - 1) === CR
     }
     else {
       this.pending.push(incomplete)
     }
 
     for (const encoded of parts) {
-      const message = decodeEventStreamMessage(encoded)
-      this.onEvent(message)
+      this.onEvent(decodeEventStreamMessage(encoded))
     }
   }
 

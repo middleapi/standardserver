@@ -47,7 +47,7 @@ describe('decodeEventStreamMessage', () => {
     })
   })
 
-  it('strips a single leading whitespace from values', () => {
+  it('strips a single leading space from values', () => {
     expect(decodeEventStreamMessage(':hi\nevent:message\ndata:hello\ndata:world\n\n')).toEqual({
       event: 'message',
       data: 'hello\nworld',
@@ -58,6 +58,11 @@ describe('decodeEventStreamMessage', () => {
       event: ' message',
       data: ' hello\n world',
       comments: [' hi'],
+    })
+
+    // Per spec, only a single U+0020 SPACE is stripped — not tabs.
+    expect(decodeEventStreamMessage('data:\thello\n\n')).toEqual({
+      data: '\thello',
     })
   })
 
