@@ -35,30 +35,32 @@ const ENCODED_LARGE_MESSAGE_1KB_CHUNKS = Array.from(
   (_, i) => ENCODED_LARGE_MESSAGE.slice(i * SIZE_1KB, (i + 1) * SIZE_1KB),
 )
 
-describe('event stream', () => {
-  bench('encode small message', () => {
+describe('event stream encode', () => {
+  bench('small message', () => {
     encodeEventStreamMessage(SMALL_MESSAGE)
   })
 
-  bench('encode single-line data 100KB', () => {
+  bench('single-line data 100KB', () => {
     encodeEventStreamMessage(SINGLE_LINE_MESSAGE_100KB)
   })
 
-  bench('encode multi-line data 100KB (2k lines)', () => {
+  bench('multi-line data 100KB (2k lines)', () => {
     encodeEventStreamMessage(MULTI_LINE_MESSAGE_100KB)
   })
+})
 
-  bench('decode small message', () => {
+describe('event stream decode', () => {
+  bench('small message', () => {
     decodeEventStreamMessage(ENCODED_SMALL_MESSAGE)
   })
 
-  bench('decode 100 small messages in one chunk', () => {
+  bench('100 small messages in one chunk', () => {
     const decoder = new EventStreamDecoder(() => {})
     decoder.feed(ENCODED_100_SMALL_MESSAGES)
     decoder.end()
   })
 
-  bench('decode 100 small messages in 1KB chunks', () => {
+  bench('100 small messages in 1KB chunks', () => {
     const decoder = new EventStreamDecoder(() => {})
     for (let i = 0; i < ENCODED_100_SMALL_MESSAGES.length; i += SIZE_1KB) {
       decoder.feed(ENCODED_100_SMALL_MESSAGES.slice(i, i + SIZE_1KB))
@@ -66,13 +68,13 @@ describe('event stream', () => {
     decoder.end()
   })
 
-  bench('decode large message 100KB in one chunk', () => {
+  bench('large message 100KB in one chunk', () => {
     const decoder = new EventStreamDecoder(() => {})
     decoder.feed(ENCODED_LARGE_MESSAGE)
     decoder.end()
   })
 
-  bench('decode large message 100KB in 1KB chunks', () => {
+  bench('large message 100KB in 1KB chunks', () => {
     const decoder = new EventStreamDecoder(() => {})
     for (const chunk of ENCODED_LARGE_MESSAGE_1KB_CHUNKS) {
       decoder.feed(chunk)
