@@ -367,4 +367,22 @@ describe('encodeAtomicStandardBody', () => {
     expect(headers['x-custom']).toBe('value')
     expect(originalHeaders['standard-server']).toBeUndefined()
   })
+
+  it('round-trips a File through encode and decode, preserving tricky filenames', async () => {
+    const file = new File(['file content'], 'résumé "final" 🌍.pdf', { type: 'application/pdf' })
+    const encoded = await encodeAtomicStandardBody(file, {})
+
+    const { resolveBody } = toStandardBody({
+      id: '1',
+      kind: 'request',
+      json: { url: '/upload', headers: encoded.headers, body: encoded.jsonBody },
+      binary: encoded.binary,
+    }, vi.fn())
+
+    const received = await resolveBody() as File
+    expect(received).toBeInstanceOf(File)
+    expect(received.name).toBe('résumé "final" 🌍.pdf')
+    expect(received.type).toBe('application/pdf')
+    expect(await received.text()).toBe('file content')
+  })
 })

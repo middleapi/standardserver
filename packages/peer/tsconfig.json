@@ -4,7 +4,7 @@
     { "path": "../core" },
     { "path": "../shared" }
   ],
-  "include": ["./package.json", "src"],
+  "include": ["./package.json", "src", "tests/peer.test.ts"],
   "exclude": [
     "**/*.test.*",
     "**/*.test-d.ts",

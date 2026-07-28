@@ -117,6 +117,18 @@ describe('toAsyncIteratorObject', () => {
     await expect(iter.next()).rejects.toThrow(error)
     expect(cleanup).toHaveBeenCalledWith({ kind: 'error', error })
   })
+
+  it('rejects events carrying invalid metadata instead of forwarding them', async () => {
+    const queue = new Queue<PeerEventStreamMessage>()
+    const cleanup = vi.fn()
+    const iter = toAsyncIteratorObject(queue, cleanup)
+
+    // a malicious peer attempts SSE-style injection through the event id
+    queue.push({ id: '1', kind: 'event-stream', json: { data: { val: 1 }, id: 'evil\nid: injected' } })
+
+    await expect(iter.next()).rejects.toThrow()
+    expect(cleanup).toHaveBeenCalledWith({ kind: 'error', error: expect.any(Error) })
+  })
 })
 
 describe('eventStreamTransmitter', () => {
@@ -241,11 +253,9 @@ describe('eventStreamTransmitter', () => {
 
   it('does not send success-event after cancel', async () => {
     const send = vi.fn(async () => {})
-    let pullCount = 0
     const iter = new AsyncIteratorClass(async () => {
-      pullCount++
       // simulate slow iterator so cancel happens mid-stream
-      await new Promise(resolve => setTimeout(resolve, 50))
+      await sleep(50)
       return { done: false, value: 'data' }
     }, async () => {})
 
@@ -263,9 +273,7 @@ describe('eventStreamTransmitter', () => {
 
   it('does not send error-event after cancel', async () => {
     const send = vi.fn(async () => {})
-    let pullCount = 0
     const iter = new AsyncIteratorClass(async () => {
-      pullCount++
       // simulate slow iterator so cancel happens mid-stream
       await sleep(50)
       throw new ErrorEvent({ reason: 'fail' })

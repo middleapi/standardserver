@@ -65,8 +65,8 @@ export function toStandardBody(
           ? getFilenameFromContentDisposition(contentDisposition)
           : undefined
 
-        const file = new File(message.binary ? [message.binary] : [], filename ?? 'blob', {
-          type: flattenStandardHeader(message.json.headers?.['content-type']) ?? 'application/octet-stream',
+        const file = new File([message.binary], filename ?? 'blob', {
+          type: contentType ?? 'application/octet-stream',
         })
         return file
       }

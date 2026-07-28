@@ -79,6 +79,25 @@ describe('codec', () => {
     expect(decoded).toEqual({ matched: true, message })
   })
 
+  it('handles multi-byte unicode prefix with binary payload', async () => {
+    const prefix = '☂peer:'
+    const binary = new Uint8Array([7, 8, 9])
+    const message = { id: '6', kind: 'x', binary }
+
+    const encoded = await encodePeerMessage(message, { prefix }) as Uint8Array<ArrayBuffer>
+    const decoded = decodePeerMessage(encoded, { prefix })
+    expect(decoded).toEqual({ matched: true, message })
+  })
+
+  it('preserves delimiter bytes (0xFF) inside the binary payload', async () => {
+    const binary = new Uint8Array([0xFF, 0x00, 0xFF, 0x42])
+    const message = { id: '7', kind: 'x', binary }
+
+    const encoded = await encodePeerMessage(message)
+    const decoded = decodePeerMessage(encoded)
+    expect(decoded).toEqual({ matched: true, message })
+  })
+
   describe('decode', () => {
     it('can decodes a binary message without binary payload (JSON only in Uint8Array)', () => {
       const message: PeerMessage = { id: '3', kind: 'g' }
@@ -120,6 +139,37 @@ describe('codec', () => {
     it('returns matched: false for invalid peer message with binary', async () => {
       const encoded = await encodePeerMessage({ id: '1', binary: new Blob(['a']) } as any) // missing `kind`
       expect(decodePeerMessage(encoded)).toEqual({ matched: false })
+    })
+
+    it('returns matched: false when the payload is shorter than the prefix', () => {
+      expect(decodePeerMessage('{', { prefix: 'LONG-PREFIX:' })).toEqual({ matched: false })
+      expect(decodePeerMessage(new TextEncoder().encode('{'), { prefix: 'LONG-PREFIX:' })).toEqual({ matched: false })
+    })
+  })
+
+  describe('security', () => {
+    it('does not pollute Object.prototype when decoding __proto__ keys', () => {
+      const payload = '{"id":"1","kind":"request","json":{"url":"/admin","__proto__":{"isAdmin":true}},"__proto__":{"polluted":true}}'
+
+      for (const encoded of [payload, new TextEncoder().encode(payload)] as const) {
+        const result = decodePeerMessage(encoded)
+
+        expect(result.matched).toBe(true)
+        expect(({} as any).polluted).toBeUndefined()
+        expect(({} as any).isAdmin).toBeUndefined()
+        expect(Object.getPrototypeOf(result.message)).toBe(Object.prototype)
+        // the malicious key stays an inert own property
+        expect(Object.getOwnPropertyDescriptor(result.message, '__proto__')?.value).toEqual({ polluted: true })
+      }
+    })
+
+    it('does not pollute Object.prototype when decoding constructor.prototype keys', () => {
+      const payload = '{"id":"1","kind":"cancel","constructor":{"prototype":{"polluted":true}}}'
+      const result = decodePeerMessage(payload)
+
+      expect(result.matched).toBe(true)
+      expect(({} as any).polluted).toBeUndefined()
+      expect((result.message as any).constructor).toEqual({ prototype: { polluted: true } })
     })
   })
 })

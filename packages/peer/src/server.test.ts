@@ -1,7 +1,6 @@
 import type { StandardLazyRequest, StandardResponse } from '@standardserver/core'
 import type { PeerCancelMessage, PeerEventStreamMessage, PeerOctetStreamMessage, PeerRequestMessage, PeerResponseMessage, PeerStreamCancelMessage, ServerPeerSendMessage } from './types'
 import { AbortError, AsyncIteratorClass, isAsyncIteratorObject, sleep } from '@standardserver/shared'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { HibernationAsyncIteratorClass } from './hibernation'
 import { ServerPeer } from './server'
 
@@ -357,6 +356,21 @@ describe('serverPeer', () => {
         expect(send).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'response' }))
         expect(send).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'cancel' }))
       })
+
+      it('does not send cancel message when transport fails after client already canceled the request', async () => {
+        const transportError = new Error('transport failed')
+        send.mockImplementation(async (message) => {
+          if (message.kind === 'event-stream') {
+            // client cancels the request right as the transport breaks
+            await peer.message(makeCancelMessage(message.id), vi.fn())
+            throw transportError
+          }
+        })
+
+        await peer.message(makeRequestMessage(), async () => eventStreamResponse(makeAsyncIter(['event1'])))
+
+        expect(send.mock.calls.map(([m]) => m.kind)).toEqual(['response', 'event-stream'])
+      })
     })
   })
 
@@ -365,7 +379,7 @@ describe('serverPeer', () => {
       it('passes incoming octet-stream chunks to the handler body as a ReadableStream and aborts it when a response is sent before completion', async () => {
         const { handler, box } = deferredHandler()
 
-        const msg = makeRequestMessage({ headers: { 'standard-server': 'octet-stream', 'content-type': 'applidation/octet-stream' } })
+        const msg = makeRequestMessage({ headers: { 'standard-server': 'octet-stream', 'content-type': 'application/octet-stream' } })
         const promise = peer.message(msg, handler)
 
         await vi.waitFor(() => expect(handler).toHaveBeenCalled())
@@ -392,7 +406,7 @@ describe('serverPeer', () => {
           return jsonResponse()
         })
 
-        const msg = makeRequestMessage({ headers: { 'standard-server': 'octet-stream', 'content-type': 'applidation/octet-stream' } })
+        const msg = makeRequestMessage({ headers: { 'standard-server': 'octet-stream', 'content-type': 'application/octet-stream' } })
         await peer.message(msg, handler)
 
         const cancelMsgs = send.mock.calls
@@ -405,7 +419,7 @@ describe('serverPeer', () => {
       it('readableStream error if receive cancel message', async () => {
         const { handler, box } = deferredHandler()
 
-        const msg = makeRequestMessage({ headers: { 'standard-server': 'octet-stream', 'content-type': 'applidation/octet-stream' } })
+        const msg = makeRequestMessage({ headers: { 'standard-server': 'octet-stream', 'content-type': 'application/octet-stream' } })
         const promise = peer.message(msg, handler)
 
         await vi.waitFor(() => expect(handler).toHaveBeenCalled())
@@ -478,6 +492,27 @@ describe('serverPeer', () => {
         expect(send).toHaveBeenCalledTimes(2)
         expect(send).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'response' }))
         expect(send).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'cancel' }))
+      })
+
+      it('does not send cancel message when transport fails after client already canceled the request', async () => {
+        const transportError = new Error('transport failed')
+        send.mockImplementation(async (message) => {
+          if (message.kind === 'octet-stream') {
+            // client cancels the request right as the transport breaks
+            await peer.message(makeCancelMessage(message.id), vi.fn())
+            throw transportError
+          }
+        })
+
+        const stream = new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(new Uint8Array([10, 20]))
+          },
+        })
+
+        await peer.message(makeRequestMessage(), async () => octetStreamResponse(stream))
+
+        expect(send.mock.calls.map(([m]) => m.kind)).toEqual(['response', 'octet-stream'])
       })
     })
   })
