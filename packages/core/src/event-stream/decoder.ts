@@ -5,7 +5,8 @@ import { EventStreamDecoderError } from './error'
 // its own when it is really the first half of a CRLF pair — without it,
 // `{2}` would backtrack and treat a single '\r\n' as a message delimiter.
 const LINE_ENDING_REGEX = /\r\n|\r(?!\n)|\n/
-const MESSAGE_DELIMITER_REGEX = /(?:\r\n|\r(?!\n)|\n){2}/g
+const MESSAGE_DELIMITER_REGEX = /(?:\r\n|\r(?!\n)|\n){2}/
+const MESSAGE_DELIMITER_GLOBAL_REGEX = /(?:\r\n|\r(?!\n)|\n){2}/g
 
 // A delimiter is at most 4 characters ('\r\n\r\n'), so one crossing a chunk
 // boundary must start within the last 3 characters of what came before.
@@ -83,9 +84,7 @@ export class EventStreamDecoder {
   }
 
   feed(chunk: string): void {
-    // An empty chunk carries no stream characters, so it must not close the
-    // discard window: the next stream character may still be the LF half of an
-    // already-consumed CRLF pair.
+    // empty chunk has no meaningful content to process
     if (chunk === '') {
       return
     }
@@ -96,6 +95,7 @@ export class EventStreamDecoder {
       if (chunk.charCodeAt(0) === LF) {
         chunk = chunk.slice(1)
 
+        // empty chunk has no meaningful content to process
         if (chunk === '') {
           return
         }
@@ -106,10 +106,8 @@ export class EventStreamDecoder {
     // delimiter, so only this window needs scanning — even when messages
     // complete, the joined buffer is only sliced, never re-scanned.
     const scan = this.tail + chunk
-    MESSAGE_DELIMITER_REGEX.lastIndex = 0
-    let match = MESSAGE_DELIMITER_REGEX.exec(scan)
 
-    if (match === null) {
+    if (!MESSAGE_DELIMITER_REGEX.test(scan)) {
       this.pending.push(chunk)
       this.tail = scan.slice(-MAX_DELIMITER_OVERLAP)
       return
@@ -123,16 +121,17 @@ export class EventStreamDecoder {
     const parts: string[] = []
     let start = 0
 
-    do {
+    // matchAll iterates a private copy of the regex, so no lastIndex state is
+    // shared or mutated.
+    for (const match of scan.matchAll(MESSAGE_DELIMITER_GLOBAL_REGEX)) {
       parts.push(buffered.slice(start, offset + match.index))
-      start = offset + MESSAGE_DELIMITER_REGEX.lastIndex
-      match = MESSAGE_DELIMITER_REGEX.exec(scan)
-    } while (match !== null)
+      start = offset + match.index + match[0].length
+    }
 
     const incomplete = buffered.slice(start)
 
     // All state is settled before emitting so `onEvent` may safely re-enter
-    // `feed`, which shares MESSAGE_DELIMITER_REGEX's lastIndex.
+    // `feed`.
     this.pending.length = 0
     this.tail = incomplete.slice(-MAX_DELIMITER_OVERLAP)
 
