@@ -170,7 +170,7 @@ describe('eventStreamDecoder', () => {
 
   describe('delimiters across chunk boundaries', () => {
     it('handles every delimiter split at every position', () => {
-      for (const delimiter of ['\n\n', '\r\r', '\n\r\n', '\r\n\r\n']) {
+      for (const delimiter of ['\n\n', '\r\r', '\n\r', '\n\r\n', '\r\n\n', '\r\n\r\n']) {
         const stream = `data: first${delimiter}data: second${delimiter}`
 
         for (let split = 1; split < stream.length; split++) {
@@ -213,11 +213,9 @@ describe('eventStreamDecoder', () => {
       ])
     })
 
-    // Known bug: when a CRLF line ending is split across chunks directly before
-    // a blank line, the stripped '\n' leaves the buffered '\r' adjacent to the
-    // next '\n', and the two merge into a single CRLF instead of terminating
-    // the message. Flip this to a regular `it` once fixed.
-    it.fails('handles a CRLF+LF delimiter split between the CR and LF', () => {
+    // Per spec, the '\n' completes the buffered '\r' into a single CRLF line
+    // ending, so the following '\n' is a blank line terminating the message.
+    it('handles a CRLF+LF delimiter split between the CR and LF', () => {
       const events = feedAll([
         'data: first\r',
         '\n\ndata: second\n\n',

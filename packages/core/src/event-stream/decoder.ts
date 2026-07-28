@@ -69,9 +69,11 @@ export class EventStreamDecoder {
   }
 
   feed(chunk: string): void {
-    // If the previous chunk ended with '\r', a leading '\n' in this chunk is the
-    // second half of a CRLF sequence and should be ignored to avoid double-splitting.
-    if (this.trailingCR && chunk.startsWith('\n')) {
+    // If the previous chunk ended with a '\r' that was already consumed as a
+    // line ending, a leading '\n' in this chunk is the second half of that CRLF
+    // pair and must be discarded. If the '\r' is still buffered, keep the '\n'
+    // so the pair naturally reads as a single CRLF line ending.
+    if (this.trailingCR && chunk.startsWith('\n') && !this.tail.endsWith('\r')) {
       chunk = chunk.slice(1)
     }
 
