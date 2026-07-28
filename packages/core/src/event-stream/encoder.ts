@@ -2,6 +2,7 @@ import type { EventStreamMessage } from './types'
 import { EventStreamEncoderError } from './error'
 
 const EVENT_STREAM_LINE_ENDING_REGEX = /\r\n|[\n\r]/
+const EVENT_STREAM_LINE_ENDING_GLOBAL_REGEX = /\r\n|[\n\r]/g
 
 function containsEventStreamLineBreak(value: string): boolean {
   return EVENT_STREAM_LINE_ENDING_REGEX.test(value)
@@ -32,17 +33,11 @@ export function assertEventStreamMessageComment(comment: string): void {
 }
 
 export function encodeEventStreamMessageData(data: string | undefined): string {
-  let output = ''
-
-  if (data !== undefined) {
-    const lines = data.split(EVENT_STREAM_LINE_ENDING_REGEX)
-
-    for (const line of lines) {
-      output += `data: ${line}\n`
-    }
+  if (data === undefined) {
+    return ''
   }
 
-  return output
+  return `data: ${data.replace(EVENT_STREAM_LINE_ENDING_GLOBAL_REGEX, '\ndata: ')}\n`
 }
 
 export function encodeEventStreamMessageComments(comments: readonly string[] | undefined): string {
