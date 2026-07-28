@@ -213,6 +213,19 @@ describe('eventStreamDecoder', () => {
       ])
     })
 
+    it('keeps the CRLF discard window open across empty chunks', () => {
+      const events = feedAll([
+        'data: first\n\r',
+        '',
+        '\n\ndata: second\n\n',
+      ])
+
+      expect(events).toEqual([
+        { data: 'first' },
+        { data: 'second' },
+      ])
+    })
+
     // Per spec, the '\n' completes the buffered '\r' into a single CRLF line
     // ending, so the following '\n' is a blank line terminating the message.
     it('handles a CRLF+LF delimiter split between the CR and LF', () => {

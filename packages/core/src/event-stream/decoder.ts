@@ -73,13 +73,17 @@ export class EventStreamDecoder {
   feed(chunk: string): void {
     if (this.discardLeadingLF && chunk.startsWith('\n')) {
       chunk = chunk.slice(1)
+      this.discardLeadingLF = false
     }
 
-    this.discardLeadingLF = false
-
+    // An empty chunk carries no stream bytes, so it must not close the
+    // discard window: the next stream character may still be the LF half
+    // of an already-consumed CRLF pair.
     if (chunk === '') {
       return
     }
+
+    this.discardLeadingLF = false
 
     const scan = this.tail + chunk
 
