@@ -346,6 +346,53 @@ for (const [adapter, createClientServer] of ADAPTERS) {
       expect(Date.now() - start).toBeLessThan(300) // cancelled in parallel without waiting for the second chunk
     })
 
+    it('cancel unfinished request octet stream', async () => {
+      let serverSignal!: AbortSignal
+
+      clientServer.setHandler(async (request) => {
+        serverSignal = request.signal!
+
+        const body = await request.resolveBody() as ReadableStream
+        expect(body).toBeInstanceOf(ReadableStream)
+
+        const reader = body.getReader()
+        await reader.read() // wait for first chunk
+        await reader.cancel()
+
+        return {
+          headers: {},
+          status: 200,
+          body: 'Hello',
+        }
+      })
+
+      let canceled = false
+      let times = 0
+      const start = Date.now()
+      const response = await clientServer.request({
+        headers: {},
+        body: new ReadableStream({
+          pull: async (controller) => {
+            times += 1
+            await sleep(times === 1 ? 25 : 1000)
+            controller.enqueue(new TextEncoder().encode('Hello'))
+          },
+          cancel: async () => {
+            canceled = true
+          },
+        }),
+        method: 'POST',
+        url: '/',
+      })
+
+      expect(response.status).toEqual(200)
+
+      expect(canceled).toBe(REQUEST_STREAM_CANCEL_ADAPTERS.has(adapter))
+      expect(serverSignal.aborted).toBe(false) // DO NOT ABORT IF ONLY CANCEL REQUEST BODY
+      expect(times).toBe(2) // the second chunk is being pulled
+      expect(Date.now() - start).toBeLessThan(300) // cancelled in parallel without waiting for the second chunk
+    })
+
     it('error happen while sending response octet stream', async () => {
       let canceled = false
       let serverSignal!: AbortSignal
