@@ -38,6 +38,7 @@ export function createBunWsClientServerTest(): ClientServerTest {
   })
 
   const wsc = new WebSocket(`ws://${server.url.host}`)
+  wsc.binaryType = 'arraybuffer'
 
   const untilReady = new Promise<void>((resolve, reject) => {
     wsc.addEventListener('open', () => resolve())

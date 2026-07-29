@@ -16,23 +16,16 @@ const ADAPTERS = [
 const REQUEST_STREAM_CANCEL_ADAPTERS = new Set(['deno-ws'])
 
 /**
- * Deno terminates an errored response stream as a clean end-of-body instead of
- * surfacing an error to the client, so mid-stream errors cannot be observed
- * over plain HTTP. Only the peer-based adapter propagates them.
- */
-const RESPONSE_STREAM_ERROR_ADAPTERS = new Set(['deno-ws'])
-
-/**
  * `Deno.serve` aborts `request.signal` once the response has been delivered,
  * even on success (legacy behavior, opt-out is still unstable), so signal
  * assertions made after the response only hold for the peer-based adapter.
+ *
+ * Tests assert the current (legacy) behavior for the other adapters, so a Deno
+ * default change shows up as a failure: then move the adapter into this set.
  */
 const CLEAN_SIGNAL_AFTER_RESPONSE_ADAPTERS = new Set(['deno-ws'])
 
 for (const [adapter, createClientServer] of ADAPTERS) {
-  const itResponseStreamError = RESPONSE_STREAM_ERROR_ADAPTERS.has(adapter) ? it : it.skip
-  const itCleanSignalAfterResponse = CLEAN_SIGNAL_AFTER_RESPONSE_ADAPTERS.has(adapter) ? it : it.skip
-
   describe({
     name: `signal and cancel: ${adapter}`,
     // aborted/cancelled requests legitimately leave pending timers and connections behind
@@ -47,7 +40,7 @@ for (const [adapter, createClientServer] of ADAPTERS) {
         clientServer.setHandler(NOT_FOUND_HANDLER)
       })
 
-      itCleanSignalAfterResponse('never aborted', async () => {
+      it('never aborted', async () => {
         let serverSignal!: AbortSignal
 
         clientServer.setHandler(async ({ signal }) => {
@@ -73,8 +66,15 @@ for (const [adapter, createClientServer] of ADAPTERS) {
         expect(await response.resolveBody()).toEqual('Hello')
 
         await sleep(100) // ensure everything is finished
-        // server shouldn't abort if finished successfully
-        expect(serverSignal.aborted).toBe(false)
+
+        if (CLEAN_SIGNAL_AFTER_RESPONSE_ADAPTERS.has(adapter)) {
+          // server shouldn't abort if finished successfully
+          expect(serverSignal.aborted).toBe(false)
+        }
+        else {
+          // legacy behavior: the signal aborts even after a successful response
+          expect(serverSignal.aborted).toBe(true)
+        }
       })
 
       it('already aborted', async () => {
@@ -340,11 +340,15 @@ for (const [adapter, createClientServer] of ADAPTERS) {
         if (CLEAN_SIGNAL_AFTER_RESPONSE_ADAPTERS.has(adapter)) {
           expect(serverSignal.aborted).toBe(false) // DO NOT ABORT IF ONLY CANCEL REQUEST BODY
         }
+        else {
+          // legacy behavior: the signal aborts once the response has been delivered
+          expect(serverSignal.aborted).toBe(true)
+        }
         expect(times).toBe(2) // the second chunk is being pulled
         expect(Date.now() - start).toBeLessThan(300) // cancelled in parallel without waiting for the second chunk
       })
 
-      itResponseStreamError('error happen while sending response octet stream', async () => {
+      it('error happen while sending response octet stream', async () => {
         let canceled = false
         let serverSignal!: AbortSignal
         let times = 0

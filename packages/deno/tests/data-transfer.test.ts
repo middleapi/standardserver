@@ -21,17 +21,7 @@ const ADAPTERS = [
   ['deno-ws', createDenoWsClientServerTest],
 ] as const
 
-/**
- * Deno stops delivering request body chunks to a `Deno.serve` handler once it
- * starts writing a streaming response, so echoing a request stream back over
- * plain HTTP deadlocks. Only the peer-based adapter can run the full-duplex
- * echo tests.
- */
-const FULL_DUPLEX_ADAPTERS = new Set(['deno-ws'])
-
 for (const [adapter, createClientServer] of ADAPTERS) {
-  const itFullDuplex = FULL_DUPLEX_ADAPTERS.has(adapter) ? it : it.skip
-
   describe({
     name: `data transfer: ${adapter}`,
     // streams cancelled/aborted mid-test legitimately leave pending timers and connections behind
@@ -243,7 +233,7 @@ for (const [adapter, createClientServer] of ADAPTERS) {
         })
       }
 
-      itFullDuplex('event stream in parallel', async () => {
+      it('event stream in parallel', async () => {
         clientServer.setHandler(async (request) => {
           const body = await request.resolveBody() as AsyncGenerator
           expect(isAsyncIteratorObject(body)).toBe(true)
@@ -301,7 +291,7 @@ for (const [adapter, createClientServer] of ADAPTERS) {
         expect(Date.now() - start).toBeLessThan(PARALLEL_THRESHOLD)
       })
 
-      itFullDuplex('event stream with error event in parallel', async () => {
+      it('event stream with error event in parallel', async () => {
         clientServer.setHandler(async (request) => {
           const actualBody = await request.resolveBody() as AsyncGenerator
           expect(isAsyncIteratorObject(actualBody)).toBe(true)
@@ -364,7 +354,7 @@ for (const [adapter, createClientServer] of ADAPTERS) {
         expect(Date.now() - start).toBeLessThan(PARALLEL_THRESHOLD)
       })
 
-      itFullDuplex('octet stream in parallel', async () => {
+      it('octet stream in parallel', async () => {
         clientServer.setHandler(async (request) => {
           expect(request.headers['x-from']).toEqual('client')
           expect(request.method).toEqual('POST')

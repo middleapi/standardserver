@@ -38,7 +38,9 @@ jobs:
 
       - run: pnpm runtime set bun 1
 
-      - run: pnpm runtime set deno 2
+      # tests assert Deno LTS behavior: newer Deno stalls full-duplex request
+      # streaming, which shows up as failures when this pin moves
+      - run: pnpm runtime set deno 2.2
 
       - run: pnpm i
 
