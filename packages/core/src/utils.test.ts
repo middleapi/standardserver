@@ -42,16 +42,52 @@ it('getFilenameFromContentDisposition', () => {
   expect(getFilenameFromContentDisposition('inline; filename*=!%40%23%24%25^%25^%26%2A%28%29%27%22.txt; size=123')).toEqual('!@#$%^%^&*()\'".txt')
 })
 
-it('mergeStandardHeaders', () => {
-  expect(mergeStandardHeaders({ a: '1' }, { a: '2' })).toEqual({ a: ['1', '2'] })
-  expect(mergeStandardHeaders({ a: ['1'] }, { a: '2' })).toEqual({ a: ['1', '2'] })
-  expect(mergeStandardHeaders({ a: ['1', '2'] }, { a: '3' })).toEqual({ a: ['1', '2', '3'] })
-  expect(mergeStandardHeaders({ a: ['1', '2'] }, { a: ['3'] })).toEqual({ a: ['1', '2', '3'] })
-  expect(mergeStandardHeaders({ a: ['1', '2'] }, { a: ['3', '4'] })).toEqual({ a: ['1', '2', '3', '4'] })
+describe('mergeStandardHeaders', () => {
+  afterEach(() => {
+    expect(({} as any).polluted).toEqual(undefined)
+    expect(({} as any).a).toEqual(undefined)
+  })
 
-  expect(mergeStandardHeaders({ a: '1' }, { b: '2' })).toEqual({ a: '1', b: '2' })
-  expect(mergeStandardHeaders({ a: '1', b: undefined }, { b: '2' })).toEqual({ a: '1', b: '2' })
-  expect(mergeStandardHeaders({ a: '1' }, { a: undefined, b: '2' })).toEqual({ a: '1', b: '2' })
+  it('merge duplicated keys', () => {
+    expect(mergeStandardHeaders({ a: '1' }, { a: '2' })).toEqual({ a: ['1', '2'] })
+    expect(mergeStandardHeaders({ a: ['1'] }, { a: '2' })).toEqual({ a: ['1', '2'] })
+    expect(mergeStandardHeaders({ a: ['1', '2'] }, { a: '3' })).toEqual({ a: ['1', '2', '3'] })
+    expect(mergeStandardHeaders({ a: ['1', '2'] }, { a: ['3'] })).toEqual({ a: ['1', '2', '3'] })
+    expect(mergeStandardHeaders({ a: ['1', '2'] }, { a: ['3', '4'] })).toEqual({ a: ['1', '2', '3', '4'] })
+  })
+
+  it('handle distinct and undefined keys', () => {
+    expect(mergeStandardHeaders({ a: '1' }, { b: '2' })).toEqual({ a: '1', b: '2' })
+    expect(mergeStandardHeaders({ a: '1', b: undefined }, { b: '2' })).toEqual({ a: '1', b: '2' })
+    expect(mergeStandardHeaders({ a: '1' }, { a: undefined, b: '2' })).toEqual({ a: '1', b: '2' })
+
+    // an unset marker coming only from b is carried through, like `headers['content-type'] = undefined`
+    expect(Object.keys(mergeStandardHeaders({ a: '1' }, { b: undefined }))).toEqual(['a', 'b'])
+  })
+
+  it('keep keys of a in position, then keys only in b', () => {
+    expect(Object.keys(mergeStandardHeaders({ c: '1', a: '2' }, { b: '3', a: '4' }))).toEqual(['c', 'a', 'b'])
+  })
+
+  it('not pollute the prototype through __proto__ in b', () => {
+    const b = JSON.parse('{ "__proto__": { "polluted": "yes" } }')
+
+    const merged = mergeStandardHeaders({ a: '1' }, b)
+
+    expect(Object.getPrototypeOf(merged)).toEqual(Object.prototype)
+    expect(Object.getOwnPropertyDescriptor(merged, '__proto__')?.value).toEqual({ polluted: 'yes' })
+    expect(merged.a).toEqual('1')
+  })
+
+  it('not pollute the prototype through __proto__ in both a and b', () => {
+    const a = JSON.parse('{ "__proto__": "1" }')
+    const b = JSON.parse('{ "__proto__": "2" }')
+
+    const merged = mergeStandardHeaders(a, b)
+
+    expect(Object.getPrototypeOf(merged)).toEqual(Object.prototype)
+    expect(Object.getOwnPropertyDescriptor(merged, '__proto__')?.value).toEqual(['1', '2'])
+  })
 })
 
 it('flattenStandardHeader', () => {
