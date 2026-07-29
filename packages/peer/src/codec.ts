@@ -36,11 +36,12 @@ export async function encodePeerMessage(
   message: PeerMessage,
   options: EncodePeerMessageOptions = {},
 ): Promise<string | Uint8Array<ArrayBuffer>> {
-  const jsonPart = stringifyJSON({ ...message, binary: undefined })
-
   if (message.binary === undefined) {
+    const jsonPart = stringifyJSON(message)
     return options.prefix ? options.prefix + jsonPart : jsonPart
   }
+
+  const jsonPart = stringifyJSON({ ...message, binary: undefined })
 
   const textBytes = textEncoder.encode(
     options.prefix ? options.prefix + jsonPart : jsonPart,

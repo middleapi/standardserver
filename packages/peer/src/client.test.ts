@@ -162,6 +162,31 @@ describe('clientPeer', () => {
       await expect(response.resolveBody()).rejects.toThrow()
     })
 
+    it('resolves when the response arrives while the request message is still being sent', async () => {
+      send.mockImplementation(async (message) => {
+        if (message.kind === 'request') {
+          // simulate a transport that delivers and processes the message before send resolves
+          await peer.message(makeResponseMessage(message.id, 'early'))
+        }
+      })
+
+      const response = await peer.request(makeRequest())
+      expect(response.status).toBe(200)
+      expect(await response.resolveBody()).toBe('early')
+    })
+
+    it('does not send the request when the peer is closed while encoding the body', async () => {
+      const form = new FormData()
+      form.append('note', 'hello')
+
+      const promise = peer.request(makeRequest({ body: form }))
+      const closePromise = peer.close()
+
+      await expect(promise).rejects.toThrow(AbortError)
+      await closePromise
+      expect(send).not.toHaveBeenCalled()
+    })
+
     it('rethrow and auto close if throw during toStandardBody', async () => {
       const error = new Error('something went wrong')
       toStandardBodySpy.mockImplementationOnce(() => {
@@ -205,6 +230,19 @@ describe('clientPeer', () => {
       expect(send).toHaveBeenNthCalledWith(2, { id, kind: 'cancel' })
     })
 
+    it('throws when signal aborted during encode', async () => {
+      const controller = new AbortController()
+      const form = new FormData()
+      form.append('note', 'hello')
+
+      const promise = peer.request(makeRequest({ body: form, signal: controller.signal }))
+      controller.abort(new Error('aborted during encode'))
+
+      await expect(promise).rejects.toThrow('aborted during encode')
+      // the request message is never sent, only the cancel
+      expect(send.mock.calls.map(([m]) => m.kind)).toEqual(['cancel'])
+    })
+
     it('throws when signal aborted during send', async () => {
       const controller = new AbortController()
       send.mockImplementation(async () => {
@@ -230,6 +268,71 @@ describe('clientPeer', () => {
       const { id, promise } = await requestAndGetId()
       await peer.message(makeCancelMessage(id))
       await expect(promise).rejects.toThrow(AbortError)
+    })
+
+    it('removes the abort listener once the response is finished', async () => {
+      const controller = new AbortController()
+      const addSpy = vi.spyOn(controller.signal, 'addEventListener')
+      const removeSpy = vi.spyOn(controller.signal, 'removeEventListener')
+
+      const { id, promise } = await requestAndGetId(makeRequest({ signal: controller.signal }))
+      expect(addSpy).toHaveBeenCalledTimes(1)
+      expect(removeSpy).not.toHaveBeenCalled()
+
+      await peer.message(makeResponseMessage(id, 'done'))
+      await promise
+
+      // the exact listener that was added is removed again
+      expect(removeSpy).toHaveBeenCalledTimes(1)
+      expect(removeSpy).toHaveBeenCalledWith('abort', addSpy.mock.calls[0]![1])
+
+      // aborting after completion is a no-op: no cancel message is sent
+      controller.abort(new Error('late abort'))
+      await sleep(1)
+      expect(send.mock.calls.map(([m]) => m.kind)).toEqual(['request'])
+    })
+
+    it('keeps the abort listener while the response streams and removes it when the stream finishes', async () => {
+      const controller = new AbortController()
+      const removeSpy = vi.spyOn(controller.signal, 'removeEventListener')
+
+      const { id, promise } = await requestAndGetId(makeRequest({ signal: controller.signal }))
+      await peer.message(makeStreamingResponse(id, 'event-stream'))
+
+      const response = await promise
+      const iter = await response.resolveBody() as AsyncIterator<unknown>
+
+      // the response is not finished yet, so aborting must still be possible
+      expect(removeSpy).not.toHaveBeenCalled()
+
+      await peer.message(makeEventStreamMessage(id, 'bye', 'close'))
+      await expect(iter.next()).resolves.toEqual({ value: 'bye', done: true })
+
+      expect(removeSpy).toHaveBeenCalledTimes(1)
+
+      // aborting after completion is a no-op: no cancel message is sent
+      controller.abort(new Error('late abort'))
+      await sleep(1)
+      expect(send.mock.calls.map(([m]) => m.kind)).toEqual(['request'])
+    })
+
+    it('silently ignores transport failures when sending the cancel message on abort', async () => {
+      send.mockImplementation(async (message) => {
+        if (message.kind === 'cancel') {
+          throw new Error('transport down')
+        }
+      })
+
+      const controller = new AbortController()
+      const promise = peer.request(makeRequest({ signal: controller.signal }))
+      await waitForSend()
+
+      const reason = new Error('user abort')
+      controller.abort(reason)
+
+      await expect(promise).rejects.toBe(reason)
+      // let the failed cancel delivery settle; it must not surface anywhere
+      await sleep(1)
     })
   })
 
@@ -290,6 +393,61 @@ describe('clientPeer', () => {
 
         await peer.message(makeResponseMessage(id))
         await promise
+      })
+
+      it('stops transmitting the event-stream request body when a full response arrives', async () => {
+        const iter = makeHangingIter()
+        const returnSpy = vi.spyOn(iter, 'return')
+
+        const { id, promise } = await requestAndGetId(
+          makeRequest({ method: 'POST', headers: {}, body: iter }),
+        )
+
+        await peer.message(makeResponseMessage(id, 'done'))
+        const response = await promise
+        expect(await response.resolveBody()).toBe('done')
+
+        // the server no longer reads the request body, so the upload is cancelled locally
+        expect(returnSpy).toHaveBeenCalled()
+        expect(send.mock.calls.map(([m]) => m.kind)).toEqual(['request'])
+      })
+
+      it('releases the event-stream request body when the request completes during send', async () => {
+        const iter = makeHangingIter()
+        const returnSpy = vi.spyOn(iter, 'return')
+
+        send.mockImplementation(async (message) => {
+          if (message.kind === 'request') {
+            await peer.message(makeResponseMessage(message.id, 'done'))
+          }
+        })
+
+        const response = await peer.request(makeRequest({ method: 'POST', headers: {}, body: iter }))
+        expect(await response.resolveBody()).toBe('done')
+
+        // the body is released in the background, after the response already settled
+        await vi.waitFor(() => expect(returnSpy).toHaveBeenCalled())
+        expect(send.mock.calls.map(([m]) => m.kind)).toEqual(['request'])
+      })
+
+      it('silently ignores transport failures when aborting after an event-stream body error', async () => {
+        const iteratorError = new Error('iterator broke')
+        const iter = new AsyncIteratorClass<unknown>(async () => {
+          throw iteratorError
+        }, async () => {})
+
+        send.mockImplementation(async (message) => {
+          if (message.kind === 'cancel') {
+            throw new Error('transport down')
+          }
+        })
+
+        await expect(
+          peer.request(makeRequest({ method: 'POST', headers: {}, body: iter })),
+        ).rejects.toBe(iteratorError)
+
+        // let the failed cancel delivery settle; it must not surface anywhere
+        await sleep(1)
       })
 
       it('does not send cancel message on non-protocol error if request was resolved', async () => {
@@ -441,6 +599,63 @@ describe('clientPeer', () => {
 
         await peer.message(makeResponseMessage(id))
         await promise
+      })
+
+      it('stops transmitting the octet-stream request body when a full response arrives', async () => {
+        const cancel = vi.fn()
+        const stream = new ReadableStream<Uint8Array>({ start() { /* hangs */ }, cancel })
+
+        const { id, promise } = await requestAndGetId(
+          makeRequest({ method: 'POST', headers: {}, body: stream }),
+        )
+
+        await peer.message(makeResponseMessage(id, 'done'))
+        const response = await promise
+        expect(await response.resolveBody()).toBe('done')
+
+        // the server no longer reads the request body, so the upload is cancelled locally
+        expect(cancel).toHaveBeenCalled()
+        expect(send.mock.calls.map(([m]) => m.kind)).toEqual(['request'])
+      })
+
+      it('releases the octet-stream request body when the request completes during send', async () => {
+        const cancel = vi.fn()
+        const stream = new ReadableStream<Uint8Array>({ start() { /* hangs */ }, cancel })
+
+        send.mockImplementation(async (message) => {
+          if (message.kind === 'request') {
+            await peer.message(makeResponseMessage(message.id, 'done'))
+          }
+        })
+
+        const response = await peer.request(makeRequest({ method: 'POST', headers: {}, body: stream }))
+        expect(await response.resolveBody()).toBe('done')
+
+        // the body is released in the background, after the response already settled
+        await vi.waitFor(() => expect(cancel).toHaveBeenCalled())
+        expect(send.mock.calls.map(([m]) => m.kind)).toEqual(['request'])
+      })
+
+      it('silently ignores transport failures when aborting after an octet-stream body error', async () => {
+        const streamError = new Error('stream broke')
+        const stream = new ReadableStream<Uint8Array<ArrayBuffer>>({
+          pull(controller) {
+            controller.error(streamError)
+          },
+        })
+
+        send.mockImplementation(async (message) => {
+          if (message.kind === 'cancel') {
+            throw new Error('transport down')
+          }
+        })
+
+        await expect(
+          peer.request(makeRequest({ method: 'POST', headers: {}, body: stream })),
+        ).rejects.toBe(streamError)
+
+        // let the failed cancel delivery settle; it must not surface anywhere
+        await sleep(1)
       })
 
       it('does not send cancel message on error if request was resolved', async () => {

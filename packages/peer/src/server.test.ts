@@ -271,6 +271,29 @@ describe('serverPeer', () => {
       it('ignores event-stream for non-existing request', async () => {
         await peer.message(makeEventStreamMessage('nonexist', 'ignored'), vi.fn())
       })
+
+      it('stops accepting event-stream messages once the body is fully consumed', async () => {
+        const { handler, box } = deferredHandler()
+        const msg = makeRequestMessage({ headers: { 'standard-server': 'event-stream' } })
+        const promise = peer.message(msg, handler)
+
+        await vi.waitFor(() => expect(handler).toHaveBeenCalled())
+        const request = handler.mock.calls[0]![0]
+        const iter = await request.resolveBody() as AsyncIterator<unknown>
+
+        await peer.message(makeEventStreamMessage('1', 'bye', 'close'), vi.fn())
+        await expect(iter.next()).resolves.toEqual({ value: 'bye', done: true })
+
+        // late messages are ignored instead of buffered forever
+        await peer.message(makeEventStreamMessage('1', 'late'), vi.fn())
+        expect((peer as any).requests.get('1').eventStreamMessageQueue).toBeUndefined()
+
+        box.resolve(jsonResponse())
+        await promise
+
+        // the fully consumed body does not trigger a stream/cancel on close
+        expect(send.mock.calls.map(([m]) => m.kind)).toEqual(['response'])
+      })
     })
 
     describe('response body (outgoing)', () => {

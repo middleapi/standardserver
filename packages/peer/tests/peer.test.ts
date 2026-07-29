@@ -52,6 +52,39 @@ describe('peer integration (client <-> server over encoded wire)', () => {
     expect(await response.resolveBody()).toEqual({ echo: { name: 'Alice' }, url: '/greet', method: 'PUT' })
   })
 
+  it('completes when the transport waits for full remote processing before send resolves', async () => {
+    const prefix = 'peer:'
+    const wire = {} as { client: ClientPeer, server: ServerPeer }
+
+    const handler = async (request: StandardLazyRequest): Promise<StandardResponse> => ({
+      status: 200,
+      headers: {},
+      body: { pong: request.url },
+    })
+
+    // unlike `connect()`, each send awaits the remote side handling the message,
+    // so the response arrives while the request `send` is still in flight
+    wire.client = new ClientPeerClass(async (message) => {
+      const decoded = decodePeerMessage(await encodePeerMessage(message, { prefix }), { prefix })
+      if (!decoded.matched) {
+        throw new Error('Failed to decode message on the wire')
+      }
+      await wire.server.message(decoded.message as ClientPeerSendMessage, handler)
+    })
+
+    wire.server = new ServerPeerClass(async (message) => {
+      const decoded = decodePeerMessage(await encodePeerMessage(message, { prefix }), { prefix })
+      if (!decoded.matched) {
+        throw new Error('Failed to decode message on the wire')
+      }
+      await wire.client.message(decoded.message as ServerPeerSendMessage)
+    })
+
+    const response = await wire.client.request({ url: '/ping', method: 'GET', headers: {} })
+    expect(response.status).toBe(200)
+    expect(await response.resolveBody()).toEqual({ pong: '/ping' })
+  })
+
   it('handles multiple concurrent requests over the same connection', async () => {
     const { client } = connect(async request => ({
       status: 200,
