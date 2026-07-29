@@ -13,7 +13,7 @@
     "dist"
   ],
   "scripts": {
-    "type:check": "{ echo '/* eslint-disable */'; deno types; } > lib.deno.d.ts && tsc -b",
+    "type:check": "tsc -b",
     "test": "deno test --no-check --unstable-sloppy-imports --allow-net tests/"
   },
   "devDependencies": {
@@ -22,6 +22,7 @@
     "@standardserver/peer": "workspace:*",
     "@standardserver/shared": "workspace:*",
     "@std/expect": "jsr:^1.0.20",
-    "@std/testing": "jsr:^1.0.19"
+    "@std/testing": "jsr:^1.0.19",
+    "@types/deno": "^2.7.0"
   }
 }

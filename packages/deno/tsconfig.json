@@ -1,7 +1,7 @@
 {
   "extends": "../../tsconfig.lib.json",
   "compilerOptions": {
-    "lib": ["dom", "dom.iterable", "dom.asynciterable"]
+    "types": ["deno"]
   },
-  "include": ["./lib.deno.d.ts", "./package.json", "src", "tests"]
+  "include": ["./package.json", "src", "tests"]
 }
