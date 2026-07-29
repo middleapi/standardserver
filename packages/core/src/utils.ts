@@ -38,23 +38,19 @@ export function flattenStandardHeader(header: string | readonly string[] | undef
 }
 
 export function mergeStandardHeaders(a: StandardHeaders, b: StandardHeaders): StandardHeaders {
-  const merged = { ...a }
+  const merged = { ...a, ...b }
 
   for (const key in b) {
-    if (Array.isArray(b[key])) {
-      merged[key] = [...toArray(merged[key]), ...b[key]]
+    if (!Object.hasOwn(a, key)) {
+      continue
     }
-    else if (b[key] !== undefined) {
-      if (Array.isArray(merged[key])) {
-        merged[key] = [...merged[key], b[key]]
-      }
-      else if (merged[key] !== undefined) {
-        merged[key] = [merged[key], b[key]]
-      }
-      else {
-        merged[key] = b[key]
-      }
-    }
+
+    const aValue = a[key]
+    const bValue = b[key]
+
+    merged[key] = aValue === undefined || bValue === undefined
+      ? aValue ?? bValue
+      : [...toArray(aValue), ...toArray(bValue)]
   }
 
   return merged
