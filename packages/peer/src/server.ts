@@ -1,7 +1,7 @@
 import type { StandardLazyRequest, StandardResponse } from '@standardserver/core'
 import type { Queue } from '@standardserver/shared'
 import type { ClientPeerSendMessage, PeerEventStreamMessage, PeerOctetStreamMessage, PeerResponseMessage, ServerPeerSendMessage } from './types'
-import { AbortError, isAsyncIteratorObject } from '@standardserver/shared'
+import { AbortError, hasAnyDefinedValue, isAsyncIteratorObject } from '@standardserver/shared'
 import { encodeAtomicStandardBody, toStandardBody } from './body'
 import { EventStreamTransmitter } from './event-stream'
 import { HibernationAsyncIteratorClass } from './hibernation'
@@ -58,10 +58,17 @@ export class ServerPeer {
 
     try {
       const decoded = toStandardBody(message, async ({ kind }) => {
-        if (kind === 'cancelled' && (state.eventStreamMessageQueue || state.octetStreamMessageQueue)) {
+        /**
+         * The request body is finished (fully read, errored, or cancelled).
+         * Drop the queues so late stream messages are ignored instead of
+         * buffered forever.
+         */
+        const streamActive = state.eventStreamMessageQueue !== undefined || state.octetStreamMessageQueue !== undefined
+        state.eventStreamMessageQueue = undefined
+        state.octetStreamMessageQueue = undefined
+
+        if (kind === 'cancelled' && streamActive) {
           // only need cancel stream if streams is still active
-          state.eventStreamMessageQueue = undefined
-          state.octetStreamMessageQueue = undefined
           await this.send({ id, kind: 'stream/cancel' })
         }
       })
@@ -89,11 +96,11 @@ export class ServerPeer {
       }
 
       const responseMessage: PeerResponseMessage = {
-        id: message.id,
+        id,
         kind: 'response',
         json: {
           status: response.status === 200 ? undefined : response.status,
-          headers: Object.entries(encodedAtomicBody.headers).every(([,v]) => v === undefined) ? undefined : encodedAtomicBody.headers,
+          headers: hasAnyDefinedValue(encodedAtomicBody.headers) ? encodedAtomicBody.headers : undefined,
           body: encodedAtomicBody.jsonBody,
         },
         binary: encodedAtomicBody.binary,
@@ -109,15 +116,15 @@ export class ServerPeer {
 
       if (isAsyncIteratorObject(response.body)) {
         if (response.body instanceof HibernationAsyncIteratorClass) {
-          await response.body['~callback']?.(message.id)
+          await response.body['~callback']?.(id)
         }
         else {
-          const transmitter = new EventStreamTransmitter(response.body, message.id, this.send)
+          const transmitter = new EventStreamTransmitter(response.body, id, this.send)
           state.eventStreamTransmitter = transmitter
           await transmitter.transmit().catch(async (reason) => {
             // only cancel if stream transmitter is still active
             if (state.eventStreamTransmitter) {
-              await this.cancelById(message.id, reason)
+              await this.cancelById(id, reason)
             }
 
             // WARNING: errors that occur here are silently ignored.
@@ -125,12 +132,12 @@ export class ServerPeer {
         }
       }
       else if (response.body instanceof ReadableStream) {
-        const transmitter = new OctetStreamTransmitter(response.body, message.id, this.send)
+        const transmitter = new OctetStreamTransmitter(response.body, id, this.send)
         state.octetStreamTransmitter = transmitter
         await transmitter.transmit().catch(async (reason) => {
           // only cancel if stream transmitter is still active
           if (state.octetStreamTransmitter) {
-            await this.cancelById(message.id, reason)
+            await this.cancelById(id, reason)
           }
 
           // WARNING: errors that occur here are silently ignored.
@@ -142,7 +149,7 @@ export class ServerPeer {
       await this.closeById(id)
     }
     catch (reason) {
-      await this.cancelById(message.id, reason)
+      await this.cancelById(id, reason)
       throw reason
     }
   }
@@ -163,7 +170,10 @@ export class ServerPeer {
     }
 
     this.requests.delete(id)
-    reason ??= new AbortError('Request was closed')
+
+    if (state.controller || state.eventStreamMessageQueue || state.octetStreamMessageQueue) {
+      reason ??= new AbortError('Request was closed')
+    }
 
     state.controller?.abort(reason)
     state.controller = undefined
