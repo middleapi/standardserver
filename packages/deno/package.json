@@ -11,12 +11,15 @@
     "directory": "packages/deno"
   },
   "scripts": {
-    "test": "deno test --sloppy-imports --unstable-no-legacy-abort --allow-net --allow-read --allow-env tests/"
+    "type:check": "{ echo '/* eslint-disable */'; deno types; } > lib.deno.d.ts && tsc -b",
+    "test": "deno test --no-check --unstable-sloppy-imports --allow-net tests/"
   },
   "devDependencies": {
     "@standardserver/core": "workspace:*",
     "@standardserver/fetch": "workspace:*",
     "@standardserver/peer": "workspace:*",
-    "@standardserver/shared": "workspace:*"
+    "@standardserver/shared": "workspace:*",
+    "@std/expect": "jsr:^1.0.20",
+    "@std/testing": "jsr:^1.0.19"
   }
 }

@@ -117,7 +117,8 @@ export function toFetchBody(
 
     // BunS3 can use NaN for the size
     if (!Number.isFinite(body.size)) {
-      return [body.stream(), headers]
+      // deno complain about returned types of body.stream()
+      return [body.stream() as ReadableStream<Uint8Array<ArrayBuffer>>, headers]
     }
 
     headers['content-length'] = body.size.toString()

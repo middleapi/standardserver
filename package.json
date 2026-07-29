@@ -9,7 +9,7 @@
     "prepare": "simple-git-hooks",
     "type:check": "pnpm -r run type:check && tsc",
     "test": "pnpm run -r test && vitest run",
-    "test:coverage": "pnpm run -r test && vitest run --coverage",
+    "test:coverage": "pnpm run -r test:coverage && vitest run --coverage",
     "bench": "vitest bench --run",
     "lint": "eslint --max-warnings=0 .",
     "lint:fix": "eslint --max-warnings=0 --fix .",
