@@ -6,10 +6,10 @@ export default defineConfig(() => ({
   test: {
     globals: true,
     include: ['**/*.test.ts'],
-    exclude: [...defaultExclude, '**/.claude/**', './packages/bun/**', './packages/cloudflare/**'],
+    exclude: [...defaultExclude, '**/.claude/**', './packages/bun/**', './packages/deno/**'],
     coverage: {
       include: ['packages/*/src/**'],
-      exclude: ['**.test-d.*', '**.test.*', '**/*.bench.ts', './packages/bun/**', './packages/cloudflare/**'],
+      exclude: ['**.test-d.*', '**.test.*', '**/*.bench.ts', './packages/bun/**', './packages/deno/**'],
     },
     benchmark: {
       include: ['**/*.bench.ts'],
