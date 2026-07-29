@@ -1,9 +1,22 @@
 packages:
   - packages/*
   - playgrounds/*
-preferWorkspacePackages: true
+
+# Hoist everything (default) except @types/bun. When @types/node and @types/bun are
+# installed in different packages, hoisting both into the same env causes a
+# conflict and breaks type checking when working on Node.js types alongside
+# a package that imports from 'bun'. Excluding @types/bun from hoisting
+# avoids this while keeping hoisting enabled for everything else.
+hoistPattern:
+  - '*'
+  - '!@types/bun'
+
+# Lets playgrounds/* resolve local packages without the 'workspace:' protocol
+# during development. When a playground is cloned standalone, the same
+# dependencies resolve to registry versions instead.
 linkWorkspacePackages: true
-shamefullyHoist: true
+preferWorkspacePackages: true
+
 allowBuilds:
   esbuild: false
   simple-git-hooks: false

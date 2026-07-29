@@ -90,11 +90,53 @@ importers:
         specifier: ^8.21.1
         version: 8.21.1
 
+  packages/bun:
+    devDependencies:
+      '@standardserver/core':
+        specifier: workspace:*
+        version: link:../core
+      '@standardserver/fetch':
+        specifier: workspace:*
+        version: link:../fetch
+      '@standardserver/peer':
+        specifier: workspace:*
+        version: link:../peer
+      '@standardserver/shared':
+        specifier: workspace:*
+        version: link:../shared
+      '@types/bun':
+        specifier: ^1.3.14
+        version: 1.3.14
+
   packages/core:
     dependencies:
       '@standardserver/shared':
         specifier: workspace:*
         version: link:../shared
+
+  packages/deno:
+    devDependencies:
+      '@standardserver/core':
+        specifier: workspace:*
+        version: link:../core
+      '@standardserver/fetch':
+        specifier: workspace:*
+        version: link:../fetch
+      '@standardserver/peer':
+        specifier: workspace:*
+        version: link:../peer
+      '@standardserver/shared':
+        specifier: workspace:*
+        version: link:../shared
+      '@std/expect':
+        specifier: jsr:^1.0.20
+        version: '@jsr/std__expect@1.0.20'
+      '@std/testing':
+        specifier: jsr:^1.0.19
+        version: '@jsr/std__testing@1.0.19'
+      '@types/deno':
+        specifier: ^2.7.0
+        version: 2.7.0
 
   packages/fetch:
     dependencies:
@@ -732,6 +774,30 @@ packages:
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
 
+  '@jsr/std__assert@1.0.19':
+    resolution: {integrity: sha512-pEj6RPkGbqlgRmyKwATp4cUs6+ijxtdrv3bq8v1d2I2CEcMEyPaO8cVKro61wGRDH4cNg8Zx6haztvK/9m7gkA==, tarball: https://npm.jsr.io/~/11/@jsr/std__assert/1.0.19.tgz}
+
+  '@jsr/std__async@1.5.0':
+    resolution: {integrity: sha512-I2Qekl1oQYM+dpI2RQUCKi1TBuaA7Od3LNzxcqls9s1e2ytiZyREL4403qHJ6UbLNAwbqO2ZhdWAWDUQAajyiA==, tarball: https://npm.jsr.io/~/11/@jsr/std__async/1.5.0.tgz}
+
+  '@jsr/std__data-structures@1.1.1':
+    resolution: {integrity: sha512-ceWGRdAPq3oD2If4k/JvgL/bskN5VohnM6wINlJhYLz4yCW9cmHFcGsrhRgh9HbD9xhXi9sEQoiHQG5B9caHEg==, tarball: https://npm.jsr.io/~/11/@jsr/std__data-structures/1.1.1.tgz}
+
+  '@jsr/std__expect@1.0.20':
+    resolution: {integrity: sha512-AkDNshk9qIKP7OzRcSZ9qb4txPJVOxd2mDWl0XtU19eZecIzcNrxrG9gnz1j5t+U+vm6AEHkjMdwnvIfFQsJ7g==, tarball: https://npm.jsr.io/~/11/@jsr/std__expect/1.0.20.tgz}
+
+  '@jsr/std__fs@1.0.24':
+    resolution: {integrity: sha512-UunW2Rg++9sA74NJnYMGTsMVQgoFRAwPP02wRRohL0PQBNorbyxHiyCMRaxYQCtLepTLkC4nUyMtcwrGKqTR6g==, tarball: https://npm.jsr.io/~/11/@jsr/std__fs/1.0.24.tgz}
+
+  '@jsr/std__internal@1.0.14':
+    resolution: {integrity: sha512-JT8b/t40WcR9q0GDwRZUooY7aXeXnFal8iidE/5TckdAFtvpVAsaJ71/Xgf1SfoChs41s6CZkuCYM8toaNgdvA==, tarball: https://npm.jsr.io/~/11/@jsr/std__internal/1.0.14.tgz}
+
+  '@jsr/std__path@1.1.6':
+    resolution: {integrity: sha512-H1Cmg6z8jFyIsQbVV+vZB4eOx4k6Qg8lyUM6l7nZysj5MZumg89kb0M1bsPBTGQis3fw6mJFkJELo5+AK6oCFA==, tarball: https://npm.jsr.io/~/11/@jsr/std__path/1.1.6.tgz}
+
+  '@jsr/std__testing@1.0.19':
+    resolution: {integrity: sha512-maQIRFWIcTTWB7ITYIVbql1Q3KA9AsgR4/Ep2SfEq65V2SxQq52iLcFxuvX0azRp1leBCb8mBUXZr389SajY7Q==, tarball: https://npm.jsr.io/~/11/@jsr/std__testing/1.0.19.tgz}
+
   '@noble/hashes@1.8.0':
     resolution: {integrity: sha512-jCs9ldd7NwzpgXDIf6P3+NrHh9/sD6CQdxHyjQI+h/6rDNo88ypBxxz45UDuZHz9r3tNz7N/VInSVoVdtXEI4A==}
     engines: {node: ^14.21.3 || >=16}
@@ -1087,6 +1153,9 @@ packages:
     peerDependencies:
       eslint: ^9.0.0 || ^10.0.0
 
+  '@types/bun@1.3.14':
+    resolution: {integrity: sha512-h1hFqFVcvAvD9j9K7ZW7vd82aSA+rTdznZa+5bwvCwqSB1jmmfLcbIWhOLx1/+boy/xmjgCs/OMUL8hRJSmnPw==}
+
   '@types/chai@5.2.3':
     resolution: {integrity: sha512-Mw558oeA9fFbv65/y4mHtXDs9bPnFMZAL/jxdPFUpOHHIXX91mcgEHbS5Lahr+pwZFR8A7GQleRWeI6cGFC2UA==}
 
@@ -1098,6 +1167,9 @@ packages:
 
   '@types/deep-eql@4.0.2':
     resolution: {integrity: sha512-c9h9dVVMigMPc4bwTvC5dxqtqJZwQPePsWjPlpSOnojbor6pGqdk541lfA7AqFQr5pB1BRdq0juY9db81BwyFw==}
+
+  '@types/deno@2.7.0':
+    resolution: {integrity: sha512-Y6fWcV8KpYeO3Lik/RiYnUxtr/LWqoeACciU0CA+dr1U/45tGgaX3HWQQAPCNN53raN4Rr4Fht4y6qsUH57fDA==}
 
   '@types/esrecurse@4.3.1':
     resolution: {integrity: sha512-xJBAbDifo5hpffDBuHl0Y8ywswbiAp/Wi7Y/GtAgSlZyIABppyurxVueOPE8LUQOxdlgi6Zqce7uoEpqNTeiUw==}
@@ -1361,6 +1433,9 @@ packages:
     resolution: {integrity: sha512-2uuObtROJvEGZJk4T6t3fDgUAmgDYF0PeSZt23GCn1ItxECvR+ROVJNYT7r1lS8nIMJae6IkIgcDEIbT5iwWAA==}
     engines: {node: ^22.18.0 || ^24.11.0 || >=26.0.0}
     hasBin: true
+
+  bun-types@1.3.14:
+    resolution: {integrity: sha512-4N0ig0fEomHt5R0KCFWjovxow98rIoRwKolrYdCcknNwMekCXRnWEUvgu5soYV8QXtVsrUD8B95MBOZGPvr6KQ==}
 
   bundle-name@4.1.0:
     resolution: {integrity: sha512-tjwM5exMg6BGRI+kNmTntNsvdZS1X8BFYS6tnJ2hdH0kVxM6/eVZ2xy+FqStSWvYmtfFMDLIxurorHwDKfDz5Q==}
@@ -3882,6 +3957,44 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
 
+  '@jsr/std__assert@1.0.19':
+    dependencies:
+      '@jsr/std__internal': 1.0.14
+
+  '@jsr/std__async@1.5.0':
+    dependencies:
+      '@jsr/std__data-structures': 1.1.1
+
+  '@jsr/std__data-structures@1.1.1':
+    dependencies:
+      '@jsr/std__assert': 1.0.19
+
+  '@jsr/std__expect@1.0.20':
+    dependencies:
+      '@jsr/std__assert': 1.0.19
+      '@jsr/std__internal': 1.0.14
+      '@jsr/std__path': 1.1.6
+
+  '@jsr/std__fs@1.0.24':
+    dependencies:
+      '@jsr/std__internal': 1.0.14
+      '@jsr/std__path': 1.1.6
+
+  '@jsr/std__internal@1.0.14': {}
+
+  '@jsr/std__path@1.1.6':
+    dependencies:
+      '@jsr/std__internal': 1.0.14
+
+  '@jsr/std__testing@1.0.19':
+    dependencies:
+      '@jsr/std__assert': 1.0.19
+      '@jsr/std__async': 1.5.0
+      '@jsr/std__data-structures': 1.1.1
+      '@jsr/std__fs': 1.0.24
+      '@jsr/std__internal': 1.0.14
+      '@jsr/std__path': 1.1.6
+
   '@noble/hashes@1.8.0': {}
 
   '@ota-meshi/ast-token-store@0.3.0': {}
@@ -4095,6 +4208,10 @@ snapshots:
       estraverse: 5.3.0
       picomatch: 4.0.5
 
+  '@types/bun@1.3.14':
+    dependencies:
+      bun-types: 1.3.14
+
   '@types/chai@5.2.3':
     dependencies:
       '@types/deep-eql': 4.0.2
@@ -4107,6 +4224,8 @@ snapshots:
       '@types/ms': 2.1.0
 
   '@types/deep-eql@4.0.2': {}
+
+  '@types/deno@2.7.0': {}
 
   '@types/esrecurse@4.3.1': {}
 
@@ -4440,6 +4559,10 @@ snapshots:
       unconfig: 7.5.0
       verkit: 0.1.2
       yaml: 2.9.0
+
+  bun-types@1.3.14:
+    dependencies:
+      '@types/node': 26.1.2
 
   bundle-name@4.1.0:
     dependencies:

@@ -24,6 +24,8 @@
     "*/*/*"
   ],
   "exclude": [
-    "playgrounds/**"
+    "playgrounds/**",
+    "packages/bun/**",
+    "packages/deno/**"
   ]
 }

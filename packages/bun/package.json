@@ -1,0 +1,26 @@
+{
+  "name": "@standardserver/bun",
+  "type": "module",
+  "version": "0.5.0",
+  "license": "MIT",
+  "homepage": "https://standardserver.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/middleapi/standardserver.git",
+    "directory": "packages/bun"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "type:check": "tsc -b",
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "@standardserver/core": "workspace:*",
+    "@standardserver/fetch": "workspace:*",
+    "@standardserver/peer": "workspace:*",
+    "@standardserver/shared": "workspace:*",
+    "@types/bun": "^1.3.14"
+  }
+}

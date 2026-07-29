@@ -1,0 +1,28 @@
+{
+  "name": "@standardserver/deno",
+  "type": "module",
+  "version": "0.5.0",
+  "license": "MIT",
+  "homepage": "https://standardserver.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/middleapi/standardserver.git",
+    "directory": "packages/deno"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "type:check": "tsc -b",
+    "test": "deno test --no-check --unstable-sloppy-imports --allow-net tests/"
+  },
+  "devDependencies": {
+    "@standardserver/core": "workspace:*",
+    "@standardserver/fetch": "workspace:*",
+    "@standardserver/peer": "workspace:*",
+    "@standardserver/shared": "workspace:*",
+    "@std/expect": "jsr:^1.0.20",
+    "@std/testing": "jsr:^1.0.19",
+    "@types/deno": "^2.7.0"
+  }
+}

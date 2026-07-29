@@ -8,7 +8,7 @@
   "scripts": {
     "prepare": "simple-git-hooks",
     "type:check": "pnpm -r run type:check && tsc",
-    "test": "vitest run",
+    "test": "pnpm run -r test && vitest run",
     "test:coverage": "vitest run --coverage",
     "bench": "vitest bench --run",
     "lint": "eslint --max-warnings=0 .",

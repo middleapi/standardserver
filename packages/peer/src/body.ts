@@ -122,8 +122,9 @@ export async function encodeAtomicStandardBody(
 
   if (body instanceof Blob) {
     headers['content-type'] = body.type
+    // FIX: Bun returns `undefined` for an empty File name, despite the spec requiring a string
     headers['content-disposition'] ??= generateContentDisposition(
-      body instanceof File ? body.name : 'blob',
+      body instanceof File ? body.name ?? '' : 'blob',
     )
 
     // BunS3 can use NaN for the size
@@ -149,7 +150,7 @@ export async function encodeAtomicStandardBody(
 
     // standard-server used to distinguish file vs. form-data
     headers['standard-server'] = 'form-data' satisfies StandardBodyHint
-    headers['content-type'] = res.headers.get('content-type')!
+    headers['content-type'] = blob.type
     headers['content-length'] = blob.size.toString()
 
     return { jsonBody: undefined, headers, binary: blob }
