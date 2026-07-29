@@ -10,6 +10,8 @@
     "type:check": "pnpm -r run type:check && tsc",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
+    "test:bun": "pnpm --filter @standardserver/bun run test",
+    "test:deno": "pnpm --filter @standardserver/deno run test",
     "bench": "vitest bench --run",
     "lint": "eslint --max-warnings=0 .",
     "lint:fix": "eslint --max-warnings=0 --fix .",

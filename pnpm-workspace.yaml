@@ -3,7 +3,16 @@ packages:
   - playgrounds/*
 preferWorkspacePackages: true
 linkWorkspacePackages: true
-shamefullyHoist: true
+# hoist everything (shamefully-hoist) except bun's types, which would otherwise
+# leak Bun globals into every tsc project through srvx's `import type` of "bun"
+publicHoistPattern:
+  - '*'
+  - '!@types/bun'
+  - '!bun-types'
+hoistPattern:
+  - '*'
+  - '!@types/bun'
+  - '!bun-types'
 allowBuilds:
   esbuild: false
   simple-git-hooks: false

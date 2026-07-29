@@ -46,6 +46,34 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
 
+  test_bun:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: oven-sh/setup-bun@v2
+
+      - run: pnpm i
+
+      - run: pnpm run test:bun
+
+  test_deno:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - run: pnpm i
+
+      - run: pnpm run test:deno
+
   publish_preview:
     runs-on: ubuntu-latest
     steps:
