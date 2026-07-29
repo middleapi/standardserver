@@ -1,7 +1,0 @@
-{
-  "lock": false,
-  "imports": {
-    "@std/expect": "jsr:@std/expect@^1",
-    "@std/testing": "jsr:@std/testing@^1"
-  }
-}

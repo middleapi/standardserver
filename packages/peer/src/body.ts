@@ -122,7 +122,7 @@ export async function encodeAtomicStandardBody(
 
   if (body instanceof Blob) {
     headers['content-type'] = body.type
-    // Bun returns `undefined` for an empty File name, despite the spec requiring a string
+    // FIX: Bun returns `undefined` for an empty File name, despite the spec requiring a string
     headers['content-disposition'] ??= generateContentDisposition(
       body instanceof File ? body.name ?? '' : 'blob',
     )
@@ -150,8 +150,7 @@ export async function encodeAtomicStandardBody(
 
     // standard-server used to distinguish file vs. form-data
     headers['standard-server'] = 'form-data' satisfies StandardBodyHint
-    // Bun does not expose the multipart boundary on the Response headers, only on the blob type
-    headers['content-type'] = res.headers.get('content-type') ?? blob.type
+    headers['content-type'] = blob.type
     headers['content-length'] = blob.size.toString()
 
     return { jsonBody: undefined, headers, binary: blob }

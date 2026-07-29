@@ -112,7 +112,7 @@ export function toFetchBody(
     headers['standard-server'] ??= 'file' satisfies StandardBodyHint // A File is also a Blob
 
     headers['content-type'] = body.type
-    // Bun returns `undefined` for an empty File name, despite the spec requiring a string
+    // FIX: Bun returns `undefined` for an empty File name, despite the spec requiring a string
     headers['content-disposition'] ??= generateContentDisposition(body instanceof File ? body.name ?? '' : 'blob')
 
     // BunS3 can use NaN for the size

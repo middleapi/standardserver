@@ -38,8 +38,6 @@ jobs:
 
       - run: pnpm runtime set bun 1
 
-      # deno tests assert latest-Deno behavior, including its current
-      # full-duplex request streaming stall (fine on 2.2 LTS, broken by 2.9)
       - run: pnpm runtime set deno 2
 
       - run: pnpm i

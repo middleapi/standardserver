@@ -1,18 +1,22 @@
 packages:
   - packages/*
   - playgrounds/*
-preferWorkspacePackages: true
-linkWorkspacePackages: true
-# hoist everything (shamefully-hoist) except bun's types, which would otherwise
-# leak Bun globals into every tsc project through srvx's `import type` of "bun"
-publicHoistPattern:
-  - '*'
-  - '!@types/bun'
-  - '!bun-types'
+
+# Hoist everything (default) except @types/bun. When @types/node and @types/bun are
+# installed in different packages, hoisting both into the same env causes a
+# conflict and breaks type checking when working on Node.js types alongside
+# a package that imports from 'bun'. Excluding @types/bun from hoisting
+# avoids this while keeping hoisting enabled for everything else.
 hoistPattern:
   - '*'
   - '!@types/bun'
-  - '!bun-types'
+
+# Lets playgrounds/* resolve local packages without the 'workspace:' protocol
+# during development. When a playground is cloned standalone, the same
+# dependencies resolve to registry versions instead.
+linkWorkspacePackages: true
+preferWorkspacePackages: true
+
 allowBuilds:
   esbuild: false
   simple-git-hooks: false
