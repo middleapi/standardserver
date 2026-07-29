@@ -10,3 +10,24 @@ export interface ClientServerTest {
   sendClientPeerMessage?: Mock<(message: ClientPeerSendMessage) => Promise<void>>
   sendServerPeerMessage?: Mock<(message: ServerPeerSendMessage) => Promise<void>>
 }
+
+/**
+ * Asserts the exact sequence of peer messages each side sent so far.
+ * Each expected entry is matched with `expect.objectContaining`.
+ * Skipped for adapters that don't expose the peer send mocks.
+ */
+export function expectPeerMessages(
+  clientServer: ClientServerTest,
+  expected: { client: Record<string, unknown>[], server: Record<string, unknown>[] },
+): void {
+  const { sendClientPeerMessage, sendServerPeerMessage } = clientServer
+
+  if (!sendClientPeerMessage || !sendServerPeerMessage) {
+    return
+  }
+
+  expect(sendClientPeerMessage.mock.calls.map(([message]) => message))
+    .toEqual(expected.client.map(message => expect.objectContaining(message)))
+  expect(sendServerPeerMessage.mock.calls.map(([message]) => message))
+    .toEqual(expected.server.map(message => expect.objectContaining(message)))
+}

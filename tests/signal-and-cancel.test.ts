@@ -1,14 +1,31 @@
 import { AsyncIteratorClass, isAsyncIteratorObject, sleep } from '@standardserver/shared'
+import { expectPeerMessages } from './client-server'
 import { createHonoFetchClientServerTest } from './client-server.hono-fetch'
 import { createMessagePortClientServerTest } from './client-server.message-port'
-import { createMessagePortFetchStreamedClientServerTest } from './client-server.message-port-fetch-streamed'
 import { createNodeHttpClientServerTest } from './client-server.node-http'
 import { createNodeWsClientServerTest } from './client-server.node-ws'
-import { createNodeWsFetchStreamedClientServerTest } from './client-server.node-ws-fetch-streamed'
 
 beforeEach(() => {
   vi.clearAllMocks()
 })
+
+/**
+ * Only peer-based adapters propagate request body stream cancellation back to the client.
+ */
+const REQUEST_STREAM_CANCEL_ADAPTERS = new Set([
+  'message-port',
+  'message-port-fetch-streamed',
+  'node-ws',
+  'node-ws-fetch-streamed',
+])
+
+/**
+ * Waits until `assertion` stops throwing.
+ * Prefer this over a fixed `sleep` so tests continue as soon as the condition holds.
+ */
+function waitFor<T>(assertion: () => T): Promise<T> {
+  return vi.waitFor(assertion, { timeout: 2000, interval: 10 })
+}
 
 describe.each([
   // ['inprogress', createInprogressClientServerTest],
@@ -19,13 +36,12 @@ describe.each([
   // ['node-srvx', createNodeSrvxClientServerTest],
   // ['node-fetch-server', createNodeFetchServerClientServerTest],
   ['node-http', createNodeHttpClientServerTest],
-  ['message-port', createMessagePortClientServerTest],
-  ['message-port-fetch-streamed', createMessagePortFetchStreamedClientServerTest],
-  ['node-ws', createNodeWsClientServerTest],
-  ['node-ws-fetch-streamed', createNodeWsFetchStreamedClientServerTest],
-] as const)('signal and cancel: $0', async (adapter, createClientServer) => {
+  ['message-port', () => createMessagePortClientServerTest()],
+  ['message-port-fetch-streamed', () => createMessagePortClientServerTest({ fetchStreamed: true })],
+  ['node-ws', () => createNodeWsClientServerTest()],
+  ['node-ws-fetch-streamed', () => createNodeWsClientServerTest({ fetchStreamed: true })],
+] as const)('signal and cancel: $0', (adapter, createClientServer) => {
   const clientServer = createClientServer()
-  await sleep(100) // ensure everything is ready
 
   it('never aborted', async () => {
     let serverSignal!: AbortSignal
@@ -55,13 +71,10 @@ describe.each([
     // server shouldn't abort if finished successfully
     expect(serverSignal.aborted).toBe(false)
 
-    if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
-      expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(1)
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
-
-      expect(clientServer.sendServerPeerMessage).toHaveBeenCalledTimes(1)
-      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'response' }))
-    }
+    expectPeerMessages(clientServer, {
+      client: [{ kind: 'request' }],
+      server: [{ kind: 'response' }],
+    })
   })
 
   it('already aborted', async () => {
@@ -76,10 +89,7 @@ describe.each([
       signal: abortController.signal,
     })).rejects.toThrow(abortController.signal.reason)
 
-    if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
-      expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(0)
-      expect(clientServer.sendServerPeerMessage).toHaveBeenCalledTimes(0)
-    }
+    expectPeerMessages(clientServer, { client: [], server: [] })
   })
 
   it('abort while handling', async () => {
@@ -106,23 +116,19 @@ describe.each([
       signal: abortController.signal,
     })
 
-    await sleep(100) // ensure server started handling
+    await waitFor(() => expect(serverSignal).toBeDefined()) // wait for server start handling
     expect(serverSignal.aborted).toBe(false)
 
     abortController.abort()
 
-    await sleep(100) // wait for server receive abort signal
-    expect(serverSignal.aborted).toBe(true)
+    await waitFor(() => expect(serverSignal.aborted).toBe(true)) // wait for server receive abort signal
 
     await expect(responsePromise).rejects.toThrow(abortController.signal.reason)
 
-    if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
-      expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(2)
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'cancel' }))
-
-      expect(clientServer.sendServerPeerMessage).toHaveBeenCalledTimes(0) // abort before send anything
-    }
+    expectPeerMessages(clientServer, {
+      client: [{ kind: 'request' }, { kind: 'cancel' }],
+      server: [], // abort before send anything
+    })
   })
 
   it('abort while sending request event stream', async () => {
@@ -147,7 +153,7 @@ describe.each([
       body: new AsyncIteratorClass(
         async () => {
           times += 1
-          await sleep(times === 1 ? 100 : 1000)
+          await sleep(times === 1 ? 25 : 1000)
           return { done: false, value: 'Hello' }
         },
         async ({ kind }) => {
@@ -161,30 +167,28 @@ describe.each([
       signal: abortController.signal,
     })
 
-    await sleep(110) // wait for first chunk to be sent
+    // second chunk being pulled = first chunk was sent
+    await waitFor(() => {
+      expect(serverSignal).toBeDefined()
+      expect(times).toBe(2)
+    })
 
     expect(serverSignal.aborted).toBe(false)
     abortController.abort()
 
-    await sleep(100) // wait for server receive abort signal
-    // Currently only message-port and node-ws adapters support request stream cancel
-    if (adapter === 'message-port' || adapter === 'node-ws' || adapter === 'node-ws-fetch-streamed' || adapter === 'message-port-fetch-streamed') {
-      expect(canceled).toBe(true)
-    }
-    expect(serverSignal.aborted).toBe(true)
+    await waitFor(() => { // wait for server receive abort signal
+      expect(canceled).toBe(REQUEST_STREAM_CANCEL_ADAPTERS.has(adapter))
+      expect(serverSignal.aborted).toBe(true)
+    })
     expect(times).toBe(2) // the second chunk is being pulled
     expect(Date.now() - start).toBeLessThan(300) // cancelled in parallel without waiting for the second chunk
 
     await expect(responsePromise).rejects.toThrow(abortController.signal.reason)
 
-    if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
-      expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(3)
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'event-stream' }))
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(3, expect.objectContaining({ kind: 'cancel' }))
-
-      expect(clientServer.sendServerPeerMessage).toHaveBeenCalledTimes(0) // abort before send anything
-    }
+    expectPeerMessages(clientServer, {
+      client: [{ kind: 'request' }, { kind: 'event-stream' }, { kind: 'cancel' }],
+      server: [], // abort before send anything
+    })
   })
 
   it('abort while sending request octet stream', async () => {
@@ -210,7 +214,7 @@ describe.each([
       body: new ReadableStream({
         async pull(controller) {
           times += 1
-          await sleep(times === 1 ? 100 : 1000)
+          await sleep(times === 1 ? 25 : 1000)
           controller.enqueue(new TextEncoder().encode('Hello'))
         },
         cancel() {
@@ -222,30 +226,28 @@ describe.each([
       signal: abortController.signal,
     })
 
-    await sleep(110) // wait for first chunk to be sent
+    // second chunk being pulled = first chunk was sent
+    await waitFor(() => {
+      expect(serverSignal).toBeDefined()
+      expect(times).toBe(2)
+    })
 
     expect(serverSignal.aborted).toBe(false)
     abortController.abort()
 
-    await sleep(100) // wait for server receive abort signal
-    // Currently only message-port and node-ws adapters trigger request stream cancel
-    if (adapter === 'message-port' || adapter === 'node-ws' || adapter === 'node-ws-fetch-streamed' || adapter === 'message-port-fetch-streamed') {
-      expect(cancelled).toBe(true)
-    }
-    expect(serverSignal.aborted).toBe(true)
+    await waitFor(() => { // wait for server receive abort signal
+      expect(cancelled).toBe(REQUEST_STREAM_CANCEL_ADAPTERS.has(adapter))
+      expect(serverSignal.aborted).toBe(true)
+    })
     expect(times).toBe(2) // the second chunk is being pulled
     expect(Date.now() - start).toBeLessThan(300) // cancelled in parallel without waiting for the second chunk
 
     await expect(responsePromise).rejects.toThrow(abortController.signal.reason)
 
-    if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
-      expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(3)
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'octet-stream' }))
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(3, expect.objectContaining({ kind: 'cancel' }))
-
-      expect(clientServer.sendServerPeerMessage).toHaveBeenCalledTimes(0) // abort before send anything
-    }
+    expectPeerMessages(clientServer, {
+      client: [{ kind: 'request' }, { kind: 'octet-stream' }, { kind: 'cancel' }],
+      server: [], // abort before send anything
+    })
   })
 
   it('abort while sending response event stream', async () => {
@@ -261,7 +263,7 @@ describe.each([
         body: new AsyncIteratorClass(
           async () => {
             times += 1
-            await sleep(times === 1 ? 100 : 1000)
+            await sleep(times === 1 ? 25 : 1000)
             return { done: false, value: 'Hello' }
           },
           async ({ kind }) => {
@@ -290,21 +292,17 @@ describe.each([
     expect(serverSignal.aborted).toBe(false)
     controller.abort()
 
-    await sleep(100) // wait for server receive abort signal
-    expect(canceled).toBe(true)
-    expect(serverSignal.aborted).toBe(true)
-    expect(times).toBe(2) // the second chunk is being pulled
+    await waitFor(() => { // wait for server receive abort signal
+      expect(canceled).toBe(true)
+      expect(serverSignal.aborted).toBe(true)
+      expect(times).toBe(2) // the second chunk is being pulled
+    })
     expect(Date.now() - start).toBeLessThan(300) // cancelled in parallel without waiting for the second chunk
 
-    if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
-      expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(2)
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'cancel' }))
-
-      expect(clientServer.sendServerPeerMessage).toHaveBeenCalledTimes(2)
-      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'response' }))
-      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'event-stream' }))
-    }
+    expectPeerMessages(clientServer, {
+      client: [{ kind: 'request' }, { kind: 'cancel' }],
+      server: [{ kind: 'response' }, { kind: 'event-stream' }],
+    })
   })
 
   it('abort while sending response octet stream', async () => {
@@ -320,7 +318,7 @@ describe.each([
         body: new ReadableStream({
           async pull(controller) {
             times += 1
-            await sleep(times === 1 ? 100 : 1000)
+            await sleep(times === 1 ? 25 : 1000)
             controller.enqueue(new TextEncoder().encode('Hello'))
           },
           cancel() {
@@ -348,21 +346,17 @@ describe.each([
     expect(serverSignal.aborted).toBe(false)
     controller.abort()
 
-    await sleep(100) // wait for server receive abort signal
-    expect(canceled).toBe(true)
-    expect(serverSignal.aborted).toBe(true)
-    expect(times).toBe(2) // the second chunk is being pulled
+    await waitFor(() => { // wait for server receive abort signal
+      expect(canceled).toBe(true)
+      expect(serverSignal.aborted).toBe(true)
+      expect(times).toBe(2) // the second chunk is being pulled
+    })
     expect(Date.now() - start).toBeLessThan(300) // cancelled in parallel without waiting for the second chunk
 
-    if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
-      expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(2)
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'cancel' }))
-
-      expect(clientServer.sendServerPeerMessage).toHaveBeenCalledTimes(2)
-      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'response' }))
-      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'octet-stream' }))
-    }
+    expectPeerMessages(clientServer, {
+      client: [{ kind: 'request' }, { kind: 'cancel' }],
+      server: [{ kind: 'response' }, { kind: 'octet-stream' }],
+    })
   })
 
   it('cancel unfinished response event stream', async () => {
@@ -378,7 +372,7 @@ describe.each([
         body: new AsyncIteratorClass(
           async () => {
             times += 1
-            await sleep(times === 1 ? 100 : 1000)
+            await sleep(times === 1 ? 25 : 1000)
             return { done: false, value: 'Hello' }
           },
           async ({ kind }) => {
@@ -404,24 +398,19 @@ describe.each([
     await actualBody.next() // wait for first chunk
     expect(serverSignal.aborted).toBe(false)
 
-    expect(serverSignal.aborted).toBe(false)
     await actualBody.return(undefined)
 
-    await sleep(100) // wait for server receive cancel signal
-    expect(serverSignal.aborted).toBe(true)
-    expect(canceled).toBe(true)
-    expect(times).toBe(2) // the second chunk is being pulled
+    await waitFor(() => { // wait for server receive cancel signal
+      expect(serverSignal.aborted).toBe(true)
+      expect(canceled).toBe(true)
+      expect(times).toBe(2) // the second chunk is being pulled
+    })
     expect(Date.now() - start).toBeLessThan(300) // cancelled in parallel without waiting for the second chunk
 
-    if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
-      expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(2)
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'cancel' }))
-
-      expect(clientServer.sendServerPeerMessage).toHaveBeenCalledTimes(2)
-      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'response' }))
-      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'event-stream' }))
-    }
+    expectPeerMessages(clientServer, {
+      client: [{ kind: 'request' }, { kind: 'cancel' }],
+      server: [{ kind: 'response' }, { kind: 'event-stream' }],
+    })
   })
 
   it('cancel unfinished response octet stream', async () => {
@@ -437,7 +426,7 @@ describe.each([
         body: new ReadableStream({
           async pull(controller) {
             times += 1
-            await sleep(times === 1 ? 100 : 1000)
+            await sleep(times === 1 ? 25 : 1000)
             controller.enqueue(new TextEncoder().encode('Hello'))
           },
           cancel() {
@@ -464,21 +453,17 @@ describe.each([
     expect(serverSignal.aborted).toBe(false)
     await reader.cancel()
 
-    await sleep(100) // wait for server receive cancel signal
-    expect(serverSignal.aborted).toBe(true)
-    expect(canceled).toBe(true)
-    expect(times).toBe(2) // the second chunk is being pulled
+    await waitFor(() => { // wait for server receive cancel signal
+      expect(serverSignal.aborted).toBe(true)
+      expect(canceled).toBe(true)
+      expect(times).toBe(2) // the second chunk is being pulled
+    })
     expect(Date.now() - start).toBeLessThan(300) // cancelled in parallel without waiting for the second chunk
 
-    if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
-      expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(2)
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'cancel' }))
-
-      expect(clientServer.sendServerPeerMessage).toHaveBeenCalledTimes(2)
-      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'response' }))
-      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'octet-stream' }))
-    }
+    expectPeerMessages(clientServer, {
+      client: [{ kind: 'request' }, { kind: 'cancel' }],
+      server: [{ kind: 'response' }, { kind: 'octet-stream' }],
+    })
   })
 
   it('cancel unfinished request event stream', async () => {
@@ -508,7 +493,7 @@ describe.each([
       body: new AsyncIteratorClass(
         async () => {
           times += 1
-          await sleep(times === 1 ? 100 : 1000)
+          await sleep(times === 1 ? 25 : 1000)
           return { done: false, value: 'Hello' }
         },
         async ({ kind }) => {
@@ -523,21 +508,15 @@ describe.each([
 
     expect(response).toMatchObject({ status: 200 })
 
-    // Currently only message port and node-ws adapters support trigger request stream cancel
-    expect(canceled).toBe(adapter === 'message-port' || adapter === 'node-ws' || adapter === 'node-ws-fetch-streamed' || adapter === 'message-port-fetch-streamed')
+    expect(canceled).toBe(REQUEST_STREAM_CANCEL_ADAPTERS.has(adapter))
     expect(serverSignal.aborted).toBe(false) // DO NOT ABORT IF ONLY CANCEL REQUEST BODY
     expect(times).toBe(2) // the second chunk is being pulled
     expect(Date.now() - start).toBeLessThan(300) // cancelled in parallel without waiting for the second chunk
 
-    if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
-      expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(2)
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'event-stream' }))
-
-      expect(clientServer.sendServerPeerMessage).toHaveBeenCalledTimes(2)
-      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'stream/cancel' }))
-      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'response' }))
-    }
+    expectPeerMessages(clientServer, {
+      client: [{ kind: 'request' }, { kind: 'event-stream' }],
+      server: [{ kind: 'stream/cancel' }, { kind: 'response' }],
+    })
   })
 
   it('cancel unfinished request octet stream', async () => {
@@ -568,7 +547,7 @@ describe.each([
       body: new ReadableStream({
         pull: async (controller) => {
           times += 1
-          await sleep(times === 1 ? 100 : 1000)
+          await sleep(times === 1 ? 25 : 1000)
           controller.enqueue(new TextEncoder().encode('Hello'))
         },
         cancel: async () => {
@@ -581,21 +560,15 @@ describe.each([
 
     expect(response).toMatchObject({ status: 200 })
 
-    // Currently only message-port and node-ws adapters support trigger request stream cancel
-    expect(canceled).toBe(adapter === 'message-port' || adapter === 'node-ws' || adapter === 'node-ws-fetch-streamed' || adapter === 'message-port-fetch-streamed')
+    expect(canceled).toBe(REQUEST_STREAM_CANCEL_ADAPTERS.has(adapter))
     expect(serverSignal.aborted).toBe(false) // DO NOT ABORT IF ONLY CANCEL REQUEST BODY
     expect(times).toBe(2) // the second chunk is being pulled
     expect(Date.now() - start).toBeLessThan(300) // cancelled in parallel without waiting for the second chunk
 
-    if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
-      expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(2)
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'octet-stream' }))
-
-      expect(clientServer.sendServerPeerMessage).toHaveBeenCalledTimes(2)
-      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'stream/cancel' }))
-      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'response' }))
-    }
+    expectPeerMessages(clientServer, {
+      client: [{ kind: 'request' }, { kind: 'octet-stream' }],
+      server: [{ kind: 'stream/cancel' }, { kind: 'response' }],
+    })
   })
 
   it('error happen while sending request event stream', async () => {
@@ -631,7 +604,7 @@ describe.each([
         async () => {
           times++
 
-          await sleep(100)
+          await sleep(50)
 
           if (times !== 1) {
             // throw normal error not async iterator object error
@@ -652,20 +625,17 @@ describe.each([
 
     await expect(responsePromise).rejects.toThrow()
 
-    await sleep(100) // wait for server handle abort
-    expect(serverSignal.aborted).toBe(true)
-    expect(serverError).toBeInstanceOf(Error)
+    await waitFor(() => { // wait for server handle abort
+      expect(serverSignal.aborted).toBe(true)
+      expect(serverError).toBeInstanceOf(Error)
+    })
     expect(times).toBe(2) // stop at second chunk
     expect(canceled).toBe(false) // don't need cancel if error happen
 
-    if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
-      expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(3)
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'event-stream' }))
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(3, expect.objectContaining({ kind: 'cancel' }))
-
-      expect(clientServer.sendServerPeerMessage).toHaveBeenCalledTimes(0)
-    }
+    expectPeerMessages(clientServer, {
+      client: [{ kind: 'request' }, { kind: 'event-stream' }, { kind: 'cancel' }],
+      server: [],
+    })
   })
 
   it('error happen while sending request octet stream', async () => {
@@ -702,7 +672,7 @@ describe.each([
       body: new ReadableStream({
         pull: async (controller) => {
           times += 1
-          await sleep(100)
+          await sleep(50)
 
           if (times !== 1) {
             controller.error(error)
@@ -710,7 +680,7 @@ describe.each([
 
           controller.enqueue(new TextEncoder().encode('Hello'))
         },
-        cancel: async (reason) => {
+        cancel: async () => {
           canceled = true
         },
       }),
@@ -718,27 +688,24 @@ describe.each([
       url: '/',
     })
 
-    if (adapter === 'message-port' || adapter === 'node-ws' || adapter === 'node-ws-fetch-streamed' || adapter === 'message-port-fetch-streamed') {
+    if (REQUEST_STREAM_CANCEL_ADAPTERS.has(adapter)) {
       await expect(responsePromise).rejects.toThrow(error)
     }
     else {
       await expect(responsePromise).rejects.toThrow()
     }
 
-    await sleep(100) // wait for server handle abort
-    expect(serverSignal.aborted).toBe(true)
-    expect(serverError).toBeInstanceOf(Error)
+    await waitFor(() => { // wait for server handle abort
+      expect(serverSignal.aborted).toBe(true)
+      expect(serverError).toBeInstanceOf(Error)
+    })
     expect(times).toBe(2) // stop at second chunk
     expect(canceled).toBe(false) // don't need cancel if error happen
 
-    if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
-      expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(3)
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'octet-stream' }))
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(3, expect.objectContaining({ kind: 'cancel' }))
-
-      expect(clientServer.sendServerPeerMessage).toHaveBeenCalledTimes(0)
-    }
+    expectPeerMessages(clientServer, {
+      client: [{ kind: 'request' }, { kind: 'octet-stream' }, { kind: 'cancel' }],
+      server: [],
+    })
   })
 
   it('error happen while sending response event stream', async () => {
@@ -755,7 +722,7 @@ describe.each([
         body: new AsyncIteratorClass(
           async () => {
             times += 1
-            await sleep(100)
+            await sleep(50)
 
             if (times !== 1) {
             // throw normal error not async iterator object error
@@ -786,20 +753,14 @@ describe.each([
     await body.next()
     await expect(body.next()).rejects.toBeInstanceOf(Error)
 
-    await sleep(100) // wait until serve handled error
-    expect(serverSignal.aborted).toBe(true)
+    await waitFor(() => expect(serverSignal.aborted).toBe(true)) // wait until server handled error
     expect(times).toBe(2) // stop at second chunk
     expect(canceled).toBe(false) // don't need cancel if error happen
 
-    if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
-      expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(1)
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
-
-      expect(clientServer.sendServerPeerMessage).toHaveBeenCalledTimes(3)
-      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'response' }))
-      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'event-stream' }))
-      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(3, expect.objectContaining({ kind: 'cancel' }))
-    }
+    expectPeerMessages(clientServer, {
+      client: [{ kind: 'request' }],
+      server: [{ kind: 'response' }, { kind: 'event-stream' }, { kind: 'cancel' }],
+    })
   })
 
   it('error happen while sending response octet stream', async () => {
@@ -816,7 +777,7 @@ describe.each([
         body: new ReadableStream({
           pull: async (controller) => {
             times += 1
-            await sleep(100)
+            await sleep(50)
 
             if (times === 2) {
               controller.error(new Error('__TEST__'))
@@ -845,20 +806,14 @@ describe.each([
     await reader.read()
     await expect(reader.read()).rejects.toBeInstanceOf(Error)
 
-    await sleep(100) // wait until serve handled error
-    expect(serverSignal.aborted).toBe(true)
+    await waitFor(() => expect(serverSignal.aborted).toBe(true)) // wait until server handled error
     expect(times).toBe(2) // stop at second chunk
     expect(canceled).toBe(false) // don't need cancel if error happen
 
-    if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
-      expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(1)
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
-
-      expect(clientServer.sendServerPeerMessage).toHaveBeenCalledTimes(3)
-      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'response' }))
-      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'octet-stream' }))
-      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(3, expect.objectContaining({ kind: 'cancel' }))
-    }
+    expectPeerMessages(clientServer, {
+      client: [{ kind: 'request' }],
+      server: [{ kind: 'response' }, { kind: 'octet-stream' }, { kind: 'cancel' }],
+    })
   })
 
   it('error happen while sending request event stream and streaming response', async () => {
@@ -925,22 +880,17 @@ describe.each([
 
     await expect(iterator.next().then(() => iterator.next())).rejects.toThrow(Error)
 
-    await sleep(100) // wait for server handle abort
-    expect(serverSignal.aborted).toBe(true)
-    expect(serverError).toBeInstanceOf(Error)
+    await waitFor(() => { // wait for server handle abort
+      expect(serverSignal.aborted).toBe(true)
+      expect(serverError).toBeInstanceOf(Error)
+    })
     expect(times).toBe(2) // stop at second chunk
     expect(canceled).toBe(false) // don't need cancel if error happen
 
-    if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
-      expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(3)
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'event-stream' }))
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(3, expect.objectContaining({ kind: 'cancel' }))
-
-      expect(clientServer.sendServerPeerMessage).toHaveBeenCalledTimes(2)
-      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'response' }))
-      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'event-stream' }))
-    }
+    expectPeerMessages(clientServer, {
+      client: [{ kind: 'request' }, { kind: 'event-stream' }, { kind: 'cancel' }],
+      server: [{ kind: 'response' }, { kind: 'event-stream' }],
+    })
   })
 
   it('error happen while sending request octet stream and streaming response', async () => {
@@ -994,7 +944,7 @@ describe.each([
 
           controller.enqueue(new TextEncoder().encode('chunk\n'))
         },
-        cancel: async (reason) => {
+        cancel: async () => {
           canceled = true
         },
       }),
@@ -1009,21 +959,16 @@ describe.each([
 
     await expect(reader.read().then(() => reader.read())).rejects.toThrow(Error)
 
-    await sleep(100) // wait for server handle abort
-    expect(serverSignal.aborted).toBe(true)
-    expect(serverError).toBeInstanceOf(Error)
+    await waitFor(() => { // wait for server handle abort
+      expect(serverSignal.aborted).toBe(true)
+      expect(serverError).toBeInstanceOf(Error)
+    })
     expect(times).toBe(2) // stop at second chunk
     expect(canceled).toBe(false) // don't need cancel if error happen
 
-    if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
-      expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(3)
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'octet-stream' }))
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(3, expect.objectContaining({ kind: 'cancel' }))
-
-      expect(clientServer.sendServerPeerMessage).toHaveBeenCalledTimes(2)
-      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'response' }))
-      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'octet-stream' }))
-    }
+    expectPeerMessages(clientServer, {
+      client: [{ kind: 'request' }, { kind: 'octet-stream' }, { kind: 'cancel' }],
+      server: [{ kind: 'response' }, { kind: 'octet-stream' }],
+    })
   })
 })
