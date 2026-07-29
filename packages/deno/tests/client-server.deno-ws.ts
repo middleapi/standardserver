@@ -11,7 +11,6 @@ export function createDenoWsClientServerTest(): ClientServerTest {
     }
 
     const { socket, response } = Deno.upgradeWebSocket(request)
-    socket.binaryType = 'arraybuffer'
 
     const serverPeer = new ServerPeer(async (message) => {
       socket.send(await encodePeerMessage(message))

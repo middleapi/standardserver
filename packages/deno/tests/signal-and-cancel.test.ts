@@ -22,8 +22,16 @@ const REQUEST_STREAM_CANCEL_ADAPTERS = new Set(['deno-ws'])
  */
 const RESPONSE_STREAM_ERROR_ADAPTERS = new Set(['deno-ws'])
 
+/**
+ * `Deno.serve` aborts `request.signal` once the response has been delivered,
+ * even on success (legacy behavior, opt-out is still unstable), so signal
+ * assertions made after the response only hold for the peer-based adapter.
+ */
+const CLEAN_SIGNAL_AFTER_RESPONSE_ADAPTERS = new Set(['deno-ws'])
+
 for (const [adapter, createClientServer] of ADAPTERS) {
   const itResponseStreamError = RESPONSE_STREAM_ERROR_ADAPTERS.has(adapter) ? it : it.skip
+  const itCleanSignalAfterResponse = CLEAN_SIGNAL_AFTER_RESPONSE_ADAPTERS.has(adapter) ? it : it.skip
 
   describe({
     name: `signal and cancel: ${adapter}`,
@@ -39,7 +47,7 @@ for (const [adapter, createClientServer] of ADAPTERS) {
         clientServer.setHandler(NOT_FOUND_HANDLER)
       })
 
-      it('never aborted', async () => {
+      itCleanSignalAfterResponse('never aborted', async () => {
         let serverSignal!: AbortSignal
 
         clientServer.setHandler(async ({ signal }) => {
@@ -329,7 +337,9 @@ for (const [adapter, createClientServer] of ADAPTERS) {
         expect(response.status).toEqual(200)
 
         expect(canceled).toBe(REQUEST_STREAM_CANCEL_ADAPTERS.has(adapter))
-        expect(serverSignal.aborted).toBe(false) // DO NOT ABORT IF ONLY CANCEL REQUEST BODY
+        if (CLEAN_SIGNAL_AFTER_RESPONSE_ADAPTERS.has(adapter)) {
+          expect(serverSignal.aborted).toBe(false) // DO NOT ABORT IF ONLY CANCEL REQUEST BODY
+        }
         expect(times).toBe(2) // the second chunk is being pulled
         expect(Date.now() - start).toBeLessThan(300) // cancelled in parallel without waiting for the second chunk
       })
