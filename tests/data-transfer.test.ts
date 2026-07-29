@@ -1,15 +1,23 @@
 import { ErrorEvent, unwrapEvent, withEventMeta } from '@standardserver/core'
 import { isAsyncIteratorObject, sleep } from '@standardserver/shared'
+import { expectPeerMessages } from './client-server'
 import { createH3WebHandlerClientServerTest } from './client-server.h3-web-handler'
 import { createHonoFetchClientServerTest } from './client-server.hono-fetch'
 import { createInprogressClientServerTest } from './client-server.inprogress'
 import { createInprogressFetchClientServerTest } from './client-server.inprogress-fetch'
 import { createMessagePortClientServerTest } from './client-server.message-port'
-import { createMessagePortFetchStreamedClientServerTest } from './client-server.message-port-fetch-streamed'
 import { createNodeHttpClientServerTest } from './client-server.node-http'
 import { createNodeSrvxClientServerTest } from './client-server.node-srvx'
 import { createNodeWsClientServerTest } from './client-server.node-ws'
-import { createNodeWsFetchStreamedClientServerTest } from './client-server.node-ws-fetch-streamed'
+
+/**
+ * Streaming tests produce a chunk every `CHUNK_DELAY` ms and assert each chunk
+ * arrives within `PARALLEL_THRESHOLD` ms, proving chunks are transferred in
+ * parallel. Keep `PARALLEL_THRESHOLD` below `2 * CHUNK_DELAY` so a buffered
+ * (non-streaming) transfer of a whole body still fails the first-chunk check.
+ */
+const CHUNK_DELAY = 60
+const PARALLEL_THRESHOLD = 150
 
 describe.each([
   ['inprogress', createInprogressClientServerTest],
@@ -20,10 +28,10 @@ describe.each([
   ['node-srvx', createNodeSrvxClientServerTest],
   // ['node-fetch-server', createNodeFetchServerClientServerTest],
   ['node-http', createNodeHttpClientServerTest],
-  ['message-port', createMessagePortClientServerTest],
-  ['message-port-fetch-streamed', createMessagePortFetchStreamedClientServerTest],
-  ['node-ws', createNodeWsClientServerTest],
-  ['node-ws-fetch-streamed', createNodeWsFetchStreamedClientServerTest],
+  ['message-port', () => createMessagePortClientServerTest()],
+  ['message-port-fetch-streamed', () => createMessagePortClientServerTest({ fetchStreamed: true })],
+  ['node-ws', () => createNodeWsClientServerTest()],
+  ['node-ws-fetch-streamed', () => createNodeWsClientServerTest({ fetchStreamed: true })],
 ])('data transfer: $0', (_, createClientServer) => {
   const clientServer = createClientServer()
 
@@ -222,11 +230,11 @@ describe.each([
       method: 'DELETE',
       url: '/event-stream',
       body: (async function* () {
-        await sleep(100)
+        await sleep(CHUNK_DELAY)
         yield 'order1'
-        await sleep(100)
+        await sleep(CHUNK_DELAY)
         yield withEventMeta({ order: 2 }, { id: 'id-2' })
-        await sleep(100)
+        await sleep(CHUNK_DELAY)
         return withEventMeta({ order: 3 }, { comments: ['order3'] })
       }()),
     })
@@ -243,7 +251,7 @@ describe.each([
       expect(meta).toEqual(undefined)
       return true
     })
-    expect(Date.now() - start).toBeLessThan(200)
+    expect(Date.now() - start).toBeLessThan(PARALLEL_THRESHOLD)
     start = Date.now()
 
     await expect(body.next()).resolves.toSatisfy((result) => {
@@ -253,7 +261,7 @@ describe.each([
       expect(meta).toEqual({ id: 'id-2' })
       return true
     })
-    expect(Date.now() - start).toBeLessThan(200)
+    expect(Date.now() - start).toBeLessThan(PARALLEL_THRESHOLD)
     start = Date.now()
 
     await expect(body.next()).resolves.toSatisfy((result) => {
@@ -263,21 +271,22 @@ describe.each([
       expect(meta).toEqual({ comments: ['order3'] })
       return true
     })
-    expect(Date.now() - start).toBeLessThan(200)
+    expect(Date.now() - start).toBeLessThan(PARALLEL_THRESHOLD)
 
-    if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
-      expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(4)
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'event-stream', json: expect.objectContaining({ event: undefined }) }))
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(3, expect.objectContaining({ kind: 'event-stream', json: expect.objectContaining({ event: undefined }) }))
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(4, expect.objectContaining({ kind: 'event-stream', json: expect.objectContaining({ event: 'close' }) }))
-
-      expect(clientServer.sendServerPeerMessage).toHaveBeenCalledTimes(4)
-      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'response' }))
-      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'event-stream', json: expect.objectContaining({ event: undefined }) }))
-      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(3, expect.objectContaining({ kind: 'event-stream', json: expect.objectContaining({ event: undefined }) }))
-      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(4, expect.objectContaining({ kind: 'event-stream', json: expect.objectContaining({ event: 'close' }) }))
-    }
+    expectPeerMessages(clientServer, {
+      client: [
+        { kind: 'request' },
+        { kind: 'event-stream', json: expect.objectContaining({ event: undefined }) },
+        { kind: 'event-stream', json: expect.objectContaining({ event: undefined }) },
+        { kind: 'event-stream', json: expect.objectContaining({ event: 'close' }) },
+      ],
+      server: [
+        { kind: 'response' },
+        { kind: 'event-stream', json: expect.objectContaining({ event: undefined }) },
+        { kind: 'event-stream', json: expect.objectContaining({ event: undefined }) },
+        { kind: 'event-stream', json: expect.objectContaining({ event: 'close' }) },
+      ],
+    })
   })
 
   it('event stream with error event in parallel', async () => {
@@ -300,9 +309,9 @@ describe.each([
       method: 'DELETE',
       url: '/event-stream',
       body: (async function* () {
-        await sleep(100)
+        await sleep(CHUNK_DELAY)
         yield 'order1'
-        await sleep(100)
+        await sleep(CHUNK_DELAY)
         yield withEventMeta({ order: 2 }, { id: 'id-2' })
         throw withEventMeta(new ErrorEvent({ order: 3 }), { comments: ['order3'] })
       }()),
@@ -319,7 +328,7 @@ describe.each([
       expect(meta).toEqual(undefined)
       return true
     })
-    expect(Date.now() - start).toBeLessThan(200)
+    expect(Date.now() - start).toBeLessThan(PARALLEL_THRESHOLD)
     start = Date.now()
 
     await expect(body.next()).resolves.toSatisfy((result) => {
@@ -329,7 +338,7 @@ describe.each([
       expect(meta).toEqual({ id: 'id-2' })
       return true
     })
-    expect(Date.now() - start).toBeLessThan(200)
+    expect(Date.now() - start).toBeLessThan(PARALLEL_THRESHOLD)
     start = Date.now()
 
     await expect(body.next()).rejects.toSatisfy((error: ErrorEvent) => {
@@ -339,22 +348,23 @@ describe.each([
       expect(errMeta).toEqual({ comments: ['order3'] })
       return true
     })
-    expect(Date.now() - start).toBeLessThan(200)
+    expect(Date.now() - start).toBeLessThan(PARALLEL_THRESHOLD)
     start = Date.now()
 
-    if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
-      expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(4)
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'event-stream', json: expect.objectContaining({ event: undefined }) }))
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(3, expect.objectContaining({ kind: 'event-stream', json: expect.objectContaining({ event: undefined }) }))
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(4, expect.objectContaining({ kind: 'event-stream', json: expect.objectContaining({ event: 'error' }) }))
-
-      expect(clientServer.sendServerPeerMessage).toHaveBeenCalledTimes(4)
-      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'response' }))
-      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'event-stream', json: expect.objectContaining({ event: undefined }) }))
-      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(3, expect.objectContaining({ kind: 'event-stream', json: expect.objectContaining({ event: undefined }) }))
-      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(4, expect.objectContaining({ kind: 'event-stream', json: expect.objectContaining({ event: 'error' }) }))
-    }
+    expectPeerMessages(clientServer, {
+      client: [
+        { kind: 'request' },
+        { kind: 'event-stream', json: expect.objectContaining({ event: undefined }) },
+        { kind: 'event-stream', json: expect.objectContaining({ event: undefined }) },
+        { kind: 'event-stream', json: expect.objectContaining({ event: 'error' }) },
+      ],
+      server: [
+        { kind: 'response' },
+        { kind: 'event-stream', json: expect.objectContaining({ event: undefined }) },
+        { kind: 'event-stream', json: expect.objectContaining({ event: undefined }) },
+        { kind: 'event-stream', json: expect.objectContaining({ event: 'error' }) },
+      ],
+    })
   })
 
   it('octet stream in parallel', async () => {
@@ -385,13 +395,13 @@ describe.each([
       body: new ReadableStream({
         async start(controller) {
           // make sure each chunk is long enough to ensure client/server transfer separately
-          await sleep(100)
+          await sleep(CHUNK_DELAY)
           controller.enqueue(new TextEncoder().encode('chunk1'.repeat(10)))
-          await sleep(100)
+          await sleep(CHUNK_DELAY)
           controller.enqueue(new TextEncoder().encode('chunk2'.repeat(10)))
-          await sleep(100)
+          await sleep(CHUNK_DELAY)
           controller.enqueue(new TextEncoder().encode('chunk3'.repeat(10)))
-          await sleep(100)
+          await sleep(CHUNK_DELAY)
           controller.close()
         },
       }),
@@ -404,34 +414,35 @@ describe.each([
     const reader = body.getReader()
 
     await expect(reader.read()).resolves.toEqual({ done: false, value: new TextEncoder().encode('chunk1'.repeat(10)) })
-    expect(Date.now() - start).toBeLessThan(200)
+    expect(Date.now() - start).toBeLessThan(PARALLEL_THRESHOLD)
     start = Date.now()
 
     await expect(reader.read()).resolves.toEqual({ done: false, value: new TextEncoder().encode('chunk2'.repeat(10)) })
-    expect(Date.now() - start).toBeLessThan(200)
+    expect(Date.now() - start).toBeLessThan(PARALLEL_THRESHOLD)
     start = Date.now()
 
     await expect(reader.read()).resolves.toEqual({ done: false, value: new TextEncoder().encode('chunk3'.repeat(10)) })
-    expect(Date.now() - start).toBeLessThan(200)
+    expect(Date.now() - start).toBeLessThan(PARALLEL_THRESHOLD)
     start = Date.now()
 
     await expect(reader.read()).resolves.toEqual({ done: true, value: undefined })
-    expect(Date.now() - start).toBeLessThan(200)
+    expect(Date.now() - start).toBeLessThan(PARALLEL_THRESHOLD)
 
-    if (clientServer.sendClientPeerMessage && clientServer.sendServerPeerMessage) {
-      expect(clientServer.sendClientPeerMessage).toHaveBeenCalledTimes(5)
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'request' }))
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'octet-stream', json: expect.objectContaining({ }) }))
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(3, expect.objectContaining({ kind: 'octet-stream', json: expect.objectContaining({ }) }))
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(4, expect.objectContaining({ kind: 'octet-stream', json: expect.objectContaining({ }) }))
-      expect(clientServer.sendClientPeerMessage).toHaveBeenNthCalledWith(5, expect.objectContaining({ kind: 'octet-stream', json: expect.objectContaining({ close: true }) }))
-
-      expect(clientServer.sendServerPeerMessage).toHaveBeenCalledTimes(5)
-      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'response' }))
-      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'octet-stream', json: expect.objectContaining({ }) }))
-      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(3, expect.objectContaining({ kind: 'octet-stream', json: expect.objectContaining({ }) }))
-      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(4, expect.objectContaining({ kind: 'octet-stream', json: expect.objectContaining({ }) }))
-      expect(clientServer.sendServerPeerMessage).toHaveBeenNthCalledWith(5, expect.objectContaining({ kind: 'octet-stream', json: expect.objectContaining({ close: true }) }))
-    }
+    expectPeerMessages(clientServer, {
+      client: [
+        { kind: 'request' },
+        { kind: 'octet-stream' },
+        { kind: 'octet-stream' },
+        { kind: 'octet-stream' },
+        { kind: 'octet-stream', json: expect.objectContaining({ close: true }) },
+      ],
+      server: [
+        { kind: 'response' },
+        { kind: 'octet-stream' },
+        { kind: 'octet-stream' },
+        { kind: 'octet-stream' },
+        { kind: 'octet-stream', json: expect.objectContaining({ close: true }) },
+      ],
+    })
   })
 })
