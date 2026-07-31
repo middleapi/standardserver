@@ -15,7 +15,6 @@ export function getOrBind<T extends object, K extends PropertyKey>(
   property: K,
   { bind = true }: GetOrBindOptions = {},
 ): K extends keyof T ? T[K] : unknown {
-  // eslint-disable-next-line ban/ban
   const value = Reflect.get(target, property)
 
   if (!bind || typeof value !== 'function') {
