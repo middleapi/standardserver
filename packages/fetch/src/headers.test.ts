@@ -19,6 +19,19 @@ it('toStandardHeaders', () => {
   })
 })
 
+it('toStandardHeaders with a __proto__ header', () => {
+  const headers = new Headers()
+
+  headers.append('__proto__', 'polluted')
+  headers.append('content-type', 'application/json')
+
+  const standardHeaders = toStandardHeaders(headers)
+
+  expect(Object.getPrototypeOf(standardHeaders)).toBe(null)
+  expect(Object.getOwnPropertyDescriptor(standardHeaders, '__proto__')?.value).toBe('polluted')
+  expect(standardHeaders['content-type']).toBe('application/json')
+})
+
 it('toFetchHeaders', () => {
   const standardHeaders: StandardHeaders = {
     'content-type': 'application/json',

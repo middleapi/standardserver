@@ -4,7 +4,9 @@ import type { StandardHeaders } from '@standardserver/core'
  * Convert fetch headers to standard headers.
  */
 export function toStandardHeaders(headers: Headers): StandardHeaders {
-  const standardHeaders: StandardHeaders = {}
+  // Null prototype so header names like __proto__ become plain own
+  // properties instead of touching the object's prototype.
+  const standardHeaders: StandardHeaders = Object.create(null)
 
   headers.forEach((value, key) => {
     if (Array.isArray(standardHeaders[key])) {
