@@ -1,13 +1,15 @@
 import type Stream from 'node:stream'
 import type { NodeHttpResponse } from './types'
 import { AbortError } from '@standardserver/shared'
-import { canWriteToNodeResponse } from './utils'
+import { canWriteToNodeResponse, getNodeResponseError } from './utils'
 
 export function toAbortSignal(stream: Stream.Writable | NodeHttpResponse): AbortSignal {
   const controller = new AbortController()
 
-  if (stream.errored) {
-    controller.abort(stream.errored)
+  const error = getNodeResponseError(stream)
+
+  if (error) {
+    controller.abort(error)
   }
   else if (!canWriteToNodeResponse(stream)) {
     if (!stream.writableFinished || !stream.writableEnded) {
