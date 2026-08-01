@@ -17,6 +17,13 @@ describe('generateContentDisposition', () => {
     expect(generateContentDisposition('!@#$%^%^&*()\'".txt')).toEqual('inline; filename="!@#$%^%^&*()\'\\".txt"; filename*=utf-8\'\'!%40%23%24%25^%25^%26%2A%28%29%27%22.txt')
   })
 
+  it('escape \\ special char', () => {
+    expect(generateContentDisposition('a\\b.txt')).toEqual('inline; filename="a\\\\b.txt"; filename*=utf-8\'\'a%5Cb.txt')
+    // a trailing backslash must not escape the closing quote
+    expect(generateContentDisposition('a\\')).toEqual('inline; filename="a\\\\"; filename*=utf-8\'\'a%5C')
+    expect(generateContentDisposition('a\\"; injected=x')).toEqual('inline; filename="a\\\\\\"; injected=x"; filename*=utf-8\'\'a%5C%22%3B%20injected%3Dx')
+  })
+
   it('escape non-ASCII filenames', () => {
     expect(generateContentDisposition('テンプレ\'"ート.txt')).toEqual('inline; filename="____\'\\"__.txt"; filename*=utf-8\'\'%E3%83%86%E3%83%B3%E3%83%97%E3%83%AC%27%22%E3%83%BC%E3%83%88.txt')
   })
@@ -30,6 +37,8 @@ it('getFilenameFromContentDisposition', () => {
   expect(getFilenameFromContentDisposition('attachment; filename=""')).toEqual('')
   expect(getFilenameFromContentDisposition('attachment; filename="test.txt"')).toEqual('test.txt')
   expect(getFilenameFromContentDisposition('attachment; filename="!@#$%^%^&*()\'\\".txt"')).toEqual('!@#$%^%^&*()\'".txt')
+  expect(getFilenameFromContentDisposition('attachment; filename="a\\\\b.txt"')).toEqual('a\\b.txt')
+  expect(getFilenameFromContentDisposition('attachment; filename="a\\\\"')).toEqual('a\\')
 
   expect(getFilenameFromContentDisposition('attachment; filename*=utf-8\'\'')).toEqual('')
   expect(getFilenameFromContentDisposition('attachment; filename*=utf-8\'\'test.txt')).toEqual('test.txt')
