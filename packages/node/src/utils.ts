@@ -5,3 +5,8 @@ export function canWriteToNodeResponse(res: Stream.Writable | NodeHttpResponse):
   const stream = 'stream' in res ? res.stream : res
   return !stream.closed && !stream.destroyed && !stream.writableFinished && !stream.writableEnded
 }
+
+export function getNodeResponseError(res: Stream.Writable | NodeHttpResponse): Error | null {
+  const stream = 'stream' in res ? res.stream : res
+  return stream.errored
+}

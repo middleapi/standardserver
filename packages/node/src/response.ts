@@ -2,7 +2,7 @@ import type { StandardResponse } from '@standardserver/core'
 import type { ToNodeHttpBodyOptions } from './body'
 import type { NodeHttpResponse } from './types'
 import { toNodeHttpBody } from './body'
-import { canWriteToNodeResponse } from './utils'
+import { canWriteToNodeResponse, getNodeResponseError } from './utils'
 
 export interface SendStandardResponseOptions extends ToNodeHttpBodyOptions {
 }
@@ -16,13 +16,15 @@ export async function sendStandardResponse(
 
   return new Promise((resolve, reject) => {
     if (!canWriteToNodeResponse(res)) {
+      const error = getNodeResponseError(res)
+
       if (typeof resBody === 'object' && !resBody.closed) {
         resBody.on('error', reject)
-        resBody.destroy(res.errored ?? undefined)
+        resBody.destroy(error ?? undefined)
       }
 
-      if (res.errored) {
-        reject(res.errored)
+      if (error) {
+        reject(error)
       }
       else {
         resolve()
@@ -54,7 +56,7 @@ export async function sendStandardResponse(
     else {
       res.once('close', () => {
         if (!resBody.closed) {
-          resBody.destroy(res.errored ?? undefined)
+          resBody.destroy(getNodeResponseError(res) ?? undefined)
         }
       })
 
