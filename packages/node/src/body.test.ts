@@ -434,7 +434,7 @@ describe('toNodeHttpBody', () => {
   }
 
   it('undefined', async () => {
-    const [body, headers] = await toNodeHttpBody(undefined, baseHeaders, {})
+    const [body, headers] = toNodeHttpBody(undefined, baseHeaders, {})
 
     expect(body).toBe(undefined)
     expect(headers).toEqual({
@@ -443,7 +443,7 @@ describe('toNodeHttpBody', () => {
   })
 
   it('json', async () => {
-    const [body, headers] = await toNodeHttpBody({ foo: 'bar' }, baseHeaders, {})
+    const [body, headers] = toNodeHttpBody({ foo: 'bar' }, baseHeaders, {})
 
     expect(body).toBe('{"foo":"bar"}')
     expect(headers).toEqual({
@@ -457,7 +457,7 @@ describe('toNodeHttpBody', () => {
     form.append('foo', 'bar')
     form.append('bar', 'baz')
 
-    const [body, headers] = await toNodeHttpBody(form, baseHeaders, {})
+    const [body, headers] = toNodeHttpBody(form, baseHeaders, {})
 
     expect(body).toBeInstanceOf(Readable)
     expect(headers).toEqual({
@@ -477,7 +477,7 @@ describe('toNodeHttpBody', () => {
   it('url-search-params', async () => {
     const query = new URLSearchParams('foo=bar&bar=baz')
 
-    const [body, headers] = await toNodeHttpBody(query, baseHeaders, {})
+    const [body, headers] = toNodeHttpBody(query, baseHeaders, {})
 
     expect(body).toBe('foo=bar&bar=baz')
     expect(headers).toEqual({
@@ -491,7 +491,7 @@ describe('toNodeHttpBody', () => {
 
     generateContentDispositionSpy.mockReturnValue('__mocked__')
 
-    const [body, headers] = await toNodeHttpBody(blob, baseHeaders, {})
+    const [body, headers] = toNodeHttpBody(blob, baseHeaders, {})
 
     expect(body).toBeInstanceOf(Readable)
     expect(headers).toEqual({
@@ -519,7 +519,7 @@ describe('toNodeHttpBody', () => {
 
     generateContentDispositionSpy.mockReturnValue('__mocked__')
 
-    const [body, headers] = await toNodeHttpBody(blob, baseHeaders, {})
+    const [body, headers] = toNodeHttpBody(blob, baseHeaders, {})
 
     expect(body).instanceOf(Readable)
     expect(headers).toEqual({
@@ -546,7 +546,7 @@ describe('toNodeHttpBody', () => {
     const headersBase = { ...baseHeaders, 'content-disposition': 'attachment; filename="foo.pdf"' }
     const blob = new File(['foo'], 'foo.pdf', { type: 'application/pdf' })
 
-    const [body, headers] = await toNodeHttpBody(blob, headersBase, {})
+    const [body, headers] = toNodeHttpBody(blob, headersBase, {})
 
     expect(body).instanceOf(Readable)
     expect(headers).toEqual({
@@ -574,7 +574,7 @@ describe('toNodeHttpBody', () => {
 
     generateContentDispositionSpy.mockReturnValue('__mocked__')
 
-    const [body, headers] = await toNodeHttpBody(file, baseHeaders, {})
+    const [body, headers] = toNodeHttpBody(file, baseHeaders, {})
 
     expect(body).toBeInstanceOf(Readable)
     expect(headers).toEqual({
@@ -596,7 +596,7 @@ describe('toNodeHttpBody', () => {
     }
     const options = { eventStream: { keepAlive: { enabled: true } } }
     const iterator = gen()
-    const [body, headers] = await toNodeHttpBody(iterator, baseHeaders, options)
+    const [body, headers] = toNodeHttpBody(iterator, baseHeaders, options)
 
     expect(toEventStreamSpy).toHaveBeenCalledWith(iterator, options.eventStream)
 
@@ -623,7 +623,7 @@ describe('toNodeHttpBody', () => {
         controller.close()
       },
     })
-    const [body, headers] = await toNodeHttpBody(stream, baseHeaders)
+    const [body, headers] = toNodeHttpBody(stream, baseHeaders)
 
     expect(body).toBeInstanceOf(Readable)
     expect(headers).toEqual({
@@ -648,7 +648,7 @@ describe('toNodeHttpBody', () => {
           controller.close()
         },
       })
-      const [body, headers] = await toNodeHttpBody(stream, {
+      const [body, headers] = toNodeHttpBody(stream, {
         ...baseHeaders,
         'content-type': [],
         'standard-server': [],
@@ -668,7 +668,7 @@ describe('toNodeHttpBody', () => {
 
     it('blob: unset standard-server, and content-disposition', async () => {
       const blob = new Blob(['foo'], { type: 'application/pdf' })
-      const [body, headers] = await toNodeHttpBody(blob, {
+      const [body, headers] = toNodeHttpBody(blob, {
         ...baseHeaders,
         'standard-server': [],
         'content-disposition': [],

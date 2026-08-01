@@ -94,14 +94,14 @@ export interface ToNodeHttpBodyOptions {
  * Binary bodies (Blob, ReadableStream) can override the aut-set standard-server header,
  * enabling pre-encoded body transmission while preserving client-side type interpretation.
  */
-export async function toNodeHttpBody(
+export function toNodeHttpBody(
   body: StandardBody,
   headers: StandardHeaders,
   options: ToNodeHttpBodyOptions = {},
-): Promise<[
+): [
   body: Readable | undefined | string,
   headers: StandardHeaders,
-]> {
+] {
   headers = { ...headers }
 
   if (body instanceof ReadableStream) {
