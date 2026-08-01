@@ -1,5 +1,6 @@
 import { AsyncIteratorClass, isAsyncIteratorObject, sleep } from '@standardserver/shared'
 import { expectPeerMessages } from './client-server'
+import { createFastifyClientServerTest } from './client-server.fastify'
 import { createHonoFetchClientServerTest } from './client-server.hono-fetch'
 import { createMessagePortClientServerTest } from './client-server.message-port'
 import { createNodeHttpClientServerTest } from './client-server.node-http'
@@ -32,6 +33,7 @@ describe.each([
   // ['inprogress-fetch', createInprogressFetchClientServerTest],
   // ['h3-node-handler', createH3NodeHandlerClientServerTest],
   // ['h3-web-handler', createH3WebHandlerClientServerTest],
+  ['fastify', createFastifyClientServerTest],
   ['hono-fetch', createHonoFetchClientServerTest],
   // ['node-srvx', createNodeSrvxClientServerTest],
   // ['node-fetch-server', createNodeFetchServerClientServerTest],

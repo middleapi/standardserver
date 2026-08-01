@@ -1,0 +1,55 @@
+import type { StandardHeaders } from '@standardserver/core'
+import type { NodeHttpRequest, NodeHttpResponse } from '@standardserver/node'
+import type { AnyFastifyReply, AnyFastifyRequest } from './types'
+import Fastify from 'fastify'
+
+/**
+ * Passing a concrete fastify request/reply here only compiles if the widened
+ * aliases accept it, whatever raw server and route generic it came from.
+ */
+function accepts(req: AnyFastifyRequest, reply: AnyFastifyReply): void {
+  // the aliases must expose exactly what `@standardserver/node` consumes
+  expectTypeOf(req.raw).toExtend<NodeHttpRequest>()
+  expectTypeOf(req.headers).toExtend<StandardHeaders>()
+  expectTypeOf(reply.raw).toExtend<NodeHttpResponse>()
+}
+
+it('accept the request and reply of an http1 instance', () => {
+  const fastify = Fastify()
+
+  fastify.all('/*', async (req, reply) => accepts(req, reply))
+  fastify.addHook('preHandler', async (req, reply) => accepts(req, reply))
+  fastify.setNotFoundHandler(async (req, reply) => accepts(req, reply))
+  fastify.setErrorHandler(async (error, req, reply) => {
+    expectTypeOf(error).not.toBeAny()
+    accepts(req, reply)
+  })
+})
+
+it('accept the request and reply of an http2 instance', () => {
+  const fastify = Fastify({ http2: true })
+
+  fastify.all('/*', async (req, reply) => accepts(req, reply))
+  fastify.addHook('preHandler', async (req, reply) => accepts(req, reply))
+  fastify.setNotFoundHandler(async (req, reply) => accepts(req, reply))
+  fastify.setErrorHandler(async (error, req, reply) => {
+    expectTypeOf(error).not.toBeAny()
+    accepts(req, reply)
+  })
+})
+
+it('accept the request and reply of a route with a route generic', () => {
+  const fastify = Fastify()
+
+  fastify.post<{ Querystring: { q: string }, Body: { b: number } }>('/', async (req, reply) => {
+    accepts(req, reply)
+  })
+})
+
+it('accept the request and reply of an encapsulated plugin', () => {
+  const fastify = Fastify()
+
+  fastify.register(async (instance) => {
+    instance.all('/*', async (req, reply) => accepts(req, reply))
+  }, { prefix: '/api' })
+})
