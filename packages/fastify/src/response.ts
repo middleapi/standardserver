@@ -11,7 +11,7 @@ export async function sendStandardResponse(
   standardResponse: StandardResponse,
   options: SendStandardResponseOptions = {},
 ): Promise<void> {
-  const [resBody, resHeaders] = await toNodeHttpBody(standardResponse.body, standardResponse.headers, options)
+  const [resBody, resHeaders] = toNodeHttpBody(standardResponse.body, standardResponse.headers, options)
 
   return new Promise((resolve, reject) => {
     if (!canWriteToNodeResponse(reply.raw)) {

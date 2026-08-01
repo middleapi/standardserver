@@ -288,7 +288,7 @@ describe('sendStandardResponse', () => {
       const fastify = Fastify()
       onTestFinished(() => fastify.close())
 
-      toNodeHttpBodySpy.mockResolvedValueOnce([Readable.fromWeb(new ReadableStream({
+      toNodeHttpBodySpy.mockReturnValueOnce([Readable.fromWeb(new ReadableStream({
         async pull(controller) {
           controller.enqueue(new TextEncoder().encode('foo'))
           await new Promise(r => setTimeout(r, 100))
@@ -316,7 +316,7 @@ describe('sendStandardResponse', () => {
       const fastify = Fastify()
       onTestFinished(() => fastify.close())
 
-      toNodeHttpBodySpy.mockResolvedValueOnce([Readable.fromWeb(new ReadableStream({
+      toNodeHttpBodySpy.mockReturnValueOnce([Readable.fromWeb(new ReadableStream({
         async pull(controller) {
           controller.enqueue(new TextEncoder().encode('foo'))
           await new Promise(r => setTimeout(r, 100))
