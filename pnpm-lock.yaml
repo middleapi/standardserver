@@ -48,8 +48,8 @@ importers:
         specifier: ^4.1.10
         version: 4.1.10(vitest@4.1.10)
       bumpp:
-        specifier: ^12.0.0
-        version: 12.0.0
+        specifier: ^12.1.1
+        version: 12.1.1
       changelogithub:
         specifier: ^15.0.4
         version: 15.0.4
@@ -69,11 +69,11 @@ importers:
         specifier: 2.0.1-rc.26
         version: 2.0.1-rc.26
       lint-staged:
-        specifier: ^17.2.0
-        version: 17.2.0
+        specifier: ^17.3.0
+        version: 17.3.0
       pkg-pr-new:
-        specifier: ^0.0.80
-        version: 0.0.80
+        specifier: ^0.0.86
+        version: 0.0.86
       sherif:
         specifier: ^1.13.0
         version: 1.13.0
@@ -81,8 +81,8 @@ importers:
         specifier: ^2.13.1
         version: 2.13.1
       srvx:
-        specifier: ^0.12.4
-        version: 0.12.4
+        specifier: ^0.12.5
+        version: 0.12.5
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -1498,8 +1498,8 @@ packages:
     resolution: {integrity: sha512-hMQUl2bUFG339QygPM97E+mc8OY1IAchORZxm4a/frcYwKzozMzRVDBwHW0NjOqGElLm2O37AVQE8ikxlZHrMQ==}
     engines: {node: '>=18.20'}
 
-  bumpp@12.0.0:
-    resolution: {integrity: sha512-2uuObtROJvEGZJk4T6t3fDgUAmgDYF0PeSZt23GCn1ItxECvR+ROVJNYT7r1lS8nIMJae6IkIgcDEIbT5iwWAA==}
+  bumpp@12.1.1:
+    resolution: {integrity: sha512-6zniIxMtt+yeEwmyL4s+gB54A1J8HVQPOIeABaFB2ScmG993Q+3+5MYAbJYu/kmZ1ZXS+KzwVb/ff5V4vBXiHA==}
     engines: {node: ^22.18.0 || ^24.11.0 || >=26.0.0}
     hasBin: true
 
@@ -2453,8 +2453,8 @@ packages:
     resolution: {integrity: sha512-/vlFKAoH5Cgt3Ie+JLhRbwOsCQePABiU3tJ1egGvyQ+33R/vcwM2Zl2QR/LzjsBeItPt3oSVXapn+m4nQDvpzw==}
     engines: {node: '>=14'}
 
-  lint-staged@17.2.0:
-    resolution: {integrity: sha512-FchGnFe4i4B1C/a35SPU9bNGPEHSC1+1iV0plLjzBmKVe9klZrlRfSgK6Cw4VeHyqOXbJUXP0vON61uRftNQ0A==}
+  lint-staged@17.3.0:
+    resolution: {integrity: sha512-woZS3vNe3UKqBaLPvbLOtKRY4tLANpWQhom12MGWqC8Mh1lCOO+WgSwmX2amjJAqTY9BkXYW87fCUH5H9Ph6xw==}
     engines: {node: '>=22.22.1'}
     hasBin: true
 
@@ -2870,8 +2870,8 @@ packages:
     resolution: {integrity: sha512-r34yH/GlQpKZbU1BvFFqOjhISRo1MNx1tWYsYvmj6KIRHSPMT2+yHOEb1SG6NMvRoHRF0a07kCOox/9yakl1vg==}
     hasBin: true
 
-  pkg-pr-new@0.0.80:
-    resolution: {integrity: sha512-a6Ie3sxNVrIkx5TQhe5+nbPbyLQg0jnrMNDYoXQpDXBaELxdDgwUVmlVThOSj7oKB3kEIrji5xyhSvWAWf5ABQ==}
+  pkg-pr-new@0.0.86:
+    resolution: {integrity: sha512-BwPsw/e1Be7F0SfpxhNc2VSxX7uHgCy46Ck+2Z/vqCwXoePhUBrX/VbcawpAlZgMvQe2iwGbZIQ6HSj9bmCk8A==}
     hasBin: true
 
   pkg-types@1.3.1:
@@ -3329,8 +3329,8 @@ packages:
     resolution: {integrity: sha512-UcjcJOWknrNkF6PLX83qcHM6KHgVKNkV62Y8a5uYDVv9ydGQVwAHMKqHdJje1VTWpljG0WYpCDhrCdAOYH4TWg==}
     engines: {node: '>= 10.x'}
 
-  srvx@0.12.4:
-    resolution: {integrity: sha512-RixzFlMn3dvzDTpKIAXhXrqL4cy6vScNCP0VVwgVbUBU94o+DiXLsFnAZetbyKAEnK6Ox3hzHXWGsyv/Iibv7g==}
+  srvx@0.12.5:
+    resolution: {integrity: sha512-IuvtDNQg5EIwv3c6dleyau7u8hCyGQ7D6+V/QM799Aud07z0wCUcurKLTRfyG33C8oUY+UWcVBFkfHMcbtmRLA==}
     engines: {node: '>=20.16.0'}
     hasBin: true
 
@@ -3520,10 +3520,6 @@ packages:
 
   util-deprecate@1.0.2:
     resolution: {integrity: sha512-EPD5q1uXyFxJpCrLnCc1nHnq3gOa6DZBocAIiI2TaSCA7VCJ1UJDMagCzIkXNsUYfD1daK//LTEQ8xiIbrHtcw==}
-
-  verkit@0.1.2:
-    resolution: {integrity: sha512-WqkT8n3hqizuCu71W3bUzf5fjBmkbXcudsehe/NbxA8PgqoKnSOY5K0Ba2ckg1qaRaSpSz7as/n9K1R9JXjQKg==}
-    engines: {node: '>=18.12.0'}
 
   verkit@0.3.1:
     resolution: {integrity: sha512-w2Eo8LSIIoW7qxNBzT7/17k+bh8plXo7G3dHjEIDqPlnluhzaxr9JX8F28VSYEtDvc1/a3WBDih6xNUZseebXg==}
@@ -4726,7 +4722,7 @@ snapshots:
 
   builtin-modules@5.3.0: {}
 
-  bumpp@12.0.0:
+  bumpp@12.1.1:
     dependencies:
       args-tokenizer: 0.3.0
       cac: 7.0.0
@@ -4735,7 +4731,7 @@ snapshots:
       tinyexec: 1.2.4
       tinyglobby: 0.2.17
       unconfig: 7.5.0
-      verkit: 0.1.2
+      verkit: 0.3.1
       yaml: 2.9.0
 
   bun-types@1.3.14:
@@ -5656,7 +5652,7 @@ snapshots:
   h3@2.0.1-rc.26:
     dependencies:
       rou3: 0.9.1
-      srvx: 0.12.4
+      srvx: 0.12.5
 
   has-flag@4.0.0: {}
 
@@ -5813,7 +5809,7 @@ snapshots:
 
   lilconfig@3.1.3: {}
 
-  lint-staged@17.2.0:
+  lint-staged@17.3.0:
     dependencies:
       picomatch: 4.0.5
       string-argv: 0.3.2
@@ -6425,7 +6421,7 @@ snapshots:
       sonic-boom: 4.2.1
       thread-stream: 4.2.0
 
-  pkg-pr-new@0.0.80: {}
+  pkg-pr-new@0.0.86: {}
 
   pkg-types@1.3.1:
     dependencies:
@@ -6859,7 +6855,7 @@ snapshots:
 
   split2@4.2.0: {}
 
-  srvx@0.12.4: {}
+  srvx@0.12.5: {}
 
   stack-trace@1.0.0-pre2: {}
 
@@ -7088,8 +7084,6 @@ snapshots:
       punycode: 2.3.1
 
   util-deprecate@1.0.2: {}
-
-  verkit@0.1.2: {}
 
   verkit@0.3.1: {}
 
