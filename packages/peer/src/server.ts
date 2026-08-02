@@ -116,7 +116,12 @@ export class ServerPeer {
 
       if (isAsyncIteratorObject(response.body)) {
         if (response.body instanceof HibernationAsyncIteratorClass) {
-          await response.body['~callback']?.(id)
+          try {
+            await response.body['~callback']?.(id)
+          }
+          finally {
+            await response.body.return()
+          }
         }
         else {
           const transmitter = new EventStreamTransmitter(response.body, id, this.send)
