@@ -16,10 +16,8 @@ export class HibernationAsyncIteratorClass<T, TReturn = unknown, TNext = unknown
   ) {
     super(async () => {
       throw new Error('Cannot use hibernating iterator directly')
-    }, async ({ kind }) => {
-      if (kind === 'cancelled') {
-        throw new Error('Cannot use hibernating iterator directly')
-      }
+    }, async () => {
+      // nothing to clean up
     })
 
     this['~callback'] = callback

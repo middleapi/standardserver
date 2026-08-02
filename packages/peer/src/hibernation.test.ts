@@ -12,9 +12,9 @@ describe('hibernationAsyncIteratorClass', () => {
     await expect(iterator.next()).rejects.toThrow('Cannot use hibernating iterator directly')
   })
 
-  it('return() throws', async () => {
+  it('return() does not throw', async () => {
     const iterator = new HibernationAsyncIteratorClass(vi.fn())
-    await expect(iterator.return()).rejects.toThrow('Cannot use hibernating iterator directly')
+    await expect(iterator.return()).resolves.toEqual({ done: true, value: undefined })
   })
 
   it('invokes callback with correct id', () => {

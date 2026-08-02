@@ -324,6 +324,7 @@ describe('serverPeer', () => {
         expect(callback).toHaveBeenCalledWith('1')
         expect(send).toHaveBeenCalledTimes(1)
         expect(send).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'response' }))
+        await expect(hibernationIter.next()).resolves.toEqual({ done: true, value: undefined }) // already cleaned up
       })
 
       it('reject if HibernationAsyncIteratorClassCallback reject', async () => {
@@ -340,6 +341,7 @@ describe('serverPeer', () => {
         expect(send).toHaveBeenCalledTimes(2)
         expect(send).toHaveBeenNthCalledWith(1, expect.objectContaining({ kind: 'response' }))
         expect(send).toHaveBeenNthCalledWith(2, expect.objectContaining({ kind: 'cancel' }))
+        await expect(hibernationIter.next()).resolves.toEqual({ done: true, value: undefined }) // already cleaned up
       })
 
       it('cancels active transmitter on close', async () => {
