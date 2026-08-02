@@ -30,7 +30,7 @@ export function toStandardHeaders(event: AnyAPIGatewayProxyEvent): StandardHeade
       }
     }
 
-    if (event.cookies?.length) {
+    if (event.cookies?.length && standardHeaders['cookie'] === undefined) {
       append('cookie', [event.cookies.join('; ')])
     }
 
