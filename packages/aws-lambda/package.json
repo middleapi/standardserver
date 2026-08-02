@@ -1,0 +1,44 @@
+{
+  "name": "@standardserver/aws-lambda",
+  "type": "module",
+  "version": "0.6.0",
+  "license": "MIT",
+  "homepage": "https://standardserver.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/middleapi/standardserver.git",
+    "directory": "packages/aws-lambda"
+  },
+  "sideEffects": false,
+  "publishConfig": {
+    "exports": {
+      "./package.json": "./package.json",
+      ".": {
+        "types": "./dist/index.d.mts",
+        "import": "./dist/index.mjs",
+        "default": "./dist/index.mjs"
+      }
+    }
+  },
+  "exports": {
+    "./package.json": "./package.json",
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "unbuild",
+    "type:check": "tsc -b"
+  },
+  "dependencies": {
+    "@standardserver/core": "workspace:*",
+    "@standardserver/fetch": "workspace:*",
+    "@standardserver/node": "workspace:*",
+    "@standardserver/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.162",
+    "@types/node": "^26.0.0"
+  }
+}
