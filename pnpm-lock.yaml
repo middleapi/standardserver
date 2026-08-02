@@ -115,7 +115,7 @@ importers:
         specifier: ^8.10.162
         version: 8.10.162
       '@types/node':
-        specifier: ^26.0.0
+        specifier: ^26.1.2
         version: 26.1.2
 
   packages/bun:
@@ -179,7 +179,7 @@ importers:
         specifier: ^11.1.2
         version: 11.1.2
       '@types/node':
-        specifier: ^26.0.0
+        specifier: ^26.1.2
         version: 26.1.2
       '@types/supertest':
         specifier: ^7.2.1
@@ -213,7 +213,7 @@ importers:
         version: link:../shared
     devDependencies:
       '@types/node':
-        specifier: ^26.0.0
+        specifier: ^26.1.2
         version: 26.1.2
       '@types/supertest':
         specifier: ^7.2.1
@@ -236,7 +236,7 @@ importers:
   playgrounds/hono-node:
     devDependencies:
       '@hono/node-server':
-        specifier: ^2.0.1
+        specifier: ^2.0.12
         version: 2.0.12(hono@4.12.32)
       '@standardserver/core':
         specifier: latest
@@ -245,7 +245,7 @@ importers:
         specifier: latest
         version: link:../../packages/fetch
       '@types/node':
-        specifier: ^26.0.0
+        specifier: ^26.1.2
         version: 26.1.2
       tsx:
         specifier: ^4.22.4
@@ -263,7 +263,7 @@ importers:
         specifier: latest
         version: link:../../packages/node
       '@types/node':
-        specifier: ^26.0.0
+        specifier: ^26.1.2
         version: 26.1.2
       tsx:
         specifier: ^4.22.4
