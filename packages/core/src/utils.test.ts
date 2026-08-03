@@ -27,6 +27,11 @@ describe('generateContentDisposition', () => {
   it('escape non-ASCII filenames', () => {
     expect(generateContentDisposition('テンプレ\'"ート.txt')).toEqual('inline; filename="____\'\\"__.txt"; filename*=utf-8\'\'%E3%83%86%E3%83%B3%E3%83%97%E3%83%AC%27%22%E3%83%BC%E3%83%88.txt')
   })
+
+  it('support inline and attachment types', () => {
+    expect(generateContentDisposition('test.txt', 'inline')).toEqual('inline; filename="test.txt"; filename*=utf-8\'\'test.txt')
+    expect(generateContentDisposition('test.txt', 'attachment')).toEqual('attachment; filename="test.txt"; filename*=utf-8\'\'test.txt')
+  })
 })
 
 it('getFilenameFromContentDisposition', () => {
@@ -49,6 +54,25 @@ it('getFilenameFromContentDisposition', () => {
   expect(getFilenameFromContentDisposition('inline; filename"hello.txt"; size=123')).toEqual(undefined)
 
   expect(getFilenameFromContentDisposition('inline; filename*=!%40%23%24%25^%25^%26%2A%28%29%27%22.txt; size=123')).toEqual('!@#$%^%^&*()\'".txt')
+
+  // unquoted token form
+  expect(getFilenameFromContentDisposition('attachment; filename=report.pdf')).toEqual('report.pdf')
+  expect(getFilenameFromContentDisposition('attachment; filename=report.pdf; size=123')).toEqual('report.pdf')
+  expect(getFilenameFromContentDisposition('attachment; filename=')).toEqual(undefined)
+
+  // param names must be anchored, not substring-matched
+  expect(getFilenameFromContentDisposition('attachment; xfilename*=evil')).toEqual(undefined)
+  expect(getFilenameFromContentDisposition('attachment; filename="good.txt"; xfilename*=evil.exe')).toEqual('good.txt')
+  expect(getFilenameFromContentDisposition('attachment; creation-filename="e.exe"')).toEqual(undefined)
+  expect(getFilenameFromContentDisposition('filename*=utf-8\'\'first.txt')).toEqual('first.txt')
+  expect(getFilenameFromContentDisposition('filename=first.txt')).toEqual('first.txt')
+
+  // ext-value charset and language prefix
+  expect(getFilenameFromContentDisposition('attachment; filename*=utf-8\'en\'%E2%82%AC.txt')).toEqual('€.txt')
+  expect(getFilenameFromContentDisposition('attachment; filename*=UTF-8\'\'%E2%82%AC.txt')).toEqual('€.txt')
+  expect(getFilenameFromContentDisposition('attachment; filename*=us-ascii\'en\'test.txt')).toEqual('test.txt')
+  expect(getFilenameFromContentDisposition('attachment; filename*=iso-8859-1\'\'%E9.txt; filename="fallback.txt"')).toEqual('fallback.txt')
+  expect(getFilenameFromContentDisposition('attachment; filename*=iso-8859-1\'\'%E9.txt')).toEqual(undefined)
 })
 
 describe('mergeStandardHeaders', () => {

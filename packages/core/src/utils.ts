@@ -1,7 +1,7 @@
 import type { StandardHeaders, StandardUrl } from './types'
 import { toArray, tryDecodeURIComponent } from '@standardserver/shared'
 
-export function generateContentDisposition(filename: string): string {
+export function generateContentDisposition(filename: string, type: 'inline' | 'attachment' = 'inline'): string {
   const encodedFilename = filename.replace(/[^\x20-\x7E]/g, '_').replace(/[\\"]/g, '\\$&')
 
   // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/encodeURIComponent#encoding_for_content-disposition_and_link_headers
@@ -9,20 +9,35 @@ export function generateContentDisposition(filename: string): string {
     .replace(/['()*]/g, c => `%${c.charCodeAt(0).toString(16).toUpperCase()}`)
     .replace(/%(7C|60|5E)/g, (str, hex) => String.fromCharCode(Number.parseInt(hex, 16)))
 
-  return `inline; filename="${encodedFilename}"; filename*=utf-8''${encodedFilenameStar}`
+  return `${type}; filename="${encodedFilename}"; filename*=utf-8''${encodedFilenameStar}`
 }
 
 export function getFilenameFromContentDisposition(contentDisposition: string): string | undefined {
-  const encodedFilenameStarMatch = contentDisposition.match(/filename\*=(UTF-8'')?([^;]*)/i)
+  const extValue = contentDisposition.match(/(?:^|;)\s*filename\*=([^;]*)/i)?.[1]?.trim()
 
-  if (encodedFilenameStarMatch && typeof encodedFilenameStarMatch[2] === 'string') {
-    return tryDecodeURIComponent(encodedFilenameStarMatch[2])
+  // RFC 8187 ext-value: charset "'" [ language ] "'" value-chars
+  const extValueMatch = extValue?.match(/^([^']*)'[^']*'(.*)$/)
+
+  if (extValueMatch) {
+    const [, charset = '', encodedFilename = ''] = extValueMatch
+
+    if (/^(?:utf-8|us-ascii)$/i.test(charset)) {
+      return tryDecodeURIComponent(encodedFilename)
+    }
+    // unsupported charset: fall through to the plain filename param
+  }
+  else if (extValue) {
+    // lenient: some senders omit the charset prefix entirely
+    return tryDecodeURIComponent(extValue)
   }
 
-  const encodedFilenameMatch = contentDisposition.match(/filename="((?:\\.|[^"\\])*)"/i)
-  if (encodedFilenameMatch && typeof encodedFilenameMatch[1] === 'string') {
-    return encodedFilenameMatch[1].replace(/\\(.)/g, '$1')
+  const filenameMatch = contentDisposition.match(/(?:^|;)\s*filename=(?:"((?:\\.|[^"\\])*)"|([^";]*))/i)
+
+  if (filenameMatch?.[1] !== undefined) {
+    return filenameMatch[1].replace(/\\(.)/g, '$1')
   }
+
+  return filenameMatch?.[2]?.trim() || undefined
 }
 
 export function flattenStandardHeader(header: string | readonly string[] | undefined): string | undefined {
