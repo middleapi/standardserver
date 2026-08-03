@@ -55,6 +55,7 @@ export async function sendStandardResponse(
         resBody.destroy(error as any)
       }
 
+      // Don't destroy reply.raw: fastify's error handler can still send a response.
       reject(error)
     }
   })
