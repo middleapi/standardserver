@@ -35,17 +35,28 @@ export async function sendStandardResponse(
     reply.raw.once('error', reject)
     reply.raw.once('close', resolve)
 
-    reply.status(standardResponse.status)
+    try {
+      reply.status(standardResponse.status)
 
-    // DON'T pass headers with `undefined` value to fastify, it turns them into empty strings
-    for (const key in resHeaders) {
-      const value = resHeaders[key]
-      if (value !== undefined) {
-        reply.header(key, value)
+      // DON'T pass headers with `undefined` value to fastify, it turns them into empty strings
+      for (const key in resHeaders) {
+        const value = resHeaders[key]
+        if (value !== undefined) {
+          reply.header(key, value)
+        }
       }
-    }
 
-    // fastify pipes and cleans up the stream body itself, no manual piping needed
-    reply.send(resBody)
+      // fastify pipes and cleans up the stream body itself, no manual piping needed
+      reply.send(resBody)
+    }
+    catch (error) {
+      if (typeof resBody === 'object' && !resBody.closed) {
+        resBody.on('error', reject)
+        resBody.destroy(error as any)
+      }
+
+      // Don't destroy reply.raw: fastify's error handler can still send a response.
+      reject(error)
+    }
   })
 }

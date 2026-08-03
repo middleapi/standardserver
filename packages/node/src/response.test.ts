@@ -239,6 +239,68 @@ describe('sendStandardResponse', () => {
     expect(thrownError).toBe(undefined)
   })
 
+  it('rejects, destroys the response and the body when applying headers throws', async () => {
+    let destroySpy: any
+    let thrownError: any
+
+    const options = { }
+    await expect(request(async (req: IncomingMessage, res: ServerResponse) => {
+      destroySpy = vi.spyOn(res, 'destroy')
+
+      try {
+        await sendStandardResponse(res, {
+          status: 207,
+          headers: {
+            'x-invalid': 'bad\nvalue',
+          },
+          body: (async function* () {
+            yield 1
+          })(),
+        }, options)
+      }
+      catch (err) {
+        thrownError = err
+      }
+    }).get('/')).rejects.toThrow()
+
+    expect(thrownError).toBeInstanceOf(Error)
+    expect(thrownError.code).toBe('ERR_INVALID_CHAR')
+
+    expect(destroySpy).toHaveBeenCalledWith(thrownError)
+
+    const [resBody] = toNodeHttpBodySpy.mock.results[0]!.value
+    expect((resBody as any).destroyed).toBe(true)
+  })
+
+  it('resolves without sending when headers were already flushed', async () => {
+    let sendError: any
+
+    const res = await request(async (req: IncomingMessage, res: ServerResponse) => {
+      res.flushHeaders()
+
+      try {
+        await sendStandardResponse(res, {
+          status: 207,
+          headers: {
+            'x-custom-header': 'custom-value',
+          },
+          body: undefined,
+        })
+      }
+      catch (err) {
+        sendError = err
+      }
+
+      res.end('flushed')
+    }).get('/')
+
+    expect(sendError).toBeUndefined()
+
+    expect(res.status).toBe(200)
+    expect(res.headers).not.toHaveProperty('x-custom-header')
+    expect(res.text).toEqual('flushed')
+  })
+
   describe('stream destroy while sending', () => {
     it('with error', async () => {
       let clean = false

@@ -5,6 +5,10 @@ import type { NodeHttpResponse } from './types'
  * Check both the response itself and its underlying stream (http2) are still writable.
  */
 export function canWriteToNodeResponse(res: Stream.Writable | NodeHttpResponse): boolean {
+  if ('headersSent' in res && res.headersSent) {
+    return false
+  }
+
   if ('stream' in res && !_canWriteToStream(res.stream)) {
     return false
   }
