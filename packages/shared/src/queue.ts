@@ -30,10 +30,8 @@ export class Queue<T> {
    * @throws when the queue is closed or aborted. Note that buffered items can still be pulled after close until the buffer is drained.
    */
   async pull(): Promise<T> {
-    const item = this.items.shift()
-
-    if (item !== undefined) {
-      return item
+    if (this.items.length > 0) {
+      return this.items.shift() as T
     }
 
     if (this.closed) {

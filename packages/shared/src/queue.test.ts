@@ -12,6 +12,16 @@ describe('queue', () => {
     expect(await queue.pull()).toBe('b')
   })
 
+  it('returns buffered undefined items in order', async () => {
+    const queue = new Queue<string | undefined>()
+
+    queue.push(undefined)
+    queue.push('a')
+
+    expect(await queue.pull()).toBeUndefined()
+    expect(await queue.pull()).toBe('a')
+  })
+
   it('resolves a pending pull on push', async () => {
     const queue = new Queue<string>()
 
