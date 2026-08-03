@@ -349,6 +349,48 @@ describe('sendStandardResponse', () => {
       })
     })
 
+    it('rejects and destroys the body when reply throws synchronously', async ({ onTestFinished }) => {
+      const cancelMock = vi.fn()
+
+      const fastify = Fastify()
+      onTestFinished(() => fastify.close())
+
+      toNodeHttpBodySpy.mockReturnValueOnce([Readable.fromWeb(new ReadableStream({
+        async pull(controller) {
+          controller.enqueue(new TextEncoder().encode('foo'))
+          await new Promise(r => setTimeout(r, 100))
+        },
+        cancel: cancelMock,
+      })), {}])
+
+      let thrownError: any
+      fastify.get('/', async (req, reply) => {
+        try {
+          await sendStandardResponse(reply, {
+            // status outside [100, 599] makes reply.status throw FST_ERR_BAD_STATUS_CODE
+            status: 999,
+            headers: {},
+            async* body() { },
+          })
+        }
+        catch (err) {
+          thrownError = err
+          throw err
+        }
+      })
+
+      await fastify.ready()
+      const res = await request(fastify.server).get('/')
+
+      // fastify's error handler can still send a response
+      expect(res.status).toBe(500)
+      expect(thrownError.code).toBe('FST_ERR_BAD_STATUS_CODE')
+
+      await vi.waitFor(() => {
+        expect(cancelMock).toHaveBeenCalledTimes(1)
+      })
+    })
+
     it('works with @fastify/cookie', async ({ onTestFinished }) => {
       const fastify = Fastify()
       onTestFinished(() => fastify.close())

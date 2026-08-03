@@ -70,6 +70,38 @@ describe('canWriteToNodeResponse', () => {
     await handled
   })
 
+  it('on http1 response with headers already flushed', async ({ onTestFinished }) => {
+    const server = http.createServer()
+    onTestFinished(() => new Promise<any>(r => server.close(r)))
+
+    const handled = new Promise<void>((resolve, reject) => {
+      server.on('request', async (req, res) => {
+        try {
+          expect(canWriteToNodeResponse(res)).toBe(true)
+
+          res.flushHeaders()
+
+          expect(res.headersSent).toBe(true)
+          expect(canWriteToNodeResponse(res)).toBe(false)
+
+          res.end()
+
+          resolve()
+        }
+        catch (error) {
+          reject(error)
+        }
+      })
+    })
+
+    await new Promise<void>(r => server.listen(0, r))
+    const port = (server.address() as any).port
+
+    http.get(`http://localhost:${port}`, res => res.resume())
+
+    await handled
+  })
+
   it('on http2 response aborted by client', async ({ onTestFinished }) => {
     const server = http2.createServer()
     onTestFinished(() => new Promise<any>(r => server.close(r)))
