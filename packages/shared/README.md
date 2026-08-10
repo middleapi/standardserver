@@ -108,4 +108,4 @@ Like what we build over at [middleapi](https://github.com/middleapi)? You can he
   </tr>
 </table>
 
-[With thanks to 38 past sponsors who helped get us here.](https://github.com/sponsors/dinwwwh)
+With thanks to 38 past sponsors who helped get us here.
