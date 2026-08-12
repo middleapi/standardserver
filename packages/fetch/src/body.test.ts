@@ -522,6 +522,7 @@ describe('toFetchBody', () => {
       'content-length': '0',
       'content-type': '',
       'x-custom-header': 'custom-value',
+      'standard-server': 'file',
     })
   })
 

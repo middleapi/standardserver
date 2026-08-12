@@ -23,14 +23,6 @@ export async function toStandardBody(re: Request | Response, options?: ToStandar
     return undefined
   }
 
-  // request.body might be null if the method is GET, HEAD, or other methods.
-  // WARNING: response.body over fetch is almost always a stream,
-  // even if the standard-server response body is undefined.
-  // WARNING: React Native fetch body might not exist (undefined), so we need to explicitly check for null.
-  if (hint === null && re.body === null) {
-    return undefined
-  }
-
   if (re.bodyUsed) {
     // native fetch error use TypeError
     throw new TypeError('Failed to read body: body stream already read')
@@ -119,7 +111,8 @@ export function toFetchBody(
     }
 
     // Only set the body hint when the headers don't already resolve to a file.
-    if (headers['standard-server'] === undefined && resolveStandardBodyHint(headers) !== 'file') {
+    // An empty body always needs it: senders can drop the content-type or content-length if they know the body is empty (e.g. bun, deno)
+    if (headers['standard-server'] === undefined && (body.size === 0 || resolveStandardBodyHint(headers) !== 'file')) {
       headers['standard-server'] = 'file' satisfies StandardBodyHint // A File is also a Blob
     }
 

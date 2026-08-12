@@ -125,7 +125,8 @@ export function toNodeHttpBody(
     }
 
     // Only set the body hint when the headers don't already resolve to a file.
-    if (headers['standard-server'] === undefined && resolveStandardBodyHint(headers) !== 'file') {
+    // An empty body always needs it: senders can drop the content-type or content-length if they know the body is empty (e.g. bun, deno)
+    if (headers['standard-server'] === undefined && (body.size === 0 || resolveStandardBodyHint(headers) !== 'file')) {
       headers['standard-server'] = 'file' satisfies StandardBodyHint // A File is also a Blob
     }
 
