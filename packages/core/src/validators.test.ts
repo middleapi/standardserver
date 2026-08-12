@@ -2,7 +2,7 @@ import { isStandardHeaders, isStandardMethod, isStandardRequest, isStandardRespo
 
 describe('isStandardMethod', () => {
   it('accepts standard & custom HTTP verbs', () => {
-    for (const method of ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD', 'CUSTOM', 'anything']) {
+    for (const method of ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD', 'QUERY', 'CUSTOM', 'anything']) {
       expect(isStandardMethod(method)).toBe(true)
     }
   })

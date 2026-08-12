@@ -1,4 +1,4 @@
-export type StandardMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'OPTIONS' | 'HEAD' | (string & {})
+export type StandardMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'OPTIONS' | 'HEAD' | 'QUERY' | (string & {})
 
 export type StandardUrl = `/${string}` | `/${string}?${string}` | `/${string}#${string}` | `/${string}?${string}#${string}`
 
