@@ -37,16 +37,6 @@ describe('toStandardBody', () => {
     expect(standardBody).toBe(undefined)
   })
 
-  it('ignores body parsing for GET requests even when headers imply a body', async () => {
-    const incomingMessage = Readable.from([Buffer.from('{"foo":"bar"}')]) as IncomingMessage
-    incomingMessage.method = 'GET'
-    incomingMessage.headers = {
-      'content-type': 'application/json',
-    }
-
-    expect(await toStandardBody(incomingMessage as NodeHttpRequest)).toBe(undefined)
-  })
-
   it('json', async () => {
     let standardBody: StandardBody = {} as any
 

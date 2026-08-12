@@ -7,7 +7,6 @@ import { Readable } from 'node:stream'
 import { flattenStandardHeader, generateContentDisposition, getFilenameFromContentDisposition, resolveStandardBodyHint } from '@standardserver/core'
 import { isAsyncIteratorObject, parseEmptyableJSON, stringifyJSON } from '@standardserver/shared'
 import { toAsyncIteratorObject, toEventStream } from './event-stream'
-import { toStandardMethod } from './method'
 
 export interface ToStandardBodyOptions {
   /**
@@ -15,10 +14,6 @@ export interface ToStandardBodyOptions {
    */
   hint?: StandardBodyHint | undefined
 }
-/**
- * https://developer.mozilla.org/en-US/docs/Web/API/Request/body
- */
-const EMPTY_BODY_METHOD_SET = new Set(['GET', 'HEAD'])
 
 /**
  * Parses the body of a node http request.
@@ -38,10 +33,6 @@ export async function toStandardBody(
   }
 
   if (hint === 'none' || (hint === undefined && mimeType === undefined && (contentLength === '0' || contentLength === undefined))) {
-    return undefined
-  }
-
-  if (hint === undefined && EMPTY_BODY_METHOD_SET.has(toStandardMethod(req.method))) {
     return undefined
   }
 
