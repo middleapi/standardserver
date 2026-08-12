@@ -150,7 +150,6 @@ describe('sendStandardResponse', () => {
       'content-disposition': 'inline; filename="blob"; filename*=utf-8\'\'blob',
       'content-length': '3',
       'content-type': 'text/plain',
-      'standard-server': 'file',
       'x-custom-header': 'custom-value',
     })
 

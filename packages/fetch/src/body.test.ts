@@ -486,11 +486,43 @@ describe('toFetchBody', () => {
       'content-length': '3',
       'content-type': 'application/pdf',
       'x-custom-header': 'custom-value',
-      'standard-server': 'file',
     })
 
     expect(generateContentDispositionSpy).toHaveBeenCalledTimes(1)
     expect(generateContentDispositionSpy).toHaveBeenCalledWith('blob')
+  })
+
+  it('blob with common content-type', () => {
+    const blob = new Blob(['foo'], { type: 'application/json' })
+
+    generateContentDispositionSpy.mockReturnValue('__mocked__')
+
+    const [body, headers] = toFetchBody(blob, baseHeaders, {})
+
+    expect(body).toBe(blob)
+    expect(headers).toEqual({
+      'content-disposition': '__mocked__',
+      'content-length': '3',
+      'content-type': 'application/json',
+      'x-custom-header': 'custom-value',
+      'standard-server': 'file',
+    })
+  })
+
+  it('empty blob without content-type', () => {
+    const blob = new Blob([])
+
+    generateContentDispositionSpy.mockReturnValue('__mocked__')
+
+    const [body, headers] = toFetchBody(blob, baseHeaders, {})
+
+    expect(body).toBe(blob)
+    expect(headers).toEqual({
+      'content-disposition': '__mocked__',
+      'content-length': '0',
+      'content-type': '',
+      'x-custom-header': 'custom-value',
+    })
   })
 
   it('file', () => {
@@ -506,7 +538,6 @@ describe('toFetchBody', () => {
       'content-length': '3',
       'content-type': 'application/pdf',
       'x-custom-header': 'custom-value',
-      'standard-server': 'file',
     })
 
     expect(generateContentDispositionSpy).toHaveBeenCalledTimes(1)
@@ -524,7 +555,6 @@ describe('toFetchBody', () => {
       'content-length': '3',
       'content-type': 'application/pdf',
       'x-custom-header': 'custom-value',
-      'standard-server': 'file',
     })
 
     expect(generateContentDispositionSpy).toHaveBeenCalledTimes(0)

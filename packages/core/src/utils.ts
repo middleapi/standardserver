@@ -1,4 +1,4 @@
-import type { StandardHeaders, StandardUrl } from './types'
+import type { StandardBodyHint, StandardHeaders, StandardUrl } from './types'
 import { toArray, tryDecodeURIComponent } from '@standardserver/shared'
 
 export function generateContentDisposition(filename: string, type: 'inline' | 'attachment' = 'inline'): string {
@@ -50,6 +50,57 @@ export function flattenStandardHeader(header: string | readonly string[] | undef
   }
 
   return header.join(', ')
+}
+
+const STANDARD_BODY_HINT_SET: ReadonlySet<string> = new Set<StandardBodyHint>([
+  'json',
+  'form-data',
+  'url-search-params',
+  'event-stream',
+  'octet-stream',
+  'file',
+  'none',
+])
+
+/**
+ * Resolves how a receiver parses a body from the standard headers alone,
+ * mirroring what the body parsers do.
+ */
+export function resolveStandardBodyHint(headers: StandardHeaders): StandardBodyHint {
+  const hint = flattenStandardHeader(headers['standard-server'])
+
+  if (hint !== undefined && STANDARD_BODY_HINT_SET.has(hint)) {
+    return hint as StandardBodyHint
+  }
+
+  const mimeType = flattenStandardHeader(headers['content-type'])?.split(';')[0]?.trim()
+  const contentLength = flattenStandardHeader(headers['content-length'])
+
+  if (mimeType === undefined && (contentLength === undefined || contentLength === '0')) {
+    return 'none'
+  }
+
+  if (mimeType === 'application/json') {
+    return 'json'
+  }
+
+  if (mimeType === 'multipart/form-data') {
+    return 'form-data'
+  }
+
+  if (mimeType === 'application/x-www-form-urlencoded') {
+    return 'url-search-params'
+  }
+
+  if (mimeType === 'text/event-stream') {
+    return 'event-stream'
+  }
+
+  if (contentLength !== undefined) {
+    return 'file'
+  }
+
+  return 'octet-stream'
 }
 
 export function mergeStandardHeaders(a: StandardHeaders, b: StandardHeaders): StandardHeaders {

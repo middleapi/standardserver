@@ -4,7 +4,7 @@ import type { ToEventStreamOptions } from './event-stream'
 import type { NodeHttpRequest } from './types'
 import { Buffer } from 'node:buffer'
 import { Readable } from 'node:stream'
-import { flattenStandardHeader, generateContentDisposition, getFilenameFromContentDisposition } from '@standardserver/core'
+import { flattenStandardHeader, generateContentDisposition, getFilenameFromContentDisposition, resolveStandardBodyHint } from '@standardserver/core'
 import { isAsyncIteratorObject, parseEmptyableJSON, stringifyJSON } from '@standardserver/shared'
 import { toAsyncIteratorObject, toEventStream } from './event-stream'
 import { toStandardMethod } from './method'
@@ -105,8 +105,8 @@ export function toNodeHttpBody(
   headers = { ...headers }
 
   if (body instanceof ReadableStream) {
-    // Explicitly set the body hint to avoid misidentification
-    // when the stream is empty, the length is predictable, or the content type is common.
+    // Always set the body hint: the length of a stream is unknown here, but the transport
+    // can still send a content-length (an empty stream), which reads back as a file.
     headers['standard-server'] ??= 'octet-stream' satisfies StandardBodyHint
 
     // content-type is required when body is present
@@ -116,16 +116,17 @@ export function toNodeHttpBody(
   }
 
   if (body instanceof Blob) {
-    // Explicitly set the body hint to avoid misidentification
-    // when the file size is NaN or the content type is common.
-    headers['standard-server'] ??= 'file' satisfies StandardBodyHint // A File is also a Blob
-
     headers['content-type'] = body.type
     headers['content-disposition'] ??= generateContentDisposition(body instanceof File ? body.name : 'blob')
 
     // BunS3 can use NaN for the size
     if (Number.isFinite(body.size)) {
       headers['content-length'] = body.size.toString()
+    }
+
+    // Only set the body hint when the headers don't already resolve to a file.
+    if (headers['standard-server'] === undefined && resolveStandardBodyHint(headers) !== 'file') {
+      headers['standard-server'] = 'file' satisfies StandardBodyHint // A File is also a Blob
     }
 
     return [Readable.fromWeb(body.stream()), headers]

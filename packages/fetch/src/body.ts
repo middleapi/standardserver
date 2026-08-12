@@ -1,6 +1,6 @@
 import type { StandardBody, StandardBodyHint, StandardHeaders } from '@standardserver/core'
 import type { ToEventStreamOptions } from './event-stream'
-import { generateContentDisposition, getFilenameFromContentDisposition } from '@standardserver/core'
+import { generateContentDisposition, getFilenameFromContentDisposition, resolveStandardBodyHint } from '@standardserver/core'
 import { isAsyncIteratorObject, parseEmptyableJSON, stringifyJSON } from '@standardserver/shared'
 import { toAsyncIteratorObject, toEventStream } from './event-stream'
 
@@ -97,8 +97,8 @@ export function toFetchBody(
   headers = { ...headers }
 
   if (body instanceof ReadableStream) {
-    // Explicitly set the body hint to avoid misidentification
-    // when the stream is empty, the length is predictable, or the content type is common.
+    // Always set the body hint: the length of a stream is unknown here, but the transport
+    // can still send a content-length (an empty stream), which reads back as a file.
     headers['standard-server'] ??= 'octet-stream' satisfies StandardBodyHint
     // content-type should be set when body is present
     headers['content-type'] ??= 'application/octet-stream'
@@ -107,21 +107,23 @@ export function toFetchBody(
   }
 
   if (body instanceof Blob) {
-    // Explicitly set the body hint to avoid misidentification
-    // when the file size is NaN or the content type is common.
-    headers['standard-server'] ??= 'file' satisfies StandardBodyHint // A File is also a Blob
-
     headers['content-type'] = body.type
     // FIX: Bun returns `undefined` for an empty File name, despite the spec requiring a string
     headers['content-disposition'] ??= generateContentDisposition(body instanceof File ? body.name ?? '' : 'blob')
 
     // BunS3 can use NaN for the size
-    if (!Number.isFinite(body.size)) {
-      return [body.stream(), headers]
+    const hasKnownSize = Number.isFinite(body.size)
+
+    if (hasKnownSize) {
+      headers['content-length'] = body.size.toString()
     }
 
-    headers['content-length'] = body.size.toString()
-    return [body, headers]
+    // Only set the body hint when the headers don't already resolve to a file.
+    if (headers['standard-server'] === undefined && resolveStandardBodyHint(headers) !== 'file') {
+      headers['standard-server'] = 'file' satisfies StandardBodyHint // A File is also a Blob
+    }
+
+    return [hasKnownSize ? body : body.stream(), headers]
   }
 
   headers['standard-server'] = undefined

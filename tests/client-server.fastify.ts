@@ -19,11 +19,15 @@ export function createFastifyClientServerTest(): ClientServerTest {
   // a blob/file without a type is sent with an empty `content-type`, which fastify rejects with 415
   fastify.addHook('onRequest', async (req) => {
     if (req.headers['content-type'] === '') {
-      delete req.headers['content-type']
+      req.headers['content-type'] = 'custom/empty'
     }
   })
 
   fastify.all('/*', async (req, reply) => {
+    if (req.headers['content-type'] === 'custom/empty') {
+      req.headers['content-type'] = ''
+    }
+
     const standardRequest = toStandardLazyRequest(req, reply)
     const standardResponse = await handler(standardRequest)
 
