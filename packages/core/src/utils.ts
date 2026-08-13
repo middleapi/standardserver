@@ -66,7 +66,12 @@ const STANDARD_BODY_HINT_SET: ReadonlySet<string> = new Set<StandardBodyHint>([
  * Resolves how a receiver parses a body from the standard headers alone,
  * mirroring what the body parsers do.
  */
-export function resolveStandardBodyHint(headers: StandardHeaders): StandardBodyHint {
+export function resolveStandardBodyHint(headers: {
+  'standard-server'?: undefined | string | string[]
+  'content-type'?: undefined | string | string[]
+  'content-length'?: undefined | string | string[]
+  'content-disposition'?: undefined | string | string[]
+}): StandardBodyHint {
   const hint = flattenStandardHeader(headers['standard-server'])
 
   if (hint !== undefined && STANDARD_BODY_HINT_SET.has(hint)) {
@@ -75,6 +80,8 @@ export function resolveStandardBodyHint(headers: StandardHeaders): StandardBodyH
 
   const mimeType = flattenStandardHeader(headers['content-type'])?.split(';')[0]?.trim()
   const contentLength = flattenStandardHeader(headers['content-length'])
+  const contentDisposition = flattenStandardHeader(headers['content-disposition'])
+  const fileName = contentDisposition !== undefined ? getFilenameFromContentDisposition(contentDisposition) : undefined
 
   if (mimeType === undefined && (contentLength === undefined || contentLength === '0')) {
     return 'none'
@@ -96,7 +103,7 @@ export function resolveStandardBodyHint(headers: StandardHeaders): StandardBodyH
     return 'event-stream'
   }
 
-  if (contentLength !== undefined) {
+  if (fileName !== undefined || contentLength !== undefined) {
     return 'file'
   }
 

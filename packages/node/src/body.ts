@@ -59,12 +59,12 @@ export async function toStandardBody(
     return toAsyncIteratorObject(req)
   }
 
-  if (hint === 'file' || (hint === undefined && contentLength !== undefined)) {
-    const contentDisposition = req.headers['content-disposition']
-    const fileName = contentDisposition !== undefined
-      ? getFilenameFromContentDisposition(contentDisposition)
-      : undefined
+  const contentDisposition = req.headers['content-disposition']
+  const fileName = contentDisposition !== undefined
+    ? getFilenameFromContentDisposition(contentDisposition)
+    : undefined
 
+  if (hint === 'file' || (hint === undefined && (fileName !== undefined || contentLength !== undefined))) {
     return _streamToFile(req, fileName ?? 'blob', contentType ?? '')
   }
 
@@ -115,10 +115,18 @@ export function toNodeHttpBody(
       headers['content-length'] = body.size.toString()
     }
 
-    // Only set the body hint when the headers don't already resolve to a file.
-    // An empty body always needs it: senders can drop the content-type or content-length if they know the body is empty (e.g. bun, deno)
-    if (headers['standard-server'] === undefined && (body.size === 0 || resolveStandardBodyHint(headers) !== 'file')) {
-      headers['standard-server'] = 'file' satisfies StandardBodyHint // A File is also a Blob
+    if (headers['standard-server'] === undefined && (body.size === 0 || resolveStandardBodyHint({ ...headers, 'content-length': undefined }) !== 'file')) {
+      // content-length is left out of the resolution: a compressing proxy rewrites it, so the receiver
+      // may never see it, while content-type and content-disposition reach it untouched.
+      const predictedHint = resolveStandardBodyHint({
+        'content-disposition': headers['content-disposition'],
+        'content-type': headers['content-type'],
+      })
+
+      // Only set the body hint when the headers don't already resolve to a file.
+      if (predictedHint !== 'file') {
+        headers['standard-server'] = 'file' satisfies StandardBodyHint // A File is also a Blob
+      }
     }
 
     return [Readable.fromWeb(body.stream()), headers]

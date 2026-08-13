@@ -179,6 +179,21 @@ describe('toStandardBody', () => {
       await expect(standardBody.text()).resolves.toBe('raw-data')
     })
 
+    it('parses a body without content-length as file when content-disposition carries a filename', async () => {
+      const standardBody = await toStandardBody(event({
+        body: 'hello',
+        multiValueHeaders: {
+          'Content-Type': ['text/plain'],
+          'Content-Disposition': ['inline; filename="hello.txt"'],
+        },
+      })) as File
+
+      expect(standardBody).toBeInstanceOf(File)
+      expect(standardBody.name).toBe('hello.txt')
+      expect(standardBody.type).toBe('text/plain')
+      await expect(standardBody.text()).resolves.toBe('hello')
+    })
+
     it('treats a body without content-length as octet-stream', async () => {
       const standardBody = await toStandardBody(event({
         body: 'raw-data',

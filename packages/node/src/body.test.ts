@@ -144,7 +144,7 @@ describe('toStandardBody', () => {
   it('file', async () => {
     let standardBody: any
 
-    getFilenameFromContentDispositionSpy.mockReturnValue('__name__')
+    getFilenameFromContentDispositionSpy.mockReturnValueOnce('__name__')
 
     await request(async (req: IncomingMessage, res: ServerResponse) => {
       standardBody = await toStandardBody(req)
@@ -182,6 +182,22 @@ describe('toStandardBody', () => {
     expect(await standardBody.text()).toBe('foo')
 
     expect(getFilenameFromContentDispositionSpy).toHaveBeenCalledTimes(0)
+  })
+
+  it('file without content-length, as a compressing proxy leaves it', async () => {
+    const incomingMessage = Readable.from([Buffer.from('foo')]) as IncomingMessage
+    incomingMessage.method = 'POST'
+    incomingMessage.headers = {
+      'content-type': 'application/pdf',
+      'content-disposition': 'attachment; filename="foo.pdf"',
+    }
+
+    const standardBody = await toStandardBody(incomingMessage as NodeHttpRequest)
+
+    expect(standardBody).toBeInstanceOf(File)
+    expect((standardBody as File).name).toBe('foo.pdf')
+    expect((standardBody as File).type).toBe('application/pdf')
+    expect(await (standardBody as File).text()).toBe('foo')
   })
 
   it('file without content-type', async () => {
@@ -479,13 +495,13 @@ describe('toNodeHttpBody', () => {
   it('blob', async () => {
     const blob = new Blob(['foo'], { type: 'application/pdf' })
 
-    generateContentDispositionSpy.mockReturnValue('__mocked__')
+    generateContentDispositionSpy.mockReturnValue('inline; filename="__mocked__"')
 
     const [body, headers] = toNodeHttpBody(blob, baseHeaders, {})
 
     expect(body).toBeInstanceOf(Readable)
     expect(headers).toEqual({
-      'content-disposition': '__mocked__',
+      'content-disposition': 'inline; filename="__mocked__"',
       'content-length': '3',
       'content-type': 'application/pdf',
       'x-custom-header': 'custom-value',
@@ -506,13 +522,13 @@ describe('toNodeHttpBody', () => {
   it('file', async () => {
     const blob = new File(['foo'], 'foo.pdf', { type: 'application/pdf' })
 
-    generateContentDispositionSpy.mockReturnValue('__mocked__')
+    generateContentDispositionSpy.mockReturnValue('inline; filename="__mocked__"')
 
     const [body, headers] = toNodeHttpBody(blob, baseHeaders, {})
 
     expect(body).instanceOf(Readable)
     expect(headers).toEqual({
-      'content-disposition': '__mocked__',
+      'content-disposition': 'inline; filename="__mocked__"',
       'content-length': '3',
       'content-type': 'application/pdf',
       'x-custom-header': 'custom-value',
@@ -558,13 +574,13 @@ describe('toNodeHttpBody', () => {
   it('blob with common content-type', async () => {
     const blob = new Blob(['foo'], { type: 'application/json' })
 
-    generateContentDispositionSpy.mockReturnValue('__mocked__')
+    generateContentDispositionSpy.mockReturnValue('inline; filename="__mocked__"')
 
     const [body, headers] = toNodeHttpBody(blob, baseHeaders, {})
 
     expect(body).toBeInstanceOf(Readable)
     expect(headers).toEqual({
-      'content-disposition': '__mocked__',
+      'content-disposition': 'inline; filename="__mocked__"',
       'content-length': '3',
       'content-type': 'application/json',
       'x-custom-header': 'custom-value',
@@ -575,17 +591,16 @@ describe('toNodeHttpBody', () => {
   it('empty blob without content-type', async () => {
     const blob = new Blob([])
 
-    generateContentDispositionSpy.mockReturnValue('__mocked__')
+    generateContentDispositionSpy.mockReturnValue('inline; filename="__mocked__"')
 
     const [body, headers] = toNodeHttpBody(blob, baseHeaders, {})
 
     expect(body).toBeInstanceOf(Readable)
     expect(headers).toEqual({
-      'content-disposition': '__mocked__',
+      'content-disposition': 'inline; filename="__mocked__"',
       'content-length': '0',
       'content-type': '',
       'x-custom-header': 'custom-value',
-      'standard-server': 'file',
     })
   })
 
@@ -593,17 +608,17 @@ describe('toNodeHttpBody', () => {
     const file = new File(['foo'], 'foo.pdf', { type: 'application/pdf' })
     Object.defineProperty(file, 'size', { value: Number.NaN })
 
-    generateContentDispositionSpy.mockReturnValue('__mocked__')
+    generateContentDispositionSpy.mockReturnValue('inline; filename="__mocked__"')
 
     const [body, headers] = toNodeHttpBody(file, baseHeaders, {})
 
     expect(body).toBeInstanceOf(Readable)
+    // no content-length to send, but the filename still identifies the body
     expect(headers).toEqual({
-      'content-disposition': '__mocked__',
+      'content-disposition': 'inline; filename="__mocked__"',
       'content-length': undefined,
       'content-type': 'application/pdf',
       'x-custom-header': 'custom-value',
-      'standard-server': 'file',
     })
 
     expect(generateContentDispositionSpy).toHaveBeenCalledTimes(1)

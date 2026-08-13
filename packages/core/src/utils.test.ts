@@ -128,6 +128,27 @@ describe('resolveStandardBodyHint', () => {
     expect(resolveStandardBodyHint({ 'content-length': '0', 'content-type': ' ; charset=utf-8' })).toBe('file')
   })
 
+  it('file when content-disposition carries a filename', () => {
+    // a compressing proxy rewrites content-length, content-disposition reaches the receiver untouched
+    expect(resolveStandardBodyHint({ 'content-type': 'application/pdf', 'content-disposition': 'inline; filename="a.pdf"' })).toBe('file')
+    expect(resolveStandardBodyHint({ 'content-type': 'application/pdf', 'content-disposition': 'attachment; filename*=utf-8\'\'a.pdf' })).toBe('file')
+    // an empty filename is still a filename
+    expect(resolveStandardBodyHint({ 'content-type': 'application/pdf', 'content-disposition': 'attachment; filename=""' })).toBe('file')
+
+    // nothing to extract, so it says nothing about the body
+    expect(resolveStandardBodyHint({ 'content-type': 'application/pdf', 'content-disposition': 'attachment' })).toBe('octet-stream')
+    expect(resolveStandardBodyHint({ 'content-type': 'application/pdf', 'content-disposition': [] })).toBe('octet-stream')
+
+    // a filename does not rescue a body the other content headers already report as empty
+    expect(resolveStandardBodyHint({ 'content-disposition': 'inline; filename="a.pdf"' })).toBe('none')
+    expect(resolveStandardBodyHint({ 'content-disposition': 'inline; filename="a.pdf"', 'content-length': '0' })).toBe('none')
+
+    // a common content-type still wins
+    expect(resolveStandardBodyHint({ 'content-type': 'application/json', 'content-disposition': 'inline; filename="a.json"' })).toBe('json')
+    // and an explicit hint still wins over everything
+    expect(resolveStandardBodyHint({ 'standard-server': 'none', 'content-type': 'application/pdf', 'content-disposition': 'inline; filename="a.pdf"' })).toBe('none')
+  })
+
   it('octet-stream when content-length is absent', () => {
     expect(resolveStandardBodyHint({ 'content-type': 'application/octet-stream' })).toBe('octet-stream')
     expect(resolveStandardBodyHint({ 'content-type': 'application/pdf' })).toBe('octet-stream')

@@ -55,12 +55,12 @@ export async function toStandardBody(
     return toAsyncIteratorObject(_bytesToReadableStream(bytes))
   }
 
-  if (hint === 'file' || (hint === undefined && flattenStandardHeader(getEventHeader(event, 'content-length')) !== undefined)) {
-    const contentDisposition = flattenStandardHeader(getEventHeader(event, 'content-disposition'))
-    const fileName = contentDisposition !== undefined
-      ? getFilenameFromContentDisposition(contentDisposition)
-      : undefined
+  const contentDisposition = flattenStandardHeader(getEventHeader(event, 'content-disposition'))
+  const fileName = contentDisposition !== undefined
+    ? getFilenameFromContentDisposition(contentDisposition)
+    : undefined
 
+  if (hint === 'file' || (hint === undefined && (fileName !== undefined || flattenStandardHeader(getEventHeader(event, 'content-length')) !== undefined))) {
     return new File([bytes], fileName ?? 'blob', { type: contentType ?? '' })
   }
 

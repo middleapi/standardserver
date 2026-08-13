@@ -167,6 +167,24 @@ describe('toStandardBody', () => {
     expect(getFilenameFromContentDispositionSpy).toHaveBeenCalledWith('attachment; filename="foo.pdf"')
   })
 
+  it('file (without content-length, as a compressing proxy leaves it)', async () => {
+    const request = new Request('https://example.com', {
+      method: 'POST',
+      body: new Blob(['{"value":123}'], { type: 'application/pdf' }).stream(),
+      headers: {
+        'content-disposition': 'attachment; filename="foo.pdf"',
+        'content-type': 'application/pdf',
+      },
+      duplex: 'half',
+    })
+
+    const standardFile = await toStandardBody(request) as any
+    expect(standardFile).toBeInstanceOf(File)
+    expect(standardFile.name).toBe('foo.pdf')
+    expect(standardFile.type).toBe('application/pdf')
+    expect(await standardFile.text()).toBe('{"value":123}')
+  })
+
   it('file (without disposition)', async () => {
     const request = new Request('https://example.com', {
       method: 'POST',
@@ -476,13 +494,13 @@ describe('toFetchBody', () => {
   it('blob', () => {
     const blob = new Blob(['foo'], { type: 'application/pdf' })
 
-    generateContentDispositionSpy.mockReturnValue('__mocked__')
+    generateContentDispositionSpy.mockReturnValue('inline; filename="__mocked__"')
 
     const [body, headers] = toFetchBody(blob, baseHeaders, {})
 
     expect(body).toBe(blob)
     expect(headers).toEqual({
-      'content-disposition': '__mocked__',
+      'content-disposition': 'inline; filename="__mocked__"',
       'content-length': '3',
       'content-type': 'application/pdf',
       'x-custom-header': 'custom-value',
@@ -495,13 +513,13 @@ describe('toFetchBody', () => {
   it('blob with common content-type', () => {
     const blob = new Blob(['foo'], { type: 'application/json' })
 
-    generateContentDispositionSpy.mockReturnValue('__mocked__')
+    generateContentDispositionSpy.mockReturnValue('inline; filename="__mocked__"')
 
     const [body, headers] = toFetchBody(blob, baseHeaders, {})
 
     expect(body).toBe(blob)
     expect(headers).toEqual({
-      'content-disposition': '__mocked__',
+      'content-disposition': 'inline; filename="__mocked__"',
       'content-length': '3',
       'content-type': 'application/json',
       'x-custom-header': 'custom-value',
@@ -512,30 +530,29 @@ describe('toFetchBody', () => {
   it('empty blob without content-type', () => {
     const blob = new Blob([])
 
-    generateContentDispositionSpy.mockReturnValue('__mocked__')
+    generateContentDispositionSpy.mockReturnValue('inline; filename="__mocked__"')
 
     const [body, headers] = toFetchBody(blob, baseHeaders, {})
 
     expect(body).toBe(blob)
     expect(headers).toEqual({
-      'content-disposition': '__mocked__',
+      'content-disposition': 'inline; filename="__mocked__"',
       'content-length': '0',
       'content-type': '',
       'x-custom-header': 'custom-value',
-      'standard-server': 'file',
     })
   })
 
   it('file', () => {
     const blob = new File(['foo'], 'foo.pdf', { type: 'application/pdf' })
 
-    generateContentDispositionSpy.mockReturnValue('__mocked__')
+    generateContentDispositionSpy.mockReturnValue('inline; filename="__mocked__"')
 
     const [body, headers] = toFetchBody(blob, baseHeaders, {})
 
     expect(body).toBe(blob)
     expect(headers).toEqual({
-      'content-disposition': '__mocked__',
+      'content-disposition': 'inline; filename="__mocked__"',
       'content-length': '3',
       'content-type': 'application/pdf',
       'x-custom-header': 'custom-value',
@@ -548,11 +565,11 @@ describe('toFetchBody', () => {
   it('file with existing content-disposition header', () => {
     const blob = new File(['foo'], 'foo.pdf', { type: 'application/pdf' })
 
-    const [body, headers] = toFetchBody(blob, { ...baseHeaders, 'content-disposition': 'attachment' }, {})
+    const [body, headers] = toFetchBody(blob, { ...baseHeaders, 'content-disposition': 'attachment; filename="bar.pdf"' }, {})
 
     expect(body).toBe(blob)
     expect(headers).toEqual({
-      'content-disposition': 'attachment',
+      'content-disposition': 'attachment; filename="bar.pdf"',
       'content-length': '3',
       'content-type': 'application/pdf',
       'x-custom-header': 'custom-value',
@@ -561,20 +578,36 @@ describe('toFetchBody', () => {
     expect(generateContentDispositionSpy).toHaveBeenCalledTimes(0)
   })
 
+  it('file with a content-disposition header without a filename', () => {
+    const blob = new File(['foo'], 'foo.pdf', { type: 'application/pdf' })
+
+    const [body, headers] = toFetchBody(blob, { ...baseHeaders, 'content-disposition': 'attachment' }, {})
+
+    expect(body).toBe(blob)
+    // no filename to identify the body with, so the hint has to carry it
+    expect(headers).toEqual({
+      'content-disposition': 'attachment',
+      'content-length': '3',
+      'content-type': 'application/pdf',
+      'x-custom-header': 'custom-value',
+      'standard-server': 'file',
+    })
+  })
+
   it('file with size=nan', () => {
     // BunS3 is a File instance but has an unknown size (NaN), so to support it we should return a stream in this case.
     const file = new File(['foo'], 'foo.pdf', { type: 'application/pdf' })
     Object.defineProperty(file, 'size', { value: Number.NaN })
 
-    generateContentDispositionSpy.mockReturnValue('__mocked__')
+    generateContentDispositionSpy.mockReturnValue('inline; filename="__mocked__"')
     const [body, headers] = toFetchBody(file, baseHeaders, {})
 
     expect(body).toBeInstanceOf(ReadableStream)
+    // no content-length to send, but the filename still identifies the body
     expect(headers).toEqual({
-      'content-disposition': '__mocked__',
+      'content-disposition': 'inline; filename="__mocked__"',
       'content-type': 'application/pdf',
       'x-custom-header': 'custom-value',
-      'standard-server': 'file',
     })
   })
 
