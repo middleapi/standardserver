@@ -25,7 +25,7 @@
   ],
   "exclude": [
     "playgrounds/**",
-    "packages/bun/**",
-    "packages/deno/**"
+    "tests/bun/**",
+    "tests/deno/**"
   ]
 }
