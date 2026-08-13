@@ -25,17 +25,11 @@
 
 Standard Server provides a unified interface for client-server communication across HTTP and message-based transports. It lets you keep handler and client code transport-agnostic by working with the same request, response, body, and streaming abstractions whether the transport is Fetch, Node.js HTTP, or a peer-style message channel.
 
-This package is the foundation of that model. It defines the core request and response types, shared runtime validators, small utility helpers, and event stream (SSE) helpers.
-
-## Entry Points
-
-| Entry point            | Purpose                                                  |
-| ---------------------- | -------------------------------------------------------- |
-| `@standardserver/core` | Shared request/response types, utilities, and validators |
+This package is the foundation of that model. It defines the request and response types every adapter converts to and from, the body parsing rules they all share, runtime validators, header and URL utilities, and event stream (SSE) helpers.
 
 ## Request and response types
 
-The main entry point exposes four transport-agnostic shapes:
+The package exposes four transport-agnostic shapes:
 
 | Export                 | Description                                                     |
 | ---------------------- | --------------------------------------------------------------- |
@@ -85,35 +79,78 @@ export async function handle(request: StandardLazyRequest): Promise<StandardResp
 | `form-data`         | `FormData`                     | `multipart/form-data`               | Multipart form submissions                            |
 | `url-search-params` | `URLSearchParams`              | `application/x-www-form-urlencoded` | URL-encoded forms                                     |
 | `event-stream`      | `AsyncIteratorObject<unknown>` | `text/event-stream`                 | Server-Sent Events (SSE)                              |
-| `octet-stream`      | `ReadableStream<Uint8Array>`   | any                                 | Binary payloads                                       |
+| `octet-stream`      | `ReadableStream<Uint8Array>`   | any                                 | Binary streaming                                      |
 | `file`              | `File`                         | any                                 | Fixed-size binary payloads for both `File` and `Blob` |
 | `none`              | `undefined`                    |                                     | Empty body                                            |
 
-### Resolving Body
+> [!NOTE]
+> Since `File` extends `Blob`, `resolveBody` always returns a `File` when representing either `File` or `Blob` bodies.
 
-`resolveBody(hint?)` determines how to parse the body using the following priority:
+## The `standard-server` header
 
-1. If `hint?` is provided, use it as the `StandardBodyHint`.
-2. Otherwise, if the `standard-server` header is present, use it as the `StandardBodyHint`.
-3. Otherwise, if `content-type` is one of the common types, parse accordingly.
-4. Otherwise, if `content-length` exists, treat the body as `file`; if not, treat it as `octet-stream`.
+> [!NOTE]
+> This section applies to the HTTP adapters (Fetch, Node.js, Fastify, AWS Lambda). It does not apply to the [peer adapter](../peer/README.md), which identifies body types through its own message protocol — a different but fairly similar mechanism.
 
-For efficient communication, set the `standard-server` header to explicitly hint the body type, especially for file or binary streaming. For example, if you upload a file with a common `content-type` such as `application/json` but omit the `standard-server` header, the server may interpret it as JSON and parse it unexpectedly.
+A `StandardBody` is richer than what HTTP content headers can describe. `content-type` tells the receiver the _media type_ of the bytes, but not which `StandardBody` representation the sender intended:
+
+- A file upload can legitimately carry `content-type: application/json`. Without more information, the receiver would parse it into a JSON value when the sender meant a `File` to be stored as-is.
+- A fixed-size binary payload (`file`) and a binary stream (`octet-stream`) can share any content type. Telling them apart otherwise depends on `content-length`, which proxies may rewrite and some runtimes drop when the payload is empty.
+
+The `standard-server` header closes this gap. It carries the sender's `StandardBodyHint` verbatim — `json`, `form-data`, `url-search-params`, `event-stream`, `octet-stream`, `file`, or `none` — so the receiver reconstructs exactly the body representation the sender had.
+
+Adapters set the header automatically where content headers are ambiguous: serializing a `Blob` or `File` body stamps `standard-server: file` (along with `content-type`, `content-length`, and a generated `content-disposition`), and serializing a `ReadableStream` body stamps `standard-server: octet-stream`. Your own header value always wins over the auto-set one, and you can remove an auto-set header entirely by assigning an empty array. For the unambiguous body types, the header is unnecessary and adapters clear it.
+
+Clients that don't speak Standard Server interoperate fine: when the header is absent or holds an unknown value, the receiver falls back to standard content-header inference, described below. When calling a Standard Server endpoint with a plain HTTP client, set the header yourself whenever the content type alone could be misread:
 
 ```ts
 const response = await fetch('/upload', {
   method: 'POST',
   headers: {
     'content-type': 'application/json',
-    'standard-server': 'file', // <- hint the body type to avoid misinterpretation
+    'standard-server': 'file', // <- keep the payload a File on the server
   },
   body: new Blob(['{"message": "Hello, world!"}'], { type: 'application/json' }),
 })
 ```
 
+## How body parsing works
+
+> [!NOTE]
+> This section applies to the HTTP adapters (Fetch, Node.js, Fastify, AWS Lambda). It does not apply to the [peer adapter](../peer/README.md), which identifies body types through its own message protocol — a different but fairly similar mechanism.
+
+`resolveBody(hint?)` on `StandardLazyRequest` and `StandardLazyResponse` resolves the body lazily — the underlying stream is only consumed once you call it. The `StandardBodyHint` that decides how the raw body is parsed is chosen in this order:
+
+1. **Explicit `hint` argument.** If you pass a hint to `resolveBody(hint)`, it always wins.
+2. **The `standard-server` header.** If present and holding a valid hint value, it is used verbatim. Unknown values are ignored.
+3. **Content-header inference:**
+   1. No `content-type`, and `content-length` absent or `0` → `none`.
+   2. A common `content-type` → `application/json` parses as `json`, `multipart/form-data` as `form-data`, `application/x-www-form-urlencoded` as `url-search-params`, and `text/event-stream` as `event-stream`. Media type casing and parameters such as `; charset=utf-8` are ignored.
+   3. A `content-disposition` carrying a filename, or any `content-length` → `file`.
+   4. Anything else → `octet-stream`.
+
+This resolution is implemented once in this package as `resolveStandardBodyHint(headers)` and shared by every HTTP adapter, so the same body parses the same way regardless of which HTTP transport carried it:
+
+```ts
+import { resolveStandardBodyHint } from '@standardserver/core'
+
+resolveStandardBodyHint({ 'content-type': 'application/json' })
+// 'json'
+
+resolveStandardBodyHint({
+  'content-type': 'application/json',
+  'standard-server': 'file',
+})
+// 'file'
+
+resolveStandardBodyHint({})
+// 'none'
+```
+
+Use it when building a custom adapter, or when you need to know how a body will parse without consuming it.
+
 ## Utilities
 
-The main entry point also exports a small set of helpers for common header and URL operations.
+The package also exports a small set of helpers for common header and URL operations.
 
 ### Content-Disposition helpers
 
@@ -201,7 +238,7 @@ Use Event-Stream Helpers when you need explicit SSE encoding, decoding, or metad
 
 ### Message types and codecs
 
-The event-stream entry point exposes:
+The event-stream helpers include:
 
 - `EventMeta` for `id`, `retry`, and `comments`
 - `EventStreamMessage` for complete SSE messages
@@ -271,12 +308,14 @@ const response: StandardResponse = {
 }
 ```
 
+Events are interpreted as follows: `yield` emits a `message`, `throw` emits an `error`, and `return` emits a `close` event. Note that `close` does not cause [EventSource](https://developer.mozilla.org/en-US/docs/Web/API/EventSource) to close the connection because it is not part of the SSE specification. However, when using Standard Server for client-side streaming, `close` is treated as the end of the stream, so the connection is closed and no reconnection is attempted.
+
 > [!WARNING]
 > Metadata is validated before it is attached: `id`, `event`, and comments must not contain line breaks, and `retry` must be a non-negative integer.
 
 ### Errors and low-level assertions
 
-The subpath also exports:
+The package also exports:
 
 - `EventStreamEncoderError` for invalid outbound SSE messages
 - `EventStreamDecoderError` for incomplete or invalid inbound stream decoding
@@ -300,7 +339,9 @@ error.data
 
 ## Learn more
 
-For the higher-level project overview, see the root [Standard Server README](../../README.md).
+For the higher-level project overview and adapter quick-starts, see the root [Standard Server README](../../README.md).
+
+Adapter documentation: [Fetch](../fetch/README.md) · [Node.js](../node/README.md) · [Fastify](../fastify/README.md) · [AWS Lambda](../aws-lambda/README.md) · [Peer](../peer/README.md)
 
 ## Sponsors
 

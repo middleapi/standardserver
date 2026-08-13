@@ -25,19 +25,11 @@
 
 Standard Server provides a unified interface for client-server communication across HTTP and message-based transports. It lets you write handlers against the same request, response, body, and streaming primitives whether the underlying transport is the Fetch API, Node.js HTTP, HTTP/2, or a peer-style message channel.
 
-This package is the Node.js adapter for that model. It converts between native Node request and response objects and the corresponding Standard Server shapes from `@standardserver/core`, while also exposing lower-level utilities for body parsing, URL normalization, abort signals, and server-sent events.
-
-## Entry Point
-
-The package exports a single entry point:
-
-| Export                 | Purpose                                                  |
-| ---------------------- | -------------------------------------------------------- |
-| `@standardserver/node` | Node.js adapter helpers for requests, responses, and SSE |
+This package is the Node.js adapter for that model. It converts between native Node request and response objects and the corresponding Standard Server shapes from [`@standardserver/core`](../core/README.md), while also exposing lower-level utilities for body parsing, URL normalization, abort signals, and server-sent events.
 
 ## Package overview
 
-The main entry point exposes four groups of helpers:
+The package exposes four groups of helpers:
 
 | Group                   | Exports                                                                                                                | Purpose                                                            |
 | ----------------------- | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
@@ -85,29 +77,16 @@ createServer(async (req, res) => {
 
 ## Resolving Body
 
-`resolveBody(hint?)` determines how to parse the body using the following priority:
+`resolveBody(hint?)` follows the shared Standard Server resolution rules: an explicit `hint` wins, then the [`standard-server` header](../core/README.md#the-standard-server-header), then inference from the content headers. See [how body parsing works](../core/README.md#how-body-parsing-works) in the core README for the full algorithm.
 
-1. If `hint?` is provided, use it as the `StandardBodyHint`.
-2. Otherwise, if the `standard-server` header is present, use it as the `StandardBodyHint`.
-3. Otherwise, if `content-type` is one of the common types, parse accordingly.
-4. Otherwise, if `content-length` exists, treat the body as `file`; if not, treat it as `octet-stream`.
-
-For efficient communication, set the `standard-server` header to explicitly hint the body type, especially for file or binary streaming. For example, if you upload a file with a common `content-type` such as `application/json` but omit the `standard-server` header, the server may interpret it as JSON and parse it unexpectedly.
-
-```ts
-const response = await fetch('/upload', {
-  method: 'POST',
-  headers: {
-    'content-type': 'application/json',
-    'standard-server': 'file', // <- hint the body type to avoid misinterpretation
-  },
-  body: new Blob(['{"message": "Hello, world!"}'], { type: 'application/json' }),
-})
-```
+> [!TIP]
+> For efficient communication, set the `standard-server` header to explicitly hint the body type, especially for file or binary streaming. For example, if you upload a file with a common `content-type` such as `application/json` but omit the `standard-server` header, the server may interpret it as JSON and parse it unexpectedly.
 
 ## Learn more
 
 For the higher-level project overview, see the root [Standard Server README](../../README.md).
+
+For the shared contract this adapter implements, see the [core documentation](../core/README.md).
 
 ## Sponsors
 
