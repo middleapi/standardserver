@@ -40,7 +40,7 @@
     "fastify": "^5.11.0",
     "h3": "2.0.1-rc.26",
     "lint-staged": "^17.3.0",
-    "pkg-pr-new": "^0.0.86",
+    "pkg-pr-new": "^0.0.87",
     "sherif": "^1.13.0",
     "simple-git-hooks": "^2.13.1",
     "srvx": "^0.12.5",
