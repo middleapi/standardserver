@@ -120,6 +120,7 @@ for (const [adapter, createClientServer] of ADAPTERS) {
         },
       },
       {
+        // Bun drops empty headers like content-type, so only the body hint identifies this one
         name: 'empty-file',
         createBody: () => new File([], '', { type: '' }),
         assertBody: async (body: any) => {

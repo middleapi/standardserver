@@ -1,4 +1,4 @@
-import { flattenStandardHeader, generateContentDisposition, getFilenameFromContentDisposition, mergeStandardHeaders, parseStandardUrl } from './utils'
+import { flattenStandardHeader, generateContentDisposition, getFilenameFromContentDisposition, mergeStandardHeaders, parseStandardUrl, resolveStandardBodyHint } from './utils'
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -73,6 +73,100 @@ it('getFilenameFromContentDisposition', () => {
   expect(getFilenameFromContentDisposition('attachment; filename*=us-ascii\'en\'test.txt')).toEqual('test.txt')
   expect(getFilenameFromContentDisposition('attachment; filename*=iso-8859-1\'\'%E9.txt; filename="fallback.txt"')).toEqual('fallback.txt')
   expect(getFilenameFromContentDisposition('attachment; filename*=iso-8859-1\'\'%E9.txt')).toEqual(undefined)
+})
+
+describe('resolveStandardBodyHint', () => {
+  it('standard-server header wins over content headers', () => {
+    expect(resolveStandardBodyHint({ 'standard-server': 'none', 'content-length': '3', 'content-type': 'application/pdf' })).toBe('none')
+    expect(resolveStandardBodyHint({ 'standard-server': 'json', 'content-length': '3', 'content-type': 'application/pdf' })).toBe('json')
+    expect(resolveStandardBodyHint({ 'standard-server': ['file'], 'content-type': 'application/json' })).toBe('file')
+    expect(resolveStandardBodyHint({ 'standard-server': 'octet-stream', 'content-length': '3' })).toBe('octet-stream')
+    expect(resolveStandardBodyHint({ 'standard-server': 'event-stream', 'content-length': '3', 'content-type': 'application/json' })).toBe('event-stream')
+    expect(resolveStandardBodyHint({ 'standard-server': 'form-data', 'content-length': '3', 'content-type': 'application/json' })).toBe('form-data')
+    expect(resolveStandardBodyHint({ 'standard-server': 'url-search-params', 'content-length': '3', 'content-type': 'application/json' })).toBe('url-search-params')
+  })
+
+  it('ignores an unrecognized standard-server header', () => {
+    expect(resolveStandardBodyHint({ 'standard-server': 'invalid', 'content-type': 'application/json' })).toBe('json')
+    expect(resolveStandardBodyHint({ 'standard-server': '', 'content-length': '3' })).toBe('file')
+    // a repeated header flattens to a comma-joined value, which is not a hint
+    expect(resolveStandardBodyHint({ 'standard-server': ['file', 'json'] })).toBe('none')
+  })
+
+  it('falls back to content headers when the standard-server header is unset', () => {
+    expect(resolveStandardBodyHint({ 'standard-server': undefined, 'content-length': '3' })).toBe('file')
+    // an empty array is the unset-header convention
+    expect(resolveStandardBodyHint({ 'standard-server': [], 'content-length': '3' })).toBe('file')
+  })
+
+  it('none when no content-type and no meaningful content-length', () => {
+    expect(resolveStandardBodyHint({})).toBe('none')
+    expect(resolveStandardBodyHint({ 'content-length': '0' })).toBe('none')
+    expect(resolveStandardBodyHint({ 'content-type': [], 'content-length': [] })).toBe('none')
+  })
+
+  it('by content-type', () => {
+    expect(resolveStandardBodyHint({ 'content-type': 'application/json' })).toBe('json')
+    expect(resolveStandardBodyHint({ 'content-type': 'application/json; charset=utf-8' })).toBe('json')
+    expect(resolveStandardBodyHint({ 'content-type': ' application/json ' })).toBe('json')
+    expect(resolveStandardBodyHint({ 'content-type': 'multipart/form-data; boundary=x' })).toBe('form-data')
+    expect(resolveStandardBodyHint({ 'content-type': 'application/x-www-form-urlencoded' })).toBe('url-search-params')
+    expect(resolveStandardBodyHint({ 'content-type': 'text/event-stream' })).toBe('event-stream')
+
+    // content-type wins over content-length
+    expect(resolveStandardBodyHint({ 'content-type': 'application/json', 'content-length': '3' })).toBe('json')
+  })
+
+  it('matches the content-type case-insensitively, as media types are', () => {
+    expect(resolveStandardBodyHint({ 'content-type': 'Application/JSON' })).toBe('json')
+    expect(resolveStandardBodyHint({ 'content-type': 'APPLICATION/JSON; CHARSET=UTF-8' })).toBe('json')
+    expect(resolveStandardBodyHint({ 'content-type': 'Multipart/Form-Data; boundary=x' })).toBe('form-data')
+    expect(resolveStandardBodyHint({ 'content-type': 'APPLICATION/X-WWW-FORM-URLENCODED' })).toBe('url-search-params')
+    expect(resolveStandardBodyHint({ 'content-type': 'Text/Event-Stream' })).toBe('event-stream')
+
+    // the standard-server header is ours, so it stays exact and an uppercase value is not a hint
+    expect(resolveStandardBodyHint({ 'standard-server': 'JSON', 'content-type': 'application/pdf', 'content-length': '3' })).toBe('file')
+    expect(resolveStandardBodyHint({ 'standard-server': 'None' })).toBe('none')
+  })
+
+  it('file when content-length is present', () => {
+    expect(resolveStandardBodyHint({ 'content-length': '3' })).toBe('file')
+    expect(resolveStandardBodyHint({ 'content-length': ['3'] })).toBe('file')
+    expect(resolveStandardBodyHint({ 'content-length': '3', 'content-type': 'application/pdf' })).toBe('file')
+    // an empty file is still a file when a content-type is present
+    expect(resolveStandardBodyHint({ 'content-length': '0', 'content-type': 'application/pdf' })).toBe('file')
+    // an empty content-type is a valid content-type, not an absent one
+    expect(resolveStandardBodyHint({ 'content-length': '0', 'content-type': '' })).toBe('file')
+    expect(resolveStandardBodyHint({ 'content-length': '0', 'content-type': ' ; charset=utf-8' })).toBe('file')
+  })
+
+  it('file when content-disposition carries a filename', () => {
+    // a compressing proxy rewrites content-length, content-disposition reaches the receiver untouched
+    expect(resolveStandardBodyHint({ 'content-type': 'application/pdf', 'content-disposition': 'inline; filename="a.pdf"' })).toBe('file')
+    expect(resolveStandardBodyHint({ 'content-type': 'application/pdf', 'content-disposition': 'attachment; filename*=utf-8\'\'a.pdf' })).toBe('file')
+    // an empty filename is still a filename
+    expect(resolveStandardBodyHint({ 'content-type': 'application/pdf', 'content-disposition': 'attachment; filename=""' })).toBe('file')
+
+    // nothing to extract, so it says nothing about the body
+    expect(resolveStandardBodyHint({ 'content-type': 'application/pdf', 'content-disposition': 'attachment' })).toBe('octet-stream')
+    expect(resolveStandardBodyHint({ 'content-type': 'application/pdf', 'content-disposition': [] })).toBe('octet-stream')
+
+    // a filename does not rescue a body the other content headers already report as empty
+    expect(resolveStandardBodyHint({ 'content-disposition': 'inline; filename="a.pdf"' })).toBe('none')
+    expect(resolveStandardBodyHint({ 'content-disposition': 'inline; filename="a.pdf"', 'content-length': '0' })).toBe('none')
+
+    // a common content-type still wins
+    expect(resolveStandardBodyHint({ 'content-type': 'application/json', 'content-disposition': 'inline; filename="a.json"' })).toBe('json')
+    // and an explicit hint still wins over everything
+    expect(resolveStandardBodyHint({ 'standard-server': 'none', 'content-type': 'application/pdf', 'content-disposition': 'inline; filename="a.pdf"' })).toBe('none')
+  })
+
+  it('octet-stream when content-length is absent', () => {
+    expect(resolveStandardBodyHint({ 'content-type': 'application/octet-stream' })).toBe('octet-stream')
+    expect(resolveStandardBodyHint({ 'content-type': 'application/pdf' })).toBe('octet-stream')
+    expect(resolveStandardBodyHint({ 'content-type': 'text/plain', 'content-length': [] })).toBe('octet-stream')
+    expect(resolveStandardBodyHint({ 'content-type': '' })).toBe('octet-stream')
+  })
 })
 
 describe('mergeStandardHeaders', () => {

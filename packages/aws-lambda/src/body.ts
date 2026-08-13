@@ -1,7 +1,7 @@
 import type { StandardBody, StandardBodyHint } from '@standardserver/core'
 import type { AnyAPIGatewayProxyEvent } from './types'
 import { Buffer } from 'node:buffer'
-import { flattenStandardHeader, getFilenameFromContentDisposition } from '@standardserver/core'
+import { flattenStandardHeader, getFilenameFromContentDisposition, resolveStandardBodyHint } from '@standardserver/core'
 import { toAsyncIteratorObject } from '@standardserver/fetch'
 import { parseEmptyableJSON } from '@standardserver/shared'
 import { getEventHeader } from './headers'
@@ -20,11 +20,14 @@ export async function toStandardBody(
   event: AnyAPIGatewayProxyEvent,
   options: ToStandardBodyOptions = {},
 ): Promise<StandardBody> {
-  const hint = options?.hint ?? flattenStandardHeader(getEventHeader(event, 'standard-server'))
-  const contentType = flattenStandardHeader(getEventHeader(event, 'content-type'))
-  const mimeType = contentType?.split(';')[0]?.trim()
+  const hint = options?.hint ?? resolveStandardBodyHint({
+    'standard-server': getEventHeader(event, 'standard-server'),
+    'content-type': getEventHeader(event, 'content-type'),
+    'content-length': getEventHeader(event, 'content-length'),
+    'content-disposition': getEventHeader(event, 'content-disposition'),
+  })
 
-  if (hint === 'none' || (hint === undefined && typeof event.body !== 'string')) {
+  if (hint === 'none') {
     return undefined
   }
 
@@ -34,28 +37,25 @@ export async function toStandardBody(
       ? Buffer.from(event.body, 'base64') as Uint8Array<ArrayBuffer>
       : new TextEncoder().encode(event.body)
 
-  // the body is fully buffered so its emptiness is always known
-  if (hint === undefined && mimeType === undefined && bytes.length === 0) {
-    return undefined
-  }
-
-  if (hint === 'json' || (hint === undefined && mimeType === 'application/json')) {
+  if (hint === 'json') {
     return parseEmptyableJSON(new TextDecoder().decode(bytes))
   }
 
-  if (hint === 'form-data' || (hint === undefined && mimeType === 'multipart/form-data')) {
+  const contentType = flattenStandardHeader(getEventHeader(event, 'content-type'))
+
+  if (hint === 'form-data') {
     return _bytesToFormData(bytes, contentType)
   }
 
-  if (hint === 'url-search-params' || (hint === undefined && mimeType === 'application/x-www-form-urlencoded')) {
+  if (hint === 'url-search-params') {
     return new URLSearchParams(new TextDecoder().decode(bytes))
   }
 
-  if (hint === 'event-stream' || (hint === undefined && mimeType === 'text/event-stream')) {
+  if (hint === 'event-stream') {
     return toAsyncIteratorObject(_bytesToReadableStream(bytes))
   }
 
-  if (hint === 'file' || (hint === undefined && flattenStandardHeader(getEventHeader(event, 'content-length')) !== undefined)) {
+  if (hint === 'file') {
     const contentDisposition = flattenStandardHeader(getEventHeader(event, 'content-disposition'))
     const fileName = contentDisposition !== undefined
       ? getFilenameFromContentDisposition(contentDisposition)

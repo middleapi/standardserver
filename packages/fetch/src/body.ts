@@ -1,6 +1,6 @@
 import type { StandardBody, StandardBodyHint, StandardHeaders } from '@standardserver/core'
 import type { ToEventStreamOptions } from './event-stream'
-import { generateContentDisposition, getFilenameFromContentDisposition } from '@standardserver/core'
+import { generateContentDisposition, getFilenameFromContentDisposition, resolveStandardBodyHint } from '@standardserver/core'
 import { isAsyncIteratorObject, parseEmptyableJSON, stringifyJSON } from '@standardserver/shared'
 import { toAsyncIteratorObject, toEventStream } from './event-stream'
 
@@ -15,19 +15,14 @@ export interface ToStandardBodyOptions {
  * Convert a fetch request or response to a standard body.
  */
 export async function toStandardBody(re: Request | Response, options?: ToStandardBodyOptions): Promise<StandardBody> {
-  const hint = options?.hint ?? re.headers.get('standard-server')
-  const mimeType = re.headers.get('content-type')?.split(';')[0]?.trim()
-  const contentLength = re.headers.get('content-length')
+  const hint = options?.hint ?? resolveStandardBodyHint({
+    'standard-server': re.headers.get('standard-server') ?? undefined,
+    'content-type': re.headers.get('content-type') ?? undefined,
+    'content-length': re.headers.get('content-length') ?? undefined,
+    'content-disposition': re.headers.get('content-disposition') ?? undefined,
+  })
 
-  if (hint === 'none' || (hint === null && mimeType === undefined && (contentLength === '0' || contentLength === null))) {
-    return undefined
-  }
-
-  // request.body might be null if the method is GET, HEAD, or other methods.
-  // WARNING: response.body over fetch is almost always a stream,
-  // even if the standard-server response body is undefined.
-  // WARNING: React Native fetch body might not exist (undefined), so we need to explicitly check for null.
-  if (hint === null && re.body === null) {
+  if (hint === 'none') {
     return undefined
   }
 
@@ -36,25 +31,25 @@ export async function toStandardBody(re: Request | Response, options?: ToStandar
     throw new TypeError('Failed to read body: body stream already read')
   }
 
-  if (hint === 'json' || (hint === null && mimeType === 'application/json')) {
+  if (hint === 'json') {
     const text = await re.text()
     return parseEmptyableJSON(text)
   }
 
-  if (hint === 'form-data' || (hint === null && mimeType === 'multipart/form-data')) {
+  if (hint === 'form-data') {
     return await re.formData()
   }
 
-  if (hint === 'url-search-params' || (hint === null && mimeType === 'application/x-www-form-urlencoded')) {
+  if (hint === 'url-search-params') {
     const text = await re.text()
     return new URLSearchParams(text)
   }
 
-  if (hint === 'event-stream' || (hint === null && mimeType === 'text/event-stream')) {
+  if (hint === 'event-stream') {
     return toAsyncIteratorObject(re.body)
   }
 
-  if (hint === 'file' || (hint === null && contentLength !== null)) {
+  if (hint === 'file') {
     const contentDisposition = re.headers.get('content-disposition')
     const fileName = contentDisposition !== null
       ? getFilenameFromContentDisposition(contentDisposition)
@@ -97,8 +92,8 @@ export function toFetchBody(
   headers = { ...headers }
 
   if (body instanceof ReadableStream) {
-    // Explicitly set the body hint to avoid misidentification
-    // when the stream is empty, the length is predictable, or the content type is common.
+    // Always set the body hint: the length of a stream is unknown here, but the transport
+    // can still send a content-length (an empty stream), which reads back as a file.
     headers['standard-server'] ??= 'octet-stream' satisfies StandardBodyHint
     // content-type should be set when body is present
     headers['content-type'] ??= 'application/octet-stream'
@@ -107,8 +102,8 @@ export function toFetchBody(
   }
 
   if (body instanceof Blob) {
-    // Explicitly set the body hint to avoid misidentification
-    // when the file size is NaN or the content type is common.
+    // Explicitly set the body hint: the content headers alone cannot always identify a file,
+    // and a transport can drop the empty ones (bun) or a proxy rewrite the content-length.
     headers['standard-server'] ??= 'file' satisfies StandardBodyHint // A File is also a Blob
 
     headers['content-type'] = body.type
@@ -116,12 +111,12 @@ export function toFetchBody(
     headers['content-disposition'] ??= generateContentDisposition(body instanceof File ? body.name ?? '' : 'blob')
 
     // BunS3 can use NaN for the size
-    if (!Number.isFinite(body.size)) {
-      return [body.stream(), headers]
+    if (Number.isFinite(body.size)) {
+      headers['content-length'] = body.size.toString()
+      return [body, headers]
     }
 
-    headers['content-length'] = body.size.toString()
-    return [body, headers]
+    return [body.stream(), headers]
   }
 
   headers['standard-server'] = undefined

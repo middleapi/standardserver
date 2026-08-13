@@ -4,10 +4,9 @@ import type { ToEventStreamOptions } from './event-stream'
 import type { NodeHttpRequest } from './types'
 import { Buffer } from 'node:buffer'
 import { Readable } from 'node:stream'
-import { flattenStandardHeader, generateContentDisposition, getFilenameFromContentDisposition } from '@standardserver/core'
+import { generateContentDisposition, getFilenameFromContentDisposition, resolveStandardBodyHint } from '@standardserver/core'
 import { isAsyncIteratorObject, parseEmptyableJSON, stringifyJSON } from '@standardserver/shared'
 import { toAsyncIteratorObject, toEventStream } from './event-stream'
-import { toStandardMethod } from './method'
 
 export interface ToStandardBodyOptions {
   /**
@@ -15,10 +14,6 @@ export interface ToStandardBodyOptions {
    */
   hint?: StandardBodyHint | undefined
 }
-/**
- * https://developer.mozilla.org/en-US/docs/Web/API/Request/body
- */
-const EMPTY_BODY_METHOD_SET = new Set(['GET', 'HEAD'])
 
 /**
  * Parses the body of a node http request.
@@ -27,21 +22,19 @@ export async function toStandardBody(
   req: NodeHttpRequest,
   options: ToStandardBodyOptions = {},
 ): Promise<StandardBody> {
-  const hint = options?.hint ?? flattenStandardHeader(req.headers['standard-server'])
-  const contentType = req.headers['content-type']
-  const mimeType = contentType?.split(';')[0]?.trim()
-  const contentLength = req.headers['content-length']
-
   // body's already parsed by upstream framework like express, ...
   if (req.body !== undefined) {
     return req.body
   }
 
-  if (hint === 'none' || (hint === undefined && mimeType === undefined && (contentLength === '0' || contentLength === undefined))) {
-    return undefined
-  }
+  const hint = options?.hint ?? resolveStandardBodyHint({
+    'standard-server': req.headers['standard-server'],
+    'content-type': req.headers['content-type'],
+    'content-length': req.headers['content-length'],
+    'content-disposition': req.headers['content-disposition'],
+  })
 
-  if (hint === undefined && EMPTY_BODY_METHOD_SET.has(toStandardMethod(req.method))) {
+  if (hint === 'none') {
     return undefined
   }
 
@@ -50,25 +43,27 @@ export async function toStandardBody(
     throw new TypeError('Failed to read body: body stream already read or destroyed')
   }
 
-  if (hint === 'json' || (hint === undefined && mimeType === 'application/json')) {
+  if (hint === 'json') {
     const text = await _streamToString(req)
     return parseEmptyableJSON(text)
   }
 
-  if (hint === 'form-data' || (hint === undefined && mimeType === 'multipart/form-data')) {
+  const contentType = req.headers['content-type']
+
+  if (hint === 'form-data') {
     return _streamToFormData(req, contentType)
   }
 
-  if (hint === 'url-search-params' || (hint === undefined && mimeType === 'application/x-www-form-urlencoded')) {
+  if (hint === 'url-search-params') {
     const text = await _streamToString(req)
     return new URLSearchParams(text)
   }
 
-  if (hint === 'event-stream' || (hint === undefined && mimeType === 'text/event-stream')) {
+  if (hint === 'event-stream') {
     return toAsyncIteratorObject(req)
   }
 
-  if (hint === 'file' || (hint === undefined && contentLength !== undefined)) {
+  if (hint === 'file') {
     const contentDisposition = req.headers['content-disposition']
     const fileName = contentDisposition !== undefined
       ? getFilenameFromContentDisposition(contentDisposition)
@@ -105,8 +100,8 @@ export function toNodeHttpBody(
   headers = { ...headers }
 
   if (body instanceof ReadableStream) {
-    // Explicitly set the body hint to avoid misidentification
-    // when the stream is empty, the length is predictable, or the content type is common.
+    // Always set the body hint: the length of a stream is unknown here, but the transport
+    // can still send a content-length (an empty stream), which reads back as a file.
     headers['standard-server'] ??= 'octet-stream' satisfies StandardBodyHint
 
     // content-type is required when body is present
@@ -116,8 +111,8 @@ export function toNodeHttpBody(
   }
 
   if (body instanceof Blob) {
-    // Explicitly set the body hint to avoid misidentification
-    // when the file size is NaN or the content type is common.
+    // Explicitly set the body hint: the content headers alone cannot always identify a file,
+    // and a transport can drop the empty ones (bun) or a proxy rewrite the content-length.
     headers['standard-server'] ??= 'file' satisfies StandardBodyHint // A File is also a Blob
 
     headers['content-type'] = body.type
