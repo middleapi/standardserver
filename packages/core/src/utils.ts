@@ -78,7 +78,8 @@ export function resolveStandardBodyHint(headers: {
     return hint as StandardBodyHint
   }
 
-  const mimeType = flattenStandardHeader(headers['content-type'])?.split(';')[0]?.trim()
+  // media types are case-insensitive, the hint is our own header so it stays exact
+  const mimeType = flattenStandardHeader(headers['content-type'])?.split(';')[0]?.trim().toLowerCase()
   const contentLength = flattenStandardHeader(headers['content-length'])
   const contentDisposition = flattenStandardHeader(headers['content-disposition'])
   const fileName = contentDisposition !== undefined ? getFilenameFromContentDisposition(contentDisposition) : undefined

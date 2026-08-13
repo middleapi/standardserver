@@ -117,6 +117,18 @@ describe('resolveStandardBodyHint', () => {
     expect(resolveStandardBodyHint({ 'content-type': 'application/json', 'content-length': '3' })).toBe('json')
   })
 
+  it('matches the content-type case-insensitively, as media types are', () => {
+    expect(resolveStandardBodyHint({ 'content-type': 'Application/JSON' })).toBe('json')
+    expect(resolveStandardBodyHint({ 'content-type': 'APPLICATION/JSON; CHARSET=UTF-8' })).toBe('json')
+    expect(resolveStandardBodyHint({ 'content-type': 'Multipart/Form-Data; boundary=x' })).toBe('form-data')
+    expect(resolveStandardBodyHint({ 'content-type': 'APPLICATION/X-WWW-FORM-URLENCODED' })).toBe('url-search-params')
+    expect(resolveStandardBodyHint({ 'content-type': 'Text/Event-Stream' })).toBe('event-stream')
+
+    // the standard-server header is ours, so it stays exact and an uppercase value is not a hint
+    expect(resolveStandardBodyHint({ 'standard-server': 'JSON', 'content-type': 'application/pdf', 'content-length': '3' })).toBe('file')
+    expect(resolveStandardBodyHint({ 'standard-server': 'None' })).toBe('none')
+  })
+
   it('file when content-length is present', () => {
     expect(resolveStandardBodyHint({ 'content-length': '3' })).toBe('file')
     expect(resolveStandardBodyHint({ 'content-length': ['3'] })).toBe('file')

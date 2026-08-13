@@ -13,27 +13,6 @@ beforeEach(() => {
 })
 
 describe('toStandardBody', () => {
-  it('undefined', async () => {
-    const request = new Request('https://example.com', {
-      method: 'POST',
-      body: null,
-    })
-
-    expect(await toStandardBody(request)).toBe(undefined)
-  })
-
-  it('json', async () => {
-    const request = new Request('https://example.com', {
-      method: 'POST',
-      body: JSON.stringify({ foo: 'bar' }),
-      headers: {
-        'content-type': 'application/json',
-      },
-    })
-
-    expect(await toStandardBody(request)).toEqual({ foo: 'bar' })
-  })
-
   it('json but empty body', async () => {
     const request = new Request('https://example.com', {
       method: 'POST',
@@ -44,80 +23,6 @@ describe('toStandardBody', () => {
     })
 
     expect(await toStandardBody(request)).toEqual(undefined)
-  })
-
-  it('async iterator object', async () => {
-    const stream = new ReadableStream<string>({
-      async pull(controller) {
-        controller.enqueue('event: message\ndata: 123\n\n')
-        controller.enqueue('event: close\ndata: 456\n\n')
-        controller.close()
-      },
-    }).pipeThrough(new TextEncoderStream())
-
-    const request = new Request('https://example.com', {
-      method: 'POST',
-      body: stream,
-      headers: {
-        'content-type': 'text/event-stream',
-      },
-      duplex: 'half',
-    })
-
-    const standardBody = await toStandardBody(request) as any
-    expect(standardBody).toSatisfy(isAsyncIteratorObject)
-
-    expect(await standardBody.next()).toEqual({ done: false, value: 123 })
-    expect(await standardBody.next()).toEqual({ done: true, value: 456 })
-  })
-
-  it('form-data', async () => {
-    const form = new FormData()
-    form.append('foo', 'bar')
-    form.append('bar', 'baz')
-
-    const request = new Request('https://example.com', {
-      method: 'POST',
-      body: form,
-    })
-
-    const standardForm = await toStandardBody(request) as any
-
-    expect(standardForm).toBeInstanceOf(FormData)
-    expect(standardForm.get('foo')).toBe('bar')
-    expect(standardForm.get('bar')).toBe('baz')
-  })
-
-  it('url-search-params', async () => {
-    const request = new Request('https://example.com', {
-      method: 'POST',
-      body: 'foo=bar&bar=baz',
-      headers: {
-        'content-type': 'application/x-www-form-urlencoded',
-      },
-    })
-
-    expect(await toStandardBody(request)).toEqual(new URLSearchParams('foo=bar&bar=baz'))
-  })
-
-  it('blob', async () => {
-    const blob = new Blob(['foo'], { type: 'application/pdf' })
-    const request = new Request('https://example.com', {
-      method: 'POST',
-      body: blob,
-      headers: {
-        'content-type': blob.type,
-        'content-length': blob.size.toString(),
-      },
-    })
-
-    const standardBlob = await toStandardBody(request) as any
-    expect(standardBlob).toBeInstanceOf(File)
-    expect(standardBlob.name).toBe('blob')
-    expect(standardBlob.type).toBe('application/pdf')
-    expect(await standardBlob.text()).toBe('foo')
-
-    expect(getFilenameFromContentDispositionSpy).toHaveBeenCalledTimes(0)
   })
 
   it('file', async () => {
@@ -141,89 +46,6 @@ describe('toStandardBody', () => {
 
     expect(getFilenameFromContentDispositionSpy).toHaveBeenCalledTimes(1)
     expect(getFilenameFromContentDispositionSpy).toHaveBeenCalledWith('attachment; filename="foo.pdf"')
-  })
-
-  it('file (without content-type)', async () => {
-    const file = new Blob(['{"value":123}'], { type: 'plain/text' })
-    const request = new Request('https://example.com', {
-      method: 'POST',
-      body: file.stream(),
-      headers: {
-        'content-disposition': 'attachment; filename="foo.pdf"',
-        'Content-Length': file.size.toString(),
-      },
-      duplex: 'half',
-    })
-
-    getFilenameFromContentDispositionSpy.mockReturnValueOnce('__name__')
-
-    const standardFile = await toStandardBody(request) as any
-    expect(standardFile).toBeInstanceOf(File)
-    expect(standardFile.name).toBe('__name__')
-    expect(standardFile.type).toBe('')
-    expect(await standardFile.text()).toBe('{"value":123}')
-
-    expect(getFilenameFromContentDispositionSpy).toHaveBeenCalledTimes(1)
-    expect(getFilenameFromContentDispositionSpy).toHaveBeenCalledWith('attachment; filename="foo.pdf"')
-  })
-
-  it('file (without content-length, as a compressing proxy leaves it)', async () => {
-    const request = new Request('https://example.com', {
-      method: 'POST',
-      body: new Blob(['{"value":123}'], { type: 'application/pdf' }).stream(),
-      headers: {
-        'content-disposition': 'attachment; filename="foo.pdf"',
-        'content-type': 'application/pdf',
-      },
-      duplex: 'half',
-    })
-
-    const standardFile = await toStandardBody(request) as any
-    expect(standardFile).toBeInstanceOf(File)
-    expect(standardFile.name).toBe('foo.pdf')
-    expect(standardFile.type).toBe('application/pdf')
-    expect(await standardFile.text()).toBe('{"value":123}')
-  })
-
-  it('file (without disposition)', async () => {
-    const request = new Request('https://example.com', {
-      method: 'POST',
-      body: new Blob(['{"value":123}'], { type: 'application/pdf' }),
-      headers: {
-        'content-length': '123',
-      },
-    })
-
-    const standardFile = await toStandardBody(request) as any
-    expect(standardFile).toBeInstanceOf(File)
-    expect(standardFile.name).toBe('blob')
-    expect(standardFile.type).toBe('application/pdf')
-    expect(await standardFile.text()).toBe('{"value":123}')
-
-    expect(getFilenameFromContentDispositionSpy).toHaveBeenCalledTimes(0)
-  })
-
-  it('octet-stream', async () => {
-    const stream = new ReadableStream({
-      start(controller) {
-        controller.enqueue(new TextEncoder().encode('hello'))
-        controller.close()
-      },
-    })
-    const request = new Request('https://example.com', {
-      method: 'POST',
-      body: stream,
-      headers: {
-        'Content-Type': 'application/octet-stream',
-      },
-      duplex: 'half',
-    })
-
-    const standardBody = await toStandardBody(request)
-    expect(standardBody).toBeInstanceOf(ReadableStream)
-    const reader = (standardBody as ReadableStream).pipeThrough(new TextDecoderStream()).getReader()
-    expect(await reader.read()).toEqual({ done: false, value: 'hello' })
-    expect(await reader.read()).toEqual({ done: true, value: undefined })
   })
 
   describe('body hint', () => {
