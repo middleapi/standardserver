@@ -86,10 +86,14 @@ export async function handle(request: StandardLazyRequest): Promise<StandardResp
 > [!NOTE]
 > Since `File` extends `Blob`, `resolveBody` always returns a `File` when representing either `File` or `Blob` bodies.
 
-## The `standard-server` header
+## How body parsing works
 
 > [!NOTE]
 > This section applies to the HTTP adapters (Fetch, Node.js, Fastify, AWS Lambda). It does not apply to the [peer adapter](../peer/README.md), which identifies body types through its own message protocol — a different but fairly similar mechanism.
+
+`resolveBody(hint?)` on `StandardLazyRequest` and `StandardLazyResponse` resolves the body lazily — the underlying stream is only consumed once you call it. The `StandardBodyHint` that decides how the raw body is parsed comes from three places: an explicit `hint` argument, the `standard-server` header, or inference from the content headers.
+
+### The `standard-server` header
 
 A `StandardBody` is richer than what HTTP content headers can describe. `content-type` tells the receiver the _media type_ of the bytes, but not which `StandardBody` representation the sender intended:
 
@@ -113,12 +117,9 @@ const response = await fetch('/upload', {
 })
 ```
 
-## How body parsing works
+### Resolution order
 
-> [!NOTE]
-> This section applies to the HTTP adapters (Fetch, Node.js, Fastify, AWS Lambda). It does not apply to the [peer adapter](../peer/README.md), which identifies body types through its own message protocol — a different but fairly similar mechanism.
-
-`resolveBody(hint?)` on `StandardLazyRequest` and `StandardLazyResponse` resolves the body lazily — the underlying stream is only consumed once you call it. The `StandardBodyHint` that decides how the raw body is parsed is chosen in this order:
+The hint is chosen in this order:
 
 1. **Explicit `hint` argument.** If you pass a hint to `resolveBody(hint)`, it always wins.
 2. **The `standard-server` header.** If present and holding a valid hint value, it is used verbatim. Unknown values are ignored.
