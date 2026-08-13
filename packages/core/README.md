@@ -102,9 +102,9 @@ A `StandardBody` is richer than what HTTP content headers can describe. `content
 
 The `standard-server` header closes this gap. It carries the sender's `StandardBodyHint` verbatim — `json`, `form-data`, `url-search-params`, `event-stream`, `octet-stream`, `file`, or `none` — so the receiver reconstructs exactly the body representation the sender had.
 
-Adapters set the header automatically where content headers are ambiguous: serializing a `Blob` or `File` body stamps `standard-server: file` (along with `content-type`, `content-length`, and a generated `content-disposition`), and serializing a `ReadableStream` body stamps `standard-server: octet-stream`. Your own header value always wins over the auto-set one, and you can remove an auto-set header entirely by assigning an empty array. For the unambiguous body types, the header is unnecessary and adapters clear it.
+Adapters set the header automatically for the ambiguous body types: a `Blob` or `File` body is sent with `standard-server: file`, and a `ReadableStream` body with `standard-server: octet-stream`, alongside the usual content headers. A header you set yourself always wins, and assigning an empty array removes it entirely. For the other body types, the content headers are enough, so adapters clear it.
 
-Clients that don't speak Standard Server interoperate fine: when the header is absent or holds an unknown value, the receiver falls back to standard content-header inference, described below. When calling a Standard Server endpoint with a plain HTTP client, set the header yourself whenever the content type alone could be misread:
+The header is optional: when it is absent or invalid, the receiver falls back to content-header inference, so plain HTTP clients work as-is. Just set the header yourself whenever the content type alone could be misread:
 
 ```ts
 const response = await fetch('/upload', {
