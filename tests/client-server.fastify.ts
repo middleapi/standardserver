@@ -37,7 +37,7 @@ export function createFastifyClientServerTest(): ClientServerTest {
   const origin = fastify.listen({ port: 0, host: '127.0.0.1' })
 
   afterAll(async () => {
-    await fastify.close()
+    fastify.close()
   })
 
   const request: ClientServerTest['request'] = vi.fn(async (standardRequest) => {
