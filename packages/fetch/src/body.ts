@@ -1,6 +1,6 @@
 import type { StandardBody, StandardBodyHint, StandardHeaders } from '@standardserver/core'
 import type { ToEventStreamOptions } from './event-stream'
-import { generateContentDisposition, getFilenameFromContentDisposition, resolveStandardBodyHint } from '@standardserver/core'
+import { generateContentDisposition, getFilenameFromContentDisposition } from '@standardserver/core'
 import { isAsyncIteratorObject, parseEmptyableJSON, stringifyJSON } from '@standardserver/shared'
 import { toAsyncIteratorObject, toEventStream } from './event-stream'
 
@@ -99,23 +99,13 @@ export function toFetchBody(
   }
 
   if (body instanceof Blob) {
+    // Explicitly set the body hint: the content headers alone cannot always identify a file,
+    // and a transport can drop the empty ones (bun) or a proxy rewrite the content-length.
+    headers['standard-server'] ??= 'file' satisfies StandardBodyHint // A File is also a Blob
+
     headers['content-type'] = body.type
     // FIX: Bun returns `undefined` for an empty File name, despite the spec requiring a string
     headers['content-disposition'] ??= generateContentDisposition(body instanceof File ? body.name ?? '' : 'blob')
-
-    if (headers['standard-server'] === undefined) {
-      // content-length is left out of the resolution: a compressing proxy rewrites it, so the receiver
-      // may never see it, while content-type and content-disposition reach it untouched.
-      const predictedHint = resolveStandardBodyHint({
-        'content-disposition': headers['content-disposition'],
-        'content-type': headers['content-type'],
-      })
-
-      // Only set the body hint when the headers don't already resolve to a file.
-      if (predictedHint !== 'file') {
-        headers['standard-server'] = 'file' satisfies StandardBodyHint // A File is also a Blob
-      }
-    }
 
     // BunS3 can use NaN for the size
     if (Number.isFinite(body.size)) {

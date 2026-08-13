@@ -119,18 +119,19 @@ for (const [adapter, createClientServer] of ADAPTERS) {
           expect(await body.text()).toEqual('hello world')
         },
       },
-      // { // Bun fetch drop empty headers like content-type
-      //   name: 'empty-file',
-      //   createBody: () => new File([], '', { type: '' }),
-      //   assertBody: async (body: any) => {
-      //     expect(body).toBeInstanceOf(File)
-      //     // Bun returns `undefined` instead of '' for an empty File name
-      //     expect(body.name ?? '').toEqual('')
-      //     expect(body.type).toEqual('')
-      //     expect(body.size).toEqual(0)
-      //     expect(await body.text()).toEqual('')
-      //   },
-      // },
+      {
+        // Bun drops empty headers like content-type, so only the body hint identifies this one
+        name: 'empty-file',
+        createBody: () => new File([], '', { type: '' }),
+        assertBody: async (body: any) => {
+          expect(body).toBeInstanceOf(File)
+          // Bun returns `undefined` instead of '' for an empty File name
+          expect(body.name ?? '').toEqual('')
+          expect(body.type).toEqual('')
+          expect(body.size).toEqual(0)
+          expect(await body.text()).toEqual('')
+        },
+      },
       {
         name: 'formdata',
         createBody: () => {

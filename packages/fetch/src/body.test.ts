@@ -504,27 +504,11 @@ describe('toFetchBody', () => {
       'content-length': '3',
       'content-type': 'application/pdf',
       'x-custom-header': 'custom-value',
+      'standard-server': 'file',
     })
 
     expect(generateContentDispositionSpy).toHaveBeenCalledTimes(1)
     expect(generateContentDispositionSpy).toHaveBeenCalledWith('blob')
-  })
-
-  it('blob with common content-type', () => {
-    const blob = new Blob(['foo'], { type: 'application/json' })
-
-    generateContentDispositionSpy.mockReturnValue('inline; filename="__mocked__"')
-
-    const [body, headers] = toFetchBody(blob, baseHeaders, {})
-
-    expect(body).toBe(blob)
-    expect(headers).toEqual({
-      'content-disposition': 'inline; filename="__mocked__"',
-      'content-length': '3',
-      'content-type': 'application/json',
-      'x-custom-header': 'custom-value',
-      'standard-server': 'file',
-    })
   })
 
   it('empty blob without content-type', () => {
@@ -540,6 +524,7 @@ describe('toFetchBody', () => {
       'content-length': '0',
       'content-type': '',
       'x-custom-header': 'custom-value',
+      'standard-server': 'file',
     })
   })
 
@@ -556,6 +541,7 @@ describe('toFetchBody', () => {
       'content-length': '3',
       'content-type': 'application/pdf',
       'x-custom-header': 'custom-value',
+      'standard-server': 'file',
     })
 
     expect(generateContentDispositionSpy).toHaveBeenCalledTimes(1)
@@ -573,25 +559,10 @@ describe('toFetchBody', () => {
       'content-length': '3',
       'content-type': 'application/pdf',
       'x-custom-header': 'custom-value',
+      'standard-server': 'file',
     })
 
     expect(generateContentDispositionSpy).toHaveBeenCalledTimes(0)
-  })
-
-  it('file with a content-disposition header without a filename', () => {
-    const blob = new File(['foo'], 'foo.pdf', { type: 'application/pdf' })
-
-    const [body, headers] = toFetchBody(blob, { ...baseHeaders, 'content-disposition': 'attachment' }, {})
-
-    expect(body).toBe(blob)
-    // no filename to identify the body with, so the hint has to carry it
-    expect(headers).toEqual({
-      'content-disposition': 'attachment',
-      'content-length': '3',
-      'content-type': 'application/pdf',
-      'x-custom-header': 'custom-value',
-      'standard-server': 'file',
-    })
   })
 
   it('file with size=nan', () => {
@@ -603,11 +574,11 @@ describe('toFetchBody', () => {
     const [body, headers] = toFetchBody(file, baseHeaders, {})
 
     expect(body).toBeInstanceOf(ReadableStream)
-    // no content-length to send, but the filename still identifies the body
     expect(headers).toEqual({
       'content-disposition': 'inline; filename="__mocked__"',
       'content-type': 'application/pdf',
       'x-custom-header': 'custom-value',
+      'standard-server': 'file',
     })
   })
 

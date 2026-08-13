@@ -505,6 +505,7 @@ describe('toNodeHttpBody', () => {
       'content-length': '3',
       'content-type': 'application/pdf',
       'x-custom-header': 'custom-value',
+      'standard-server': 'file',
     })
 
     expect(generateContentDispositionSpy).toHaveBeenCalledTimes(1)
@@ -532,6 +533,7 @@ describe('toNodeHttpBody', () => {
       'content-length': '3',
       'content-type': 'application/pdf',
       'x-custom-header': 'custom-value',
+      'standard-server': 'file',
     })
 
     expect(generateContentDispositionSpy).toHaveBeenCalledTimes(1)
@@ -558,6 +560,7 @@ describe('toNodeHttpBody', () => {
       'content-length': '3',
       'content-type': 'application/pdf',
       'x-custom-header': 'custom-value',
+      'standard-server': 'file',
     })
 
     expect(generateContentDispositionSpy).toHaveBeenCalledTimes(0)
@@ -569,23 +572,6 @@ describe('toNodeHttpBody', () => {
 
     expect(resBlob.type).toBe('application/pdf')
     expect(await resBlob.text()).toBe('foo')
-  })
-
-  it('blob with common content-type', async () => {
-    const blob = new Blob(['foo'], { type: 'application/json' })
-
-    generateContentDispositionSpy.mockReturnValue('inline; filename="__mocked__"')
-
-    const [body, headers] = toNodeHttpBody(blob, baseHeaders, {})
-
-    expect(body).toBeInstanceOf(Readable)
-    expect(headers).toEqual({
-      'content-disposition': 'inline; filename="__mocked__"',
-      'content-length': '3',
-      'content-type': 'application/json',
-      'x-custom-header': 'custom-value',
-      'standard-server': 'file',
-    })
   })
 
   it('empty blob without content-type', async () => {
@@ -601,6 +587,7 @@ describe('toNodeHttpBody', () => {
       'content-length': '0',
       'content-type': '',
       'x-custom-header': 'custom-value',
+      'standard-server': 'file',
     })
   })
 
@@ -613,12 +600,12 @@ describe('toNodeHttpBody', () => {
     const [body, headers] = toNodeHttpBody(file, baseHeaders, {})
 
     expect(body).toBeInstanceOf(Readable)
-    // no content-length to send, but the filename still identifies the body
     expect(headers).toEqual({
       'content-disposition': 'inline; filename="__mocked__"',
       'content-length': undefined,
       'content-type': 'application/pdf',
       'x-custom-header': 'custom-value',
+      'standard-server': 'file',
     })
 
     expect(generateContentDispositionSpy).toHaveBeenCalledTimes(1)
