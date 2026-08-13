@@ -1,6 +1,7 @@
 packages:
   - packages/*
   - playgrounds/*
+  - tests/*
 
 # Hoist everything (default) except @types/bun. When @types/node and @types/bun are
 # installed in different packages, hoisting both into the same env causes a
