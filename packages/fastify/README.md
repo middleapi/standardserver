@@ -25,21 +25,13 @@
 
 Standard Server provides a unified interface for client-server communication across HTTP and message-based transports. It lets you write handlers against the same request, response, body, and streaming primitives whether the underlying transport is the Fetch API, Node.js HTTP, HTTP/2, or a peer-style message channel.
 
-This package is the Fastify adapter for that model. It builds on `@standardserver/node`, reusing the same body, URL, and abort-signal primitives, while routing the response back through Fastify's reply lifecycle so hooks, plugins, and serializers keep working. Both `Fastify()` and `Fastify({ http2: true })` instances are supported.
-
-## Entry Point
-
-The package exports a single entry point:
-
-| Export                    | Purpose                                          |
-| ------------------------- | ------------------------------------------------ |
-| `@standardserver/fastify` | Fastify adapter helpers for requests and replies |
+This package is the Fastify adapter for that model. It builds on [`@standardserver/node`](../node/README.md), reusing the same body, URL, and abort-signal primitives, while routing the response back through Fastify's reply lifecycle so hooks, plugins, and serializers keep working. Both `Fastify()` and `Fastify({ http2: true })` instances are supported.
 
 `fastify` is a peer dependency, so the adapter always uses the Fastify version installed in your project.
 
 ## Package overview
 
-The main entry point exposes two helpers and their option shapes:
+The package exposes two helpers and their option shapes:
 
 | Group                   | Exports                                                                                                 | Purpose                                                    |
 | ----------------------- | ------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
@@ -93,12 +85,7 @@ await fastify.listen({ port: 3000 })
 
 ## Resolving Body
 
-`resolveBody(hint?)` returns the body Fastify already parsed with its own content type parsers, if there is one. Otherwise it falls back to `toStandardBody()` from `@standardserver/node`, which determines how to parse the body using the following priority:
-
-1. If `hint?` is provided, use it as the `StandardBodyHint`.
-2. Otherwise, if the `standard-server` header is present, use it as the `StandardBodyHint`.
-3. Otherwise, if `content-type` is one of the common types, parse accordingly.
-4. Otherwise, if `content-length` exists, treat the body as `file`; if not, treat it as `octet-stream`.
+`resolveBody(hint?)` returns the body Fastify already parsed with its own content type parsers, if there is one. Otherwise it falls back to `toStandardBody()` from `@standardserver/node`, which follows the shared Standard Server resolution rules: an explicit `hint` wins, then the [`standard-server` header](../core/README.md#the-standard-server-header), then inference from the content headers. See [how body parsing works](../core/README.md#how-body-parsing-works) in the core README for the full algorithm.
 
 Because Fastify's own parsers win, a `hint` only applies to bodies Fastify left unparsed. Fastify ships parsers for `application/json` and `text/plain`, and rejects every other content type with `415 Unsupported Media Type` unless you register one. To let the adapter own body parsing end to end, register a catch-all parser that leaves the body untouched:
 
@@ -138,7 +125,7 @@ Fastify owns the reply lifecycle, so a few of its rules apply to the response th
 
 For the higher-level project overview, see the root [Standard Server README](../../README.md).
 
-For the Node.js primitives this adapter is built on, see the [Node.js adapter documentation](../node/README.md).
+For the Node.js primitives this adapter is built on, see the [Node.js adapter documentation](../node/README.md), and for the shared contract, see the [core documentation](../core/README.md).
 
 ## Sponsors
 

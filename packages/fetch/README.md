@@ -25,19 +25,11 @@
 
 Standard Server provides a unified interface for client-server communication across HTTP and message-based transports. It lets you write handlers and clients against the same request, response, body, and streaming primitives whether the underlying transport is Fetch, Node.js HTTP, or a peer-style message channel.
 
-This package is the Fetch API adapter for that model. It converts between native `Request`, `Response`, `Headers`, and stream values and the corresponding Standard Server shapes from `@standardserver/core`.
-
-## Entry Points
-
-The package exports a single entry point:
-
-| Export                  | Purpose                                                                 |
-| ----------------------- | ----------------------------------------------------------------------- |
-| `@standardserver/fetch` | Fetch adapter helpers for requests, responses, bodies, headers, and SSE |
+This package is the Fetch API adapter for that model. It converts between native `Request`, `Response`, `Headers`, and stream values and the corresponding Standard Server shapes from [`@standardserver/core`](../core/README.md).
 
 ## Package overview
 
-The main entry point exposes three groups of helpers:
+The package exposes three groups of helpers:
 
 | Group                   | Exports                                                                           | Purpose                                               |
 | ----------------------- | --------------------------------------------------------------------------------- | ----------------------------------------------------- |
@@ -49,7 +41,7 @@ Use these helpers when you want Standard Server handlers to run in Fetch-based r
 
 ## Server-side request handling
 
-Use `toStandardLazyRequest()` to convert an incoming Fetch `Request` into a `StandardLazyRequest`.
+Use `toStandardLazyRequest()` to convert an incoming Fetch `Request` into a `StandardLazyRequest`, then `toFetchResponse()` to turn the resulting `StandardResponse` back into a Fetch `Response`.
 
 ```ts
 import type { StandardLazyRequest, StandardResponse } from '@standardserver/core'
@@ -77,12 +69,9 @@ export async function fetchHandler(request: Request): Promise<Response> {
 }
 ```
 
-> [!TIP]
-> When sending requests or responses, you can pass additional options such as event-stream keep-alive.
-
 ## Client-side response handling
 
-Use `toStandardLazyResponse()` when you receive a Fetch `Response` but want to work with the Standard Server response contract.
+Use `toFetchBody()` and `toFetchHeaders()` to serialize an outgoing request, and `toStandardLazyResponse()` when you receive a Fetch `Response` but want to work with the Standard Server response contract.
 
 ```ts
 import { toFetchBody, toFetchHeaders, toStandardLazyResponse } from '@standardserver/fetch'
@@ -105,34 +94,23 @@ const standardResponse = toStandardLazyResponse(response)
 const payload = await standardResponse.resolveBody()
 ```
 
+`toFetchBody()` also prepares the content headers for the body it serializes — for example, a `Blob` or `File` body gains `standard-server: file`, `content-length`, and a generated `content-disposition`, so the receiver reconstructs the same body type. See [the `standard-server` header](../core/README.md#the-standard-server-header) in the core README for why.
+
 > [!TIP]
 > When sending requests or responses, you can pass additional options such as event-stream keep-alive.
 
 ## Resolving Body
 
-`resolveBody(hint?)` determines how to parse the body using the following priority:
+`resolveBody(hint?)` follows the shared Standard Server resolution rules: an explicit `hint` wins, then the [`standard-server` header](../core/README.md#the-standard-server-header), then inference from the content headers. See [how body parsing works](../core/README.md#how-body-parsing-works) in the core README for the full algorithm.
 
-1. If `hint?` is provided, use it as the `StandardBodyHint`.
-2. Otherwise, if the `standard-server` header is present, use it as the `StandardBodyHint`.
-3. Otherwise, if `content-type` is one of the common types, parse accordingly.
-4. Otherwise, if `content-length` exists, treat the body as `file`; if not, treat it as `octet-stream`.
-
-For efficient communication, set the `standard-server` header to explicitly hint the body type, especially for file or binary streaming. For example, if you upload a file with a common `content-type` such as `application/json` but omit the `standard-server` header, the server may interpret it as JSON and parse it unexpectedly.
-
-```ts
-const response = await fetch('/upload', {
-  method: 'POST',
-  headers: {
-    'content-type': 'application/json',
-    'standard-server': 'file', // <- hint the body type to avoid misinterpretation
-  },
-  body: new Blob(['{"message": "Hello, world!"}'], { type: 'application/json' }),
-})
-```
+> [!TIP]
+> For efficient communication, set the `standard-server` header to explicitly hint the body type, especially for file or binary streaming. For example, if you upload a file with a common `content-type` such as `application/json` but omit the `standard-server` header, the server may interpret it as JSON and parse it unexpectedly.
 
 ## Learn more
 
 For the higher-level project overview, see the root [Standard Server README](../../README.md).
+
+For the shared contract this adapter implements, see the [core documentation](../core/README.md).
 
 ## Sponsors
 

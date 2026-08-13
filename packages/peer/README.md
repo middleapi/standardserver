@@ -27,17 +27,9 @@ Standard Server provides a unified interface for client-server communication acr
 
 This package is the peer adapter for that model. It converts between Standard Server requests and responses and a structured peer message protocol that can be sent through any transport capable of carrying strings or binary data.
 
-## Entry Point
-
-The package exports a single entry point:
-
-| Export                 | Purpose                                                                       |
-| ---------------------- | ----------------------------------------------------------------------------- |
-| `@standardserver/peer` | Peer adapter helpers for requests, responses, codecs, streams, and validators |
-
 ## Package overview
 
-The main entry point exposes four groups of helpers:
+The package exposes four groups of helpers:
 
 | Group                | Exports                                                                                                                                                                                                                                                                                                                                                                                                                                                                | Purpose                                                           |
 | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
@@ -152,6 +144,8 @@ Encoding rules:
 ## Learn more
 
 For the higher-level project overview, see the root [Standard Server README](../../README.md).
+
+For the shared contract this adapter implements, see the [core documentation](../core/README.md).
 
 ## Sponsors
 

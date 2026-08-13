@@ -21,11 +21,15 @@
   </a>
 </div>
 
-This package contains shared types and utilities for the `@standardserver` ecosystem. It has no runtime dependencies and can be used in any JavaScript environment.
+`@standardserver/shared` contains internal types and utilities shared across the `@standardserver` ecosystem — small helpers for arrays, objects, JSON, iterators, promises, queues, IDs, URIs, and more.
+
+It has no runtime dependencies and works in any JavaScript environment. The package exists so the other `@standardserver` packages can share these building blocks without duplication; its API follows their needs and is not designed for direct use in applications.
 
 ## Learn more
 
 For the higher-level project overview, see the root [Standard Server README](../../README.md).
+
+For the public contract of the ecosystem, see the [core documentation](../core/README.md).
 
 ## Sponsors
 

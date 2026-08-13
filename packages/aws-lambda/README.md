@@ -27,17 +27,9 @@ Standard Server provides a unified interface for client-server communication acr
 
 This package is the AWS Lambda adapter for that model. It converts an API Gateway proxy event — payload format version 1.0 or 2.0, the latter also used by Lambda Function URLs — into a `StandardLazyRequest`, and writes a `StandardResponse` back through the stream provided by `awslambda.streamifyResponse`, so streaming bodies such as server-sent events flow to the client as they are produced instead of being buffered.
 
-## Entry Point
-
-The package exports a single entry point:
-
-| Export                       | Purpose                                                    |
-| ---------------------------- | ---------------------------------------------------------- |
-| `@standardserver/aws-lambda` | AWS Lambda adapter helpers for events and response streams |
-
 ## Package overview
 
-The main entry point exposes these helpers:
+The package exposes these helpers:
 
 | Group                   | Exports                                                                                                                                             | Purpose                                                     |
 | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
@@ -89,12 +81,7 @@ export const handler = awslambda.streamifyResponse(async (event, responseStream,
 
 ## Resolving Body
 
-The event carries the request body as a fully buffered, optionally base64-encoded string. `resolveBody(hint?)` decodes it and determines how to parse it using the following priority:
-
-1. If `hint?` is provided, use it as the `StandardBodyHint`.
-2. Otherwise, if the `standard-server` header is present, use it as the `StandardBodyHint`.
-3. Otherwise, if `content-type` is one of the common types, parse accordingly.
-4. Otherwise, if `content-length` exists, treat the body as `file`; if not, treat it as `octet-stream`.
+The event carries the request body as a fully buffered, optionally base64-encoded string. `resolveBody(hint?)` decodes it and then follows the shared Standard Server resolution rules: an explicit `hint` wins, then the [`standard-server` header](../core/README.md#the-standard-server-header), then inference from the content headers. See [how body parsing works](../core/README.md#how-body-parsing-works) in the core README for the full algorithm.
 
 > [!TIP]
 > For efficient communication, set the `standard-server` header to explicitly hint the body type, especially for file or binary streaming. For example, if you upload a file with a common `content-type` such as `application/json` but omit the `standard-server` header, the server may interpret it as JSON and parse it unexpectedly.
@@ -111,7 +98,7 @@ The event carries the request body as a fully buffered, optionally base64-encode
 
 For the higher-level project overview, see the root [Standard Server README](../../README.md).
 
-For the Node.js primitives this adapter is built on, see the [Node.js adapter documentation](../node/README.md).
+For the Node.js primitives this adapter is built on, see the [Node.js adapter documentation](../node/README.md), and for the shared contract, see the [core documentation](../core/README.md).
 
 ## Sponsors
 
