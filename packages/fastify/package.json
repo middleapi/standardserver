@@ -45,9 +45,9 @@
   },
   "devDependencies": {
     "@fastify/cookie": "^11.1.2",
-    "@types/node": "^26.1.2",
+    "@types/node": "^26.2.0",
     "@types/supertest": "^7.2.1",
-    "fastify": "^5.11.0",
+    "fastify": "^5.11.3",
     "supertest": "^7.1.4"
   }
 }
