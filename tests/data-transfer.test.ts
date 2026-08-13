@@ -1,6 +1,7 @@
 import { ErrorEvent, unwrapEvent, withEventMeta } from '@standardserver/core'
 import { isAsyncIteratorObject, sleep } from '@standardserver/shared'
 import { expectPeerMessages } from './client-server'
+import { createExpressjsClientServerTest } from './client-server.expressjs'
 import { createFastifyClientServerTest } from './client-server.fastify'
 import { createH3WebHandlerClientServerTest } from './client-server.h3-web-handler'
 import { createHonoFetchClientServerTest } from './client-server.hono-fetch'
@@ -21,6 +22,8 @@ const CHUNK_DELAY = 60
 const PARALLEL_THRESHOLD = 150
 
 describe.each([
+  ['expressjs', () => createExpressjsClientServerTest()],
+  ['expressjs-body-parser', () => createExpressjsClientServerTest({ bodyParser: true })],
   ['inprogress', createInprogressClientServerTest],
   ['inprogress-fetch', createInprogressFetchClientServerTest],
   // ['h3-node-handler', createH3NodeHandlerClientServerTest],

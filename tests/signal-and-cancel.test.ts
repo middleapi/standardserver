@@ -1,5 +1,6 @@
 import { AsyncIteratorClass, isAsyncIteratorObject, sleep } from '@standardserver/shared'
 import { expectPeerMessages } from './client-server'
+import { createExpressjsClientServerTest } from './client-server.expressjs'
 import { createFastifyClientServerTest } from './client-server.fastify'
 import { createHonoFetchClientServerTest } from './client-server.hono-fetch'
 import { createMessagePortClientServerTest } from './client-server.message-port'
@@ -29,6 +30,8 @@ function waitFor<T>(assertion: () => T): Promise<T> {
 }
 
 describe.each([
+  ['expressjs', () => createExpressjsClientServerTest()],
+  ['expressjs-body-parser', () => createExpressjsClientServerTest({ bodyParser: true })],
   // ['inprogress', createInprogressClientServerTest],
   // ['inprogress-fetch', createInprogressFetchClientServerTest],
   // ['h3-node-handler', createH3NodeHandlerClientServerTest],
