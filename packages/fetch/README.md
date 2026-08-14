@@ -25,7 +25,19 @@
 
 Standard Server provides a unified interface for client-server communication across HTTP and message-based transports. It lets you write handlers and clients against the same request, response, body, and streaming primitives whether the underlying transport is Fetch, Node.js HTTP, or a peer-style message channel.
 
-This package is the Fetch API adapter for that model. It converts between native `Request`, `Response`, `Headers`, and stream values and the corresponding Standard Server shapes from [`@standardserver/core`](../core/README.md).
+Standard Server ships as a small ecosystem of packages:
+
+| Package                                                                                                             | Description                                                                 |
+| ------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| [`@standardserver/core`](https://github.com/middleapi/standardserver/blob/main/packages/core/README.md)             | The shared contract: types, body parsing rules, validators, and SSE helpers |
+| [`@standardserver/fetch`](https://github.com/middleapi/standardserver/blob/main/packages/fetch/README.md)           | Fetch API adapter for browsers, workers, and other Fetch-based runtimes     |
+| [`@standardserver/node`](https://github.com/middleapi/standardserver/blob/main/packages/node/README.md)             | Node.js HTTP and HTTP/2 adapter                                             |
+| [`@standardserver/fastify`](https://github.com/middleapi/standardserver/blob/main/packages/fastify/README.md)       | Fastify adapter built on the Node.js adapter                                |
+| [`@standardserver/aws-lambda`](https://github.com/middleapi/standardserver/blob/main/packages/aws-lambda/README.md) | AWS Lambda adapter with response streaming                                  |
+| [`@standardserver/peer`](https://github.com/middleapi/standardserver/blob/main/packages/peer/README.md)             | Message-based adapter for WebSocket, MessagePort, and custom transports     |
+| [`@standardserver/shared`](https://github.com/middleapi/standardserver/blob/main/packages/shared/README.md)         | Internal utilities shared across the ecosystem                              |
+
+This package is the Fetch API adapter for that model. It converts between native `Request`, `Response`, `Headers`, and stream values and the corresponding Standard Server shapes from [`@standardserver/core`](https://github.com/middleapi/standardserver/blob/main/packages/core/README.md).
 
 ## Package overview
 
@@ -94,23 +106,21 @@ const standardResponse = toStandardLazyResponse(response)
 const payload = await standardResponse.resolveBody()
 ```
 
-`toFetchBody()` also prepares the content headers for the body it serializes — for example, a `Blob` or `File` body gains `standard-server: file`, `content-length`, and a generated `content-disposition`, so the receiver reconstructs the same body type. See [the `standard-server` header](../core/README.md#the-standard-server-header) in the core README for why.
+`toFetchBody()` also prepares the content headers for the body it serializes — for example, a `Blob` or `File` body gains `standard-server: file`, `content-length`, and a generated `content-disposition`, so the receiver reconstructs the same body type. See [the `standard-server` header](https://github.com/middleapi/standardserver/blob/main/packages/core/README.md#the-standard-server-header) in the core README for why.
 
 > [!TIP]
 > When sending requests or responses, you can pass additional options such as event-stream keep-alive.
 
 ## Resolving Body
 
-`resolveBody(hint?)` follows the shared Standard Server resolution rules: an explicit `hint` wins, then the [`standard-server` header](../core/README.md#the-standard-server-header), then inference from the content headers. See [how body parsing works](../core/README.md#how-body-parsing-works) in the core README for the full algorithm.
+`resolveBody(hint?)` follows the shared Standard Server resolution rules: an explicit `hint` wins, then the [`standard-server` header](https://github.com/middleapi/standardserver/blob/main/packages/core/README.md#the-standard-server-header), then inference from the content headers. See [how body parsing works](https://github.com/middleapi/standardserver/blob/main/packages/core/README.md#how-body-parsing-works) in the core README for the full algorithm.
 
 > [!TIP]
 > For efficient communication, set the `standard-server` header to explicitly hint the body type, especially for file or binary streaming. For example, if you upload a file with a common `content-type` such as `application/json` but omit the `standard-server` header, the server may interpret it as JSON and parse it unexpectedly.
 
 ## Learn more
 
-For the higher-level project overview, see the root [Standard Server README](../../README.md).
-
-For the shared contract this adapter implements, see the [core documentation](../core/README.md).
+For the project overview and the shared contract this adapter implements, see the [core documentation](https://github.com/middleapi/standardserver/blob/main/packages/core/README.md).
 
 ## Sponsors
 
@@ -195,3 +205,7 @@ Like what we build over at [middleapi](https://github.com/middleapi)? You can he
 </table>
 
 With thanks to 37 past sponsors who helped get us here.
+
+## License
+
+Distributed under the MIT License. See [LICENCE](https://github.com/middleapi/standardserver/blob/main/LICENCE) for more information.

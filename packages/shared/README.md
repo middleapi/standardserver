@@ -25,11 +25,21 @@
 
 It has no runtime dependencies and works in any JavaScript environment. The package exists so the other `@standardserver` packages can share these building blocks without duplication; its API follows their needs and is not designed for direct use in applications.
 
+Standard Server ships as a small ecosystem of packages:
+
+| Package                                                                                                             | Description                                                                 |
+| ------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| [`@standardserver/core`](https://github.com/middleapi/standardserver/blob/main/packages/core/README.md)             | The shared contract: types, body parsing rules, validators, and SSE helpers |
+| [`@standardserver/fetch`](https://github.com/middleapi/standardserver/blob/main/packages/fetch/README.md)           | Fetch API adapter for browsers, workers, and other Fetch-based runtimes     |
+| [`@standardserver/node`](https://github.com/middleapi/standardserver/blob/main/packages/node/README.md)             | Node.js HTTP and HTTP/2 adapter                                             |
+| [`@standardserver/fastify`](https://github.com/middleapi/standardserver/blob/main/packages/fastify/README.md)       | Fastify adapter built on the Node.js adapter                                |
+| [`@standardserver/aws-lambda`](https://github.com/middleapi/standardserver/blob/main/packages/aws-lambda/README.md) | AWS Lambda adapter with response streaming                                  |
+| [`@standardserver/peer`](https://github.com/middleapi/standardserver/blob/main/packages/peer/README.md)             | Message-based adapter for WebSocket, MessagePort, and custom transports     |
+| [`@standardserver/shared`](https://github.com/middleapi/standardserver/blob/main/packages/shared/README.md)         | Internal utilities shared across the ecosystem                              |
+
 ## Learn more
 
-For the higher-level project overview, see the root [Standard Server README](../../README.md).
-
-For the public contract of the ecosystem, see the [core documentation](../core/README.md).
+For the project overview and the public contract of the ecosystem, see the [core documentation](https://github.com/middleapi/standardserver/blob/main/packages/core/README.md).
 
 ## Sponsors
 
@@ -114,3 +124,7 @@ Like what we build over at [middleapi](https://github.com/middleapi)? You can he
 </table>
 
 With thanks to 37 past sponsors who helped get us here.
+
+## License
+
+Distributed under the MIT License. See [LICENCE](https://github.com/middleapi/standardserver/blob/main/LICENCE) for more information.
