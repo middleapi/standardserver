@@ -1,37 +1,38 @@
 import type { IncomingMessage } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import type { ClientServerTest } from './client-server'
-import * as fs from 'node:fs'
 import * as https from 'node:https'
 import { Readable } from 'node:stream'
 import { toFetchBody, toFetchHeaders, toStandardLazyResponse } from '@standardserver/fetch'
 import { sendStandardResponse, toStandardLazyRequest } from '@standardserver/node'
+import { generateTlsCert } from './tls'
 
 export function createNodeHttpsClientServerTest(): ClientServerTest {
   const handler: ClientServerTest['handler'] = vi.fn(async () => {
     return { status: 404, body: 'Not Found', headers: {} }
   })
 
-  const cert = fs.readFileSync(new URL('./fixtures/localhost-cert.pem', import.meta.url))
+  const serverReady = (async () => {
+    const { cert, key } = await generateTlsCert()
 
-  const server = https.createServer({
-    cert,
-    key: fs.readFileSync(new URL('./fixtures/localhost-key.pem', import.meta.url)),
-  }, async (req, res) => {
-    const standardRequest = toStandardLazyRequest(req, res)
-    const standardResponse = await handler(standardRequest)
+    const server = https.createServer({ cert, key }, async (req, res) => {
+      const standardRequest = toStandardLazyRequest(req, res)
+      const standardResponse = await handler(standardRequest)
 
-    await sendStandardResponse(res, standardResponse)
-  })
+      await sendStandardResponse(res, standardResponse)
+    })
 
-  server.listen(0)
+    await new Promise<void>(resolve => server.listen(0, resolve))
 
-  const addressInfo = server.address() as AddressInfo
+    // fetch cannot trust a custom CA per-request, so requests go through a raw https client
+    const agent = new https.Agent({ ca: cert })
 
-  // fetch cannot trust a custom CA per-request, so requests go through a raw https client
-  const agent = new https.Agent({ ca: cert })
+    return { server, agent, port: (server.address() as AddressInfo).port }
+  })()
 
-  afterAll(() => {
+  afterAll(async () => {
+    const { server, agent } = await serverReady
+
     agent.destroy()
     server.close()
     server.closeAllConnections()
@@ -40,11 +41,13 @@ export function createNodeHttpsClientServerTest(): ClientServerTest {
   const request: ClientServerTest['request'] = vi.fn(async (standardRequest) => {
     standardRequest.signal?.throwIfAborted()
 
+    const { agent, port } = await serverReady
+
     const [body, standardHeaders] = toFetchBody(standardRequest.body, standardRequest.headers)
 
     // Normalize the fetch body (Blob, FormData, ...) into a byte stream and let
     // fetch fill in derived headers such as the multipart boundary.
-    const fetchRequest = new Request(`https://localhost:${addressInfo.port}${standardRequest.url}`, {
+    const fetchRequest = new Request(`https://localhost:${port}${standardRequest.url}`, {
       method: standardRequest.method,
       headers: toFetchHeaders(standardHeaders),
       body: body ?? null,
@@ -58,7 +61,7 @@ export function createNodeHttpsClientServerTest(): ClientServerTest {
 
     const req = https.request({
       host: 'localhost',
-      port: addressInfo.port,
+      port,
       path: `${standardRequest.url}`,
       method: standardRequest.method,
       headers: requestHeaders,

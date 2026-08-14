@@ -1,11 +1,11 @@
 import type { Http2ServerRequest, Http2ServerResponse } from 'node:http2'
 import type { AddressInfo } from 'node:net'
 import type { ClientServerTest } from './client-server'
-import * as fs from 'node:fs'
 import * as http2 from 'node:http2'
 import { Readable } from 'node:stream'
 import { toFetchBody, toFetchHeaders, toStandardLazyResponse } from '@standardserver/fetch'
 import { sendStandardResponse, toStandardLazyRequest } from '@standardserver/node'
+import { generateTlsCert } from './tls'
 
 export interface NodeHttp2ClientServerTestOptions {
   /** Serve over TLS (https) with a self-signed localhost certificate. */
@@ -29,28 +29,29 @@ export function createNodeHttp2ClientServerTest(options: NodeHttp2ClientServerTe
     await sendStandardResponse(res, standardResponse).catch(() => {})
   }
 
-  const cert = options.secure
-    ? fs.readFileSync(new URL('./fixtures/localhost-cert.pem', import.meta.url))
-    : undefined
+  const serverReady = (async () => {
+    const tls = options.secure ? await generateTlsCert() : undefined
 
-  const server = options.secure
-    ? http2.createSecureServer({
-        cert,
-        key: fs.readFileSync(new URL('./fixtures/localhost-key.pem', import.meta.url)),
-      }, requestListener)
-    : http2.createServer(requestListener)
+    const server = tls
+      ? http2.createSecureServer({ cert: tls.cert, key: tls.key }, requestListener)
+      : http2.createServer(requestListener)
 
-  server.listen(0)
+    await new Promise<void>(resolve => server.listen(0, resolve))
 
-  const addressInfo = server.address() as AddressInfo
+    const port = (server.address() as AddressInfo).port
 
-  // fetch cannot speak h2c, so requests go through a raw http2 client session
-  const session = options.secure
-    ? http2.connect(`https://localhost:${addressInfo.port}`, { ca: cert })
-    : http2.connect(`http://localhost:${addressInfo.port}`)
-  session.on('error', () => {})
+    // fetch cannot speak h2c, so requests go through a raw http2 client session
+    const session = tls
+      ? http2.connect(`https://localhost:${port}`, { ca: tls.cert })
+      : http2.connect(`http://localhost:${port}`)
+    session.on('error', () => {})
 
-  afterAll(() => {
+    return { server, session, port }
+  })()
+
+  afterAll(async () => {
+    const { server, session } = await serverReady
+
     session.destroy()
     server.close()
   })
@@ -58,11 +59,13 @@ export function createNodeHttp2ClientServerTest(options: NodeHttp2ClientServerTe
   const request: ClientServerTest['request'] = vi.fn(async (standardRequest) => {
     standardRequest.signal?.throwIfAborted()
 
+    const { session, port } = await serverReady
+
     const [body, standardHeaders] = toFetchBody(standardRequest.body, standardRequest.headers)
 
     // Normalize the fetch body (Blob, FormData, ...) into a byte stream and let
     // fetch fill in derived headers such as the multipart boundary.
-    const fetchRequest = new Request(`http://localhost:${addressInfo.port}${standardRequest.url}`, {
+    const fetchRequest = new Request(`http://localhost:${port}${standardRequest.url}`, {
       method: standardRequest.method,
       headers: toFetchHeaders(standardHeaders),
       body: body ?? null,
