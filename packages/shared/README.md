@@ -25,11 +25,21 @@
 
 It has no runtime dependencies and works in any JavaScript environment. The package exists so the other `@standardserver` packages can share these building blocks without duplication; its API follows their needs and is not designed for direct use in applications.
 
+Standard Server ships as a small ecosystem of packages:
+
+| Package                                                 | Description                                                                 |
+| ------------------------------------------------------- | --------------------------------------------------------------------------- |
+| [`@standardserver/core`](../core/README.md)             | The shared contract: types, body parsing rules, validators, and SSE helpers |
+| [`@standardserver/fetch`](../fetch/README.md)           | Fetch API adapter for browsers, workers, and other Fetch-based runtimes     |
+| [`@standardserver/node`](../node/README.md)             | Node.js HTTP and HTTP/2 adapter                                             |
+| [`@standardserver/fastify`](../fastify/README.md)       | Fastify adapter built on the Node.js adapter                                |
+| [`@standardserver/aws-lambda`](../aws-lambda/README.md) | AWS Lambda adapter with response streaming                                  |
+| [`@standardserver/peer`](../peer/README.md)             | Message-based adapter for WebSocket, MessagePort, and custom transports     |
+| [`@standardserver/shared`](../shared/README.md)         | Internal utilities shared across the ecosystem                              |
+
 ## Learn more
 
-For the higher-level project overview, see the root [Standard Server README](../../README.md).
-
-For the public contract of the ecosystem, see the [core documentation](../core/README.md).
+For the project overview and the public contract of the ecosystem, see the [core documentation](../core/README.md).
 
 ## Sponsors
 

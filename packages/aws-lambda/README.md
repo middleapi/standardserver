@@ -25,6 +25,18 @@
 
 Standard Server provides a unified interface for client-server communication across HTTP and message-based transports. It lets you write handlers against the same request, response, body, and streaming primitives whether the underlying transport is the Fetch API, Node.js HTTP, HTTP/2, or a peer-style message channel.
 
+Standard Server ships as a small ecosystem of packages:
+
+| Package                                                 | Description                                                                 |
+| ------------------------------------------------------- | --------------------------------------------------------------------------- |
+| [`@standardserver/core`](../core/README.md)             | The shared contract: types, body parsing rules, validators, and SSE helpers |
+| [`@standardserver/fetch`](../fetch/README.md)           | Fetch API adapter for browsers, workers, and other Fetch-based runtimes     |
+| [`@standardserver/node`](../node/README.md)             | Node.js HTTP and HTTP/2 adapter                                             |
+| [`@standardserver/fastify`](../fastify/README.md)       | Fastify adapter built on the Node.js adapter                                |
+| [`@standardserver/aws-lambda`](../aws-lambda/README.md) | AWS Lambda adapter with response streaming                                  |
+| [`@standardserver/peer`](../peer/README.md)             | Message-based adapter for WebSocket, MessagePort, and custom transports     |
+| [`@standardserver/shared`](../shared/README.md)         | Internal utilities shared across the ecosystem                              |
+
 This package is the AWS Lambda adapter for that model. It converts an API Gateway proxy event — payload format version 1.0 or 2.0, the latter also used by Lambda Function URLs — into a `StandardLazyRequest`, and writes a `StandardResponse` back through the stream provided by `awslambda.streamifyResponse`, so streaming bodies such as server-sent events flow to the client as they are produced instead of being buffered.
 
 ## Package overview
@@ -96,9 +108,7 @@ The event carries the request body as a fully buffered, optionally base64-encode
 
 ## Learn more
 
-For the higher-level project overview, see the root [Standard Server README](../../README.md).
-
-For the Node.js primitives this adapter is built on, see the [Node.js adapter documentation](../node/README.md), and for the shared contract, see the [core documentation](../core/README.md).
+For the project overview and the shared contract, see the [core documentation](../core/README.md). For the Node.js primitives this adapter is built on, see the [Node.js adapter documentation](../node/README.md).
 
 ## Sponsors
 

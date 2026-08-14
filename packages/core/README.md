@@ -1,4 +1,4 @@
-# @standardserver/core
+# Standard Server
 
 <div align="center">
   <a href="https://codecov.io/gh/middleapi/standardserver">
@@ -21,9 +21,19 @@
   </a>
 </div>
 
-`@standardserver/core` is the shared contract package for Standard Server.
+`@standardserver/core` is the shared contract package for **Standard Server** — a unified interface for client-server communication across HTTP and message-based transports. It lets you keep handler and client code transport-agnostic by working with the same request, response, body, and streaming abstractions whether the transport is Fetch, Node.js HTTP, or a peer-style message channel.
 
-Standard Server provides a unified interface for client-server communication across HTTP and message-based transports. It lets you keep handler and client code transport-agnostic by working with the same request, response, body, and streaming abstractions whether the transport is Fetch, Node.js HTTP, or a peer-style message channel.
+Standard Server ships as a small ecosystem of packages:
+
+| Package                                                 | Description                                                                 |
+| ------------------------------------------------------- | --------------------------------------------------------------------------- |
+| [`@standardserver/core`](../core/README.md)             | The shared contract: types, body parsing rules, validators, and SSE helpers |
+| [`@standardserver/fetch`](../fetch/README.md)           | Fetch API adapter for browsers, workers, and other Fetch-based runtimes     |
+| [`@standardserver/node`](../node/README.md)             | Node.js HTTP and HTTP/2 adapter                                             |
+| [`@standardserver/fastify`](../fastify/README.md)       | Fastify adapter built on the Node.js adapter                                |
+| [`@standardserver/aws-lambda`](../aws-lambda/README.md) | AWS Lambda adapter with response streaming                                  |
+| [`@standardserver/peer`](../peer/README.md)             | Message-based adapter for WebSocket, MessagePort, and custom transports     |
+| [`@standardserver/shared`](../shared/README.md)         | Internal utilities shared across the ecosystem                              |
 
 This package is the foundation of that model. It defines the request and response types every adapter converts to and from, the body parsing rules they all share, runtime validators, header and URL utilities, and event stream (SSE) helpers.
 
@@ -69,7 +79,7 @@ export async function handle(request: StandardLazyRequest): Promise<StandardResp
 }
 ```
 
-### Body hints and body values
+## Body types
 
 `StandardBodyHint` and `StandardBody` describe the shared body contract used across adapters:
 
@@ -83,13 +93,127 @@ export async function handle(request: StandardLazyRequest): Promise<StandardResp
 | `file`              | `File`                         | any                                 | Fixed-size binary payloads for both `File` and `Blob` |
 | `none`              | `undefined`                    |                                     | Empty body                                            |
 
+### JSON body
+
+Standard Server treats primitive values, objects, and arrays as JSON.
+
+```ts
+import type { StandardRequest } from '@standardserver/core'
+
+const request: StandardRequest = {
+  method: 'POST',
+  url: '/submit',
+  headers: {},
+  body: { name: 'John Doe', email: 'john.doe@example.com' },
+}
+```
+
+### FormData and URLSearchParams body
+
+Standard Server treats [FormData](https://developer.mozilla.org/en-US/docs/Web/API/FormData) and [URLSearchParams](https://developer.mozilla.org/en-US/docs/Web/API/URLSearchParams) as form submissions.
+
+```ts
+import type { StandardRequest } from '@standardserver/core'
+
+const requestWithURLSearchParams: StandardRequest = {
+  method: 'POST',
+  url: '/submit',
+  headers: {},
+  body: new URLSearchParams({ name: 'John Doe', email: 'john.doe@example.com' }),
+}
+
+const formData = new FormData()
+formData.append('name', 'John Doe')
+formData.append('file', new Blob(['Hello, World!'], { type: 'text/plain' }), 'hello.txt')
+
+const requestWithFormData: StandardRequest = {
+  method: 'POST',
+  url: '/submit',
+  headers: {},
+  body: formData,
+}
+```
+
+> [!TIP]
+> HTML forms submit data as `application/x-www-form-urlencoded` or `multipart/form-data`, so these body types are especially helpful there.
+
+### File and Blob body
+
+Standard Server treats [File](https://developer.mozilla.org/en-US/docs/Web/API/File) and [Blob](https://developer.mozilla.org/en-US/docs/Web/API/Blob) as fixed-size binary payloads.
+
 > [!NOTE]
 > Since `File` extends `Blob`, `resolveBody` always returns a `File` when representing either `File` or `Blob` bodies.
+
+```ts
+import type { StandardResponse } from '@standardserver/core'
+
+const response: StandardResponse = {
+  status: 200,
+  headers: {
+    'content-disposition': [], // <- remove auto-set header
+  },
+  body: new File(['Hello, World!'], 'hello.txt', { type: 'text/plain' }),
+}
+```
+
+When sending a file or blob body, adapters automatically set the `content-length`, `content-type`, `content-disposition`, and `standard-server` headers based on the provided body. You can override any of them by explicitly providing a header value, or remove one entirely by assigning an empty array.
+
+### Event-stream body
+
+Standard Server uses [AsyncIteratorObject](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/AsyncIterator) to represent an event stream body, and you can use `withEventMeta()` to attach additional [SSE event metadata](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events#event_stream_format) to each emitted event.
+
+```ts
+import type { StandardResponse } from '@standardserver/core'
+import { ErrorEvent, withEventMeta } from '@standardserver/core'
+
+const response: StandardResponse = {
+  status: 200,
+  headers: {},
+  async* body() {
+    yield withEventMeta(
+      { message: 'Hello, World!' },
+      { id: '1', retry: 3000, comments: ['hidden'] },
+    )
+
+    throw new ErrorEvent({ message: 'Something went wrong' })
+
+    return { message: 'This is the end of the stream' }
+  },
+}
+```
+
+Events are interpreted as follows: `yield` emits a `message`, `throw` emits an `error`, and `return` emits a `close` event. Note that `close` does not cause [EventSource](https://developer.mozilla.org/en-US/docs/Web/API/EventSource) to close the connection because it is not part of the SSE specification. However, when using Standard Server for client-side streaming, `close` is treated as the end of the stream, so the connection is closed and no reconnection is attempted.
+
+For explicit SSE encoding, decoding, and metadata handling, see the [Event-Stream Helpers](#event-stream-helpers) below.
+
+### Octet-stream body
+
+Standard Server uses [ReadableStream<Uint8Array>](https://developer.mozilla.org/en-US/docs/Web/API/ReadableStream) to represent a binary streaming body.
+
+```ts
+import type { StandardResponse } from '@standardserver/core'
+
+const response: StandardResponse = {
+  status: 200,
+  headers: {
+    'content-type': 'application/octet-stream',
+  },
+  body: new ReadableStream<Uint8Array>({
+    start(controller) {
+      const encoder = new TextEncoder()
+      controller.enqueue(encoder.encode('Hello, World!'))
+      controller.close()
+    },
+  }),
+}
+```
+
+When sending a binary streaming body, adapters automatically set the `content-type` and `standard-server` headers. You can override `content-type` by providing an explicit header value, or remove it entirely by assigning an empty array.
 
 ## How body parsing works
 
 > [!NOTE]
-> This section applies to the HTTP adapters (Fetch, Node.js, Fastify, AWS Lambda). It does not apply to the [peer adapter](../peer/README.md), which identifies body types through its own message protocol — a different but fairly similar mechanism.
+> This section applies to the HTTP adapters (Fetch, Node.js, Fastify, AWS Lambda). It does not apply to the [peer adapter](../peer/README.md#body-resolution), which identifies body types through its own message protocol — a different but fairly similar mechanism.
 
 `resolveBody(hint?)` on `StandardLazyRequest` and `StandardLazyResponse` resolves the body lazily — the underlying stream is only consumed once you call it. The `StandardBodyHint` that decides how the raw body is parsed comes from three places: an explicit `hint` argument, the `standard-server` header, or inference from the content headers.
 
@@ -309,8 +433,6 @@ const response: StandardResponse = {
 }
 ```
 
-Events are interpreted as follows: `yield` emits a `message`, `throw` emits an `error`, and `return` emits a `close` event. Note that `close` does not cause [EventSource](https://developer.mozilla.org/en-US/docs/Web/API/EventSource) to close the connection because it is not part of the SSE specification. However, when using Standard Server for client-side streaming, `close` is treated as the end of the stream, so the connection is closed and no reconnection is attempted.
-
 > [!WARNING]
 > Metadata is validated before it is attached: `id`, `event`, and comments must not contain line breaks, and `retry` must be a non-negative integer.
 
@@ -340,9 +462,7 @@ error.data
 
 ## Learn more
 
-For the higher-level project overview and adapter quick-starts, see the root [Standard Server README](../../README.md).
-
-Adapter documentation: [Fetch](../fetch/README.md) · [Node.js](../node/README.md) · [Fastify](../fastify/README.md) · [AWS Lambda](../aws-lambda/README.md) · [Peer](../peer/README.md)
+For transport-specific quick-starts and options, see the adapter documentation: [Fetch](../fetch/README.md) · [Node.js](../node/README.md) · [Fastify](../fastify/README.md) · [AWS Lambda](../aws-lambda/README.md) · [Peer](../peer/README.md)
 
 ## Sponsors
 

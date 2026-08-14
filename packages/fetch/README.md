@@ -25,6 +25,18 @@
 
 Standard Server provides a unified interface for client-server communication across HTTP and message-based transports. It lets you write handlers and clients against the same request, response, body, and streaming primitives whether the underlying transport is Fetch, Node.js HTTP, or a peer-style message channel.
 
+Standard Server ships as a small ecosystem of packages:
+
+| Package                                                 | Description                                                                 |
+| ------------------------------------------------------- | --------------------------------------------------------------------------- |
+| [`@standardserver/core`](../core/README.md)             | The shared contract: types, body parsing rules, validators, and SSE helpers |
+| [`@standardserver/fetch`](../fetch/README.md)           | Fetch API adapter for browsers, workers, and other Fetch-based runtimes     |
+| [`@standardserver/node`](../node/README.md)             | Node.js HTTP and HTTP/2 adapter                                             |
+| [`@standardserver/fastify`](../fastify/README.md)       | Fastify adapter built on the Node.js adapter                                |
+| [`@standardserver/aws-lambda`](../aws-lambda/README.md) | AWS Lambda adapter with response streaming                                  |
+| [`@standardserver/peer`](../peer/README.md)             | Message-based adapter for WebSocket, MessagePort, and custom transports     |
+| [`@standardserver/shared`](../shared/README.md)         | Internal utilities shared across the ecosystem                              |
+
 This package is the Fetch API adapter for that model. It converts between native `Request`, `Response`, `Headers`, and stream values and the corresponding Standard Server shapes from [`@standardserver/core`](../core/README.md).
 
 ## Package overview
@@ -108,9 +120,7 @@ const payload = await standardResponse.resolveBody()
 
 ## Learn more
 
-For the higher-level project overview, see the root [Standard Server README](../../README.md).
-
-For the shared contract this adapter implements, see the [core documentation](../core/README.md).
+For the project overview and the shared contract this adapter implements, see the [core documentation](../core/README.md).
 
 ## Sponsors
 
