@@ -2,6 +2,7 @@ import type { StandardBody } from '@standardserver/core'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { NodeHttpRequest } from './types'
 import { Buffer } from 'node:buffer'
+import http2 from 'node:http2'
 import { Readable } from 'node:stream'
 import * as StandardServerModule from '@standardserver/core'
 import { toFetchHeaders } from '@standardserver/fetch'
@@ -162,7 +163,7 @@ describe('toStandardBody', () => {
   })
 
   describe('handle utf-8 characters split across stream chunks', () => {
-    function createChunkedIncomingMessage(method: string, contentType: string, chunks: Array<Buffer | string>): IncomingMessage {
+    function createChunkedIncomingMessage(method: string, contentType: string, chunks: Buffer[]): IncomingMessage {
       const request = Readable.from(chunks) as IncomingMessage
       request.method = method
       request.headers = {
@@ -199,11 +200,115 @@ describe('toStandardBody', () => {
       const result = await toStandardBody(incomingMessage)
       expect(result).toEqual(new URLSearchParams('emoji=�'))
     })
+  })
 
-    it('json: string chunks', async () => {
-      const incomingMessage = createChunkedIncomingMessage('POST', 'application/json', ['{"emoji":"', '😀"}'])
-      const result = await toStandardBody(incomingMessage)
+  describe('http2', () => {
+    /**
+     * Runs a request through a real http2 server, so `toStandardBody` receives an
+     * `Http2ServerRequest` instead of an `IncomingMessage`.
+     */
+    async function http2Roundtrip(
+      onTestFinished: (fn: () => Promise<any>) => void,
+      headers: Record<string, string>,
+      body: Buffer,
+    ): Promise<[standardBody: StandardBody, streamedBytes: Uint8Array | undefined]> {
+      let standardBody: StandardBody
+      let streamedBytes: Uint8Array | undefined
+      let error: unknown
+
+      const server = http2.createServer(async (req, res) => {
+        try {
+          standardBody = await toStandardBody(req)
+
+          // a streaming body must be drained while the request is still alive
+          if (standardBody instanceof ReadableStream) {
+            streamedBytes = new Uint8Array(await new Response(standardBody).arrayBuffer())
+          }
+        }
+        catch (e) {
+          error = e
+        }
+        res.end()
+      })
+      onTestFinished(() => new Promise<any>(r => server.close(r)))
+
+      await new Promise<void>(r => server.listen(0, r))
+      const port = (server.address() as any).port
+
+      const client = http2.connect(`http://localhost:${port}`)
+      onTestFinished(async () => client.close())
+
+      await new Promise<void>((resolve) => {
+        const stream = client.request({ ':method': 'POST', ':path': '/', ...headers })
+        stream.end(body)
+        stream.on('response', () => {
+          stream.resume()
+          stream.on('end', () => resolve())
+        })
+      })
+
+      if (error !== undefined) {
+        throw error
+      }
+
+      return [standardBody!, streamedBytes]
+    }
+
+    it('json', async ({ onTestFinished }) => {
+      const [result] = await http2Roundtrip(
+        onTestFinished,
+        { 'content-type': 'application/json' },
+        Buffer.from('{"emoji":"😀"}'),
+      )
+
       expect(result).toEqual({ emoji: '😀' })
+    })
+
+    it('url-search-params', async ({ onTestFinished }) => {
+      const [result] = await http2Roundtrip(
+        onTestFinished,
+        { 'content-type': 'application/x-www-form-urlencoded' },
+        Buffer.from('emoji=😀'),
+      )
+
+      expect(result).toEqual(new URLSearchParams('emoji=😀'))
+    })
+
+    it('form-data', async ({ onTestFinished }) => {
+      const [result] = await http2Roundtrip(
+        onTestFinished,
+        { 'content-type': 'multipart/form-data; boundary=X' },
+        Buffer.from('--X\r\nContent-Disposition: form-data; name="emoji"\r\n\r\n😀\r\n--X--\r\n'),
+      ) as [FormData, undefined]
+
+      expect(result).toBeInstanceOf(FormData)
+      expect(result.get('emoji')).toBe('😀')
+    })
+
+    it('file', async ({ onTestFinished }) => {
+      const body = Buffer.from([0xDE, 0xAD, 0xBE, 0xEF])
+
+      const [result] = await http2Roundtrip(onTestFinished, {
+        'content-type': 'application/pdf',
+        'content-disposition': 'attachment; filename="foo.pdf"',
+      }, body) as [File, undefined]
+
+      expect(result).toBeInstanceOf(File)
+      expect(result.name).toBe('foo.pdf')
+      expect(new Uint8Array(await result.arrayBuffer())).toEqual(new Uint8Array(body))
+    })
+
+    it('octet-stream', async ({ onTestFinished }) => {
+      const body = Buffer.from([0xDE, 0xAD, 0xBE, 0xEF])
+
+      const [result, streamedBytes] = await http2Roundtrip(
+        onTestFinished,
+        { 'content-type': 'application/octet-stream' },
+        body,
+      )
+
+      expect(result).toBeInstanceOf(ReadableStream)
+      expect(streamedBytes).toEqual(new Uint8Array(body))
     })
   })
 

@@ -1,8 +1,7 @@
 import type { StandardBody, StandardBodyHint, StandardHeaders } from '@standardserver/core'
-import type { IncomingMessage } from 'node:http'
+import type { Buffer } from 'node:buffer'
 import type { ToEventStreamOptions } from './event-stream'
 import type { NodeHttpRequest } from './types'
-import { Buffer } from 'node:buffer'
 import { Readable } from 'node:stream'
 import { generateContentDisposition, getFilenameFromContentDisposition, resolveStandardBodyHint } from '@standardserver/core'
 import { isAsyncIteratorObject, parseEmptyableJSON, stringifyJSON } from '@standardserver/shared'
@@ -72,8 +71,7 @@ export async function toStandardBody(
     return _streamToFile(req, fileName ?? 'blob', contentType ?? '')
   }
 
-  // TODO: support http2
-  return Readable.toWeb(req as IncomingMessage)
+  return Readable.toWeb(req as Readable)
 }
 
 export interface ToNodeHttpBodyOptions {
@@ -169,7 +167,7 @@ async function _streamToString(stream: Readable): Promise<string> {
   let string = ''
 
   for await (const chunk of stream) {
-    string += decoder.decode(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk), { stream: true })
+    string += decoder.decode(chunk, { stream: true })
   }
 
   // Flush any remaining bytes (e.g. incomplete multi-byte sequences)
