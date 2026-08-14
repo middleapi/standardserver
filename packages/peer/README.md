@@ -27,15 +27,15 @@ Standard Server provides a unified interface for client-server communication acr
 
 Standard Server ships as a small ecosystem of packages:
 
-| Package                                                 | Description                                                                 |
-| ------------------------------------------------------- | --------------------------------------------------------------------------- |
-| [`@standardserver/core`](../core/README.md)             | The shared contract: types, body parsing rules, validators, and SSE helpers |
-| [`@standardserver/fetch`](../fetch/README.md)           | Fetch API adapter for browsers, workers, and other Fetch-based runtimes     |
-| [`@standardserver/node`](../node/README.md)             | Node.js HTTP and HTTP/2 adapter                                             |
-| [`@standardserver/fastify`](../fastify/README.md)       | Fastify adapter built on the Node.js adapter                                |
-| [`@standardserver/aws-lambda`](../aws-lambda/README.md) | AWS Lambda adapter with response streaming                                  |
-| [`@standardserver/peer`](../peer/README.md)             | Message-based adapter for WebSocket, MessagePort, and custom transports     |
-| [`@standardserver/shared`](../shared/README.md)         | Internal utilities shared across the ecosystem                              |
+| Package                                                                                                             | Description                                                                 |
+| ------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| [`@standardserver/core`](https://github.com/middleapi/standardserver/blob/main/packages/core/README.md)             | The shared contract: types, body parsing rules, validators, and SSE helpers |
+| [`@standardserver/fetch`](https://github.com/middleapi/standardserver/blob/main/packages/fetch/README.md)           | Fetch API adapter for browsers, workers, and other Fetch-based runtimes     |
+| [`@standardserver/node`](https://github.com/middleapi/standardserver/blob/main/packages/node/README.md)             | Node.js HTTP and HTTP/2 adapter                                             |
+| [`@standardserver/fastify`](https://github.com/middleapi/standardserver/blob/main/packages/fastify/README.md)       | Fastify adapter built on the Node.js adapter                                |
+| [`@standardserver/aws-lambda`](https://github.com/middleapi/standardserver/blob/main/packages/aws-lambda/README.md) | AWS Lambda adapter with response streaming                                  |
+| [`@standardserver/peer`](https://github.com/middleapi/standardserver/blob/main/packages/peer/README.md)             | Message-based adapter for WebSocket, MessagePort, and custom transports     |
+| [`@standardserver/shared`](https://github.com/middleapi/standardserver/blob/main/packages/shared/README.md)         | Internal utilities shared across the ecosystem                              |
 
 This package is the peer adapter for that model. It converts between Standard Server requests and responses and a structured peer message protocol that can be sent through any transport capable of carrying strings or binary data.
 
@@ -159,7 +159,7 @@ Encoding rules:
 
 ## Learn more
 
-For the project overview and the shared contract this adapter implements, see the [core documentation](../core/README.md).
+For the project overview and the shared contract this adapter implements, see the [core documentation](https://github.com/middleapi/standardserver/blob/main/packages/core/README.md).
 
 ## Sponsors
 
@@ -244,3 +244,7 @@ Like what we build over at [middleapi](https://github.com/middleapi)? You can he
 </table>
 
 With thanks to 37 past sponsors who helped get us here.
+
+## License
+
+Distributed under the MIT License. See [LICENCE](https://github.com/middleapi/standardserver/blob/main/LICENCE) for more information.

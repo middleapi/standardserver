@@ -25,15 +25,15 @@
 
 Standard Server ships as a small ecosystem of packages:
 
-| Package                                                 | Description                                                                 |
-| ------------------------------------------------------- | --------------------------------------------------------------------------- |
-| [`@standardserver/core`](../core/README.md)             | The shared contract: types, body parsing rules, validators, and SSE helpers |
-| [`@standardserver/fetch`](../fetch/README.md)           | Fetch API adapter for browsers, workers, and other Fetch-based runtimes     |
-| [`@standardserver/node`](../node/README.md)             | Node.js HTTP and HTTP/2 adapter                                             |
-| [`@standardserver/fastify`](../fastify/README.md)       | Fastify adapter built on the Node.js adapter                                |
-| [`@standardserver/aws-lambda`](../aws-lambda/README.md) | AWS Lambda adapter with response streaming                                  |
-| [`@standardserver/peer`](../peer/README.md)             | Message-based adapter for WebSocket, MessagePort, and custom transports     |
-| [`@standardserver/shared`](../shared/README.md)         | Internal utilities shared across the ecosystem                              |
+| Package                                                                                                             | Description                                                                 |
+| ------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| [`@standardserver/core`](https://github.com/middleapi/standardserver/blob/main/packages/core/README.md)             | The shared contract: types, body parsing rules, validators, and SSE helpers |
+| [`@standardserver/fetch`](https://github.com/middleapi/standardserver/blob/main/packages/fetch/README.md)           | Fetch API adapter for browsers, workers, and other Fetch-based runtimes     |
+| [`@standardserver/node`](https://github.com/middleapi/standardserver/blob/main/packages/node/README.md)             | Node.js HTTP and HTTP/2 adapter                                             |
+| [`@standardserver/fastify`](https://github.com/middleapi/standardserver/blob/main/packages/fastify/README.md)       | Fastify adapter built on the Node.js adapter                                |
+| [`@standardserver/aws-lambda`](https://github.com/middleapi/standardserver/blob/main/packages/aws-lambda/README.md) | AWS Lambda adapter with response streaming                                  |
+| [`@standardserver/peer`](https://github.com/middleapi/standardserver/blob/main/packages/peer/README.md)             | Message-based adapter for WebSocket, MessagePort, and custom transports     |
+| [`@standardserver/shared`](https://github.com/middleapi/standardserver/blob/main/packages/shared/README.md)         | Internal utilities shared across the ecosystem                              |
 
 This package is the foundation of that model. It defines the request and response types every adapter converts to and from, the body parsing rules they all share, runtime validators, header and URL utilities, and event stream (SSE) helpers.
 
@@ -213,7 +213,7 @@ When sending a binary streaming body, adapters automatically set the `content-ty
 ## How body parsing works
 
 > [!NOTE]
-> This section applies to the HTTP adapters (Fetch, Node.js, Fastify, AWS Lambda). It does not apply to the [peer adapter](../peer/README.md#body-resolution), which identifies body types through its own message protocol — a different but fairly similar mechanism.
+> This section applies to the HTTP adapters (Fetch, Node.js, Fastify, AWS Lambda). It does not apply to the [peer adapter](https://github.com/middleapi/standardserver/blob/main/packages/peer/README.md#body-resolution), which identifies body types through its own message protocol — a different but fairly similar mechanism.
 
 `resolveBody(hint?)` on `StandardLazyRequest` and `StandardLazyResponse` resolves the body lazily — the underlying stream is only consumed once you call it. The `StandardBodyHint` that decides how the raw body is parsed comes from three places: an explicit `hint` argument, the `standard-server` header, or inference from the content headers.
 
@@ -462,7 +462,7 @@ error.data
 
 ## Learn more
 
-For transport-specific quick-starts and options, see the adapter documentation: [Fetch](../fetch/README.md) · [Node.js](../node/README.md) · [Fastify](../fastify/README.md) · [AWS Lambda](../aws-lambda/README.md) · [Peer](../peer/README.md)
+For transport-specific quick-starts and options, see the adapter documentation: [Fetch](https://github.com/middleapi/standardserver/blob/main/packages/fetch/README.md) · [Node.js](https://github.com/middleapi/standardserver/blob/main/packages/node/README.md) · [Fastify](https://github.com/middleapi/standardserver/blob/main/packages/fastify/README.md) · [AWS Lambda](https://github.com/middleapi/standardserver/blob/main/packages/aws-lambda/README.md) · [Peer](https://github.com/middleapi/standardserver/blob/main/packages/peer/README.md)
 
 ## Sponsors
 
@@ -547,3 +547,7 @@ Like what we build over at [middleapi](https://github.com/middleapi)? You can he
 </table>
 
 With thanks to 37 past sponsors who helped get us here.
+
+## License
+
+Distributed under the MIT License. See [LICENCE](https://github.com/middleapi/standardserver/blob/main/LICENCE) for more information.
