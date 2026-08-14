@@ -5,6 +5,7 @@ import { createFastifyClientServerTest } from './client-server.fastify'
 import { createHonoFetchClientServerTest } from './client-server.hono-fetch'
 import { createMessagePortClientServerTest } from './client-server.message-port'
 import { createNodeHttpClientServerTest } from './client-server.node-http'
+import { createNodeHttp2ClientServerTest } from './client-server.node-http2'
 import { createNodeWsClientServerTest } from './client-server.node-ws'
 
 beforeEach(() => {
@@ -41,6 +42,7 @@ describe.each([
   // ['node-srvx', createNodeSrvxClientServerTest],
   // ['node-fetch-server', createNodeFetchServerClientServerTest],
   ['node-http', createNodeHttpClientServerTest],
+  ['node-http2', createNodeHttp2ClientServerTest],
   ['message-port', () => createMessagePortClientServerTest()],
   ['message-port-fetch-streamed', () => createMessagePortClientServerTest({ fetchStreamed: true })],
   ['node-ws', () => createNodeWsClientServerTest()],
