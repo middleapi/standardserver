@@ -15,8 +15,8 @@ importers:
         specifier: ^5.7.1
         version: 5.7.1(debug@4.4.3(supports-color@7.2.0))(supports-color@7.2.0)(tinybench@2.9.0)(vite@7.3.6(@types/node@26.2.0)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0))(vitest@4.1.10)
       '@hono/node-server':
-        specifier: ^2.0.12
-        version: 2.1.0(hono@4.13.1)
+        specifier: ^2.1.1
+        version: 2.1.1(hono@4.13.1)
       '@remix-run/node-fetch-server':
         specifier: ^0.14.0
         version: 0.14.0
@@ -203,8 +203,8 @@ importers:
   playgrounds/hono-node:
     devDependencies:
       '@hono/node-server':
-        specifier: ^2.0.12
-        version: 2.1.0(hono@4.13.1)
+        specifier: ^2.1.1
+        version: 2.1.1(hono@4.13.1)
       '@standardserver/core':
         specifier: latest
         version: link:../../packages/core
@@ -822,8 +822,8 @@ packages:
   '@fastify/proxy-addr@5.1.0':
     resolution: {integrity: sha512-INS+6gh91cLUjB+PVHfu1UqcB76Sqtpyp7bnL+FYojhjygvOPA9ctiD/JDKsyD9Xgu4hUhCSJBPig/w7duNajw==}
 
-  '@hono/node-server@2.1.0':
-    resolution: {integrity: sha512-XovyyCCnBzW+zKu+z/zq8hwNs4KOR5rEMAOxo2f40Q5xoOI37IMm6MIg2COOUtUApo0i6850MTBKH2u4QLGIqg==}
+  '@hono/node-server@2.1.1':
+    resolution: {integrity: sha512-ELuehkj5VCBdgEw9zs+ivkKwyzzUCSQuE96YmiPvn1ECBoZCczbFXJLeEGMTYjphP6gydh4pHMqEYPVMYUVgQg==}
     engines: {node: '>=20'}
     peerDependencies:
       hono: ^4
@@ -4400,7 +4400,7 @@ snapshots:
       '@fastify/forwarded': 3.0.2
       ipaddr.js: 2.5.0
 
-  '@hono/node-server@2.1.0(hono@4.13.1)':
+  '@hono/node-server@2.1.1(hono@4.13.1)':
     dependencies:
       hono: 4.13.1
 

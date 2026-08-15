@@ -19,7 +19,7 @@
   "devDependencies": {
     "@antfu/eslint-config": "^9.2.0",
     "@codspeed/vitest-plugin": "^5.7.1",
-    "@hono/node-server": "^2.0.12",
+    "@hono/node-server": "^2.1.1",
     "@remix-run/node-fetch-server": "^0.14.0",
     "@standardserver/core": "workspace:*",
     "@standardserver/fastify": "workspace:*",
