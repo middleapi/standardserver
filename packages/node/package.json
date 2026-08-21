@@ -3,6 +3,10 @@
   "type": "module",
   "version": "0.8.0",
   "license": "MIT",
+  "funding": [
+    "https://github.com/sponsors/dinwwwh",
+    "https://opencollective.com/middleapi"
+  ],
   "homepage": "https://standardserver.dev",
   "repository": {
     "type": "git",
