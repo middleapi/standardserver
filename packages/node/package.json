@@ -2,6 +2,7 @@
   "name": "@standardserver/node",
   "type": "module",
   "version": "0.8.0",
+  "description": "Node.js HTTP and HTTP/2 adapter for Standard Server: transport-agnostic requests, responses, and streaming on top of IncomingMessage and ServerResponse",
   "license": "MIT",
   "funding": [
     "https://github.com/sponsors/dinwwwh",
@@ -13,6 +14,20 @@
     "url": "git+https://github.com/middleapi/standardserver.git",
     "directory": "packages/node"
   },
+  "keywords": [
+    "standardserver",
+    "node",
+    "nodejs",
+    "http",
+    "http2",
+    "adapter",
+    "server",
+    "request",
+    "response",
+    "streaming",
+    "sse",
+    "typescript"
+  ],
   "sideEffects": false,
   "publishConfig": {
     "exports": {
