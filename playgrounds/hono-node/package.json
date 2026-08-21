@@ -8,7 +8,7 @@
     "type:check": "tsc --noEmit"
   },
   "devDependencies": {
-    "@hono/node-server": "^2.0.12",
+    "@hono/node-server": "^2.1.1",
     "@standardserver/core": "latest",
     "@standardserver/fetch": "latest",
     "@types/node": "^26.1.2",
