@@ -2,6 +2,7 @@
   "name": "@standardserver/core",
   "type": "module",
   "version": "0.8.0",
+  "description": "The Standard Server contract: transport-agnostic request, response, body, and streaming types with body parsing rules, runtime validators, and SSE helpers shared by every adapter",
   "license": "MIT",
   "funding": [
     "https://github.com/sponsors/dinwwwh",
@@ -13,6 +14,21 @@
     "url": "git+https://github.com/middleapi/standardserver.git",
     "directory": "packages/core"
   },
+  "keywords": [
+    "standardserver",
+    "http",
+    "server",
+    "client",
+    "request",
+    "response",
+    "transport-agnostic",
+    "body-parser",
+    "validator",
+    "sse",
+    "server-sent-events",
+    "streaming",
+    "typescript"
+  ],
   "sideEffects": false,
   "publishConfig": {
     "exports": {

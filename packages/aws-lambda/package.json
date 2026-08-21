@@ -2,6 +2,7 @@
   "name": "@standardserver/aws-lambda",
   "type": "module",
   "version": "0.8.0",
+  "description": "AWS Lambda adapter for Standard Server: transport-agnostic requests and responses with Lambda response streaming support",
   "license": "MIT",
   "funding": [
     "https://github.com/sponsors/dinwwwh",
@@ -13,6 +14,20 @@
     "url": "git+https://github.com/middleapi/standardserver.git",
     "directory": "packages/aws-lambda"
   },
+  "keywords": [
+    "standardserver",
+    "aws",
+    "lambda",
+    "aws-lambda",
+    "serverless",
+    "adapter",
+    "response-streaming",
+    "server",
+    "request",
+    "response",
+    "streaming",
+    "typescript"
+  ],
   "sideEffects": false,
   "publishConfig": {
     "exports": {

@@ -2,6 +2,7 @@
   "name": "@standardserver/shared",
   "type": "module",
   "version": "0.8.0",
+  "description": "Internal types and utilities shared across the Standard Server ecosystem",
   "license": "MIT",
   "funding": [
     "https://github.com/sponsors/dinwwwh",
@@ -13,6 +14,13 @@
     "url": "git+https://github.com/middleapi/standardserver.git",
     "directory": "packages/shared"
   },
+  "keywords": [
+    "standardserver",
+    "utils",
+    "utilities",
+    "internal",
+    "typescript"
+  ],
   "sideEffects": false,
   "publishConfig": {
     "exports": {
