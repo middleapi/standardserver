@@ -7,11 +7,12 @@ import {
   toAsyncIteratorObject as toAsyncIteratorObjectFetch,
   toEventStream as toEventStreamFetch,
 } from '@standardserver/fetch'
+import { toWebReadableStream } from './utils'
 
 export function toAsyncIteratorObject(
   stream: Readable,
 ): AsyncIteratorClass<unknown> {
-  return toAsyncIteratorObjectFetch(Readable.toWeb(stream))
+  return toAsyncIteratorObjectFetch(toWebReadableStream(stream))
 }
 
 export interface ToEventStreamOptions extends ToEventStreamOptionsFetch {}

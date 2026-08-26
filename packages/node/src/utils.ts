@@ -1,5 +1,24 @@
 import type Stream from 'node:stream'
 import type { NodeHttpResponse } from './types'
+import { Readable } from 'node:stream'
+
+/**
+ * A cancel-safe alternative to a bare `Readable.toWeb`.
+ *
+ * Bare `Readable.toWeb` enqueues from `'data'` events, so a chunk arriving
+ * after the consumer cancels hits a closed controller and crashes the process
+ * with an uncaught `ERR_INVALID_STATE` (nodejs/node#54205). The intermediate
+ * `TransformStream` shields the adapter's controller from that cancellation
+ * (which still destroys the source), and the per-chunk copy detaches chunks
+ * from Node's pooled `Buffer` memory.
+ */
+export function toWebReadableStream(stream: Readable): ReadableStream<Uint8Array<ArrayBuffer>> {
+  return Readable.toWeb(stream).pipeThrough(new TransformStream({
+    transform(chunk, controller) {
+      controller.enqueue(new Uint8Array(chunk))
+    },
+  }))
+}
 
 /**
  * Check both the response itself and its underlying stream (http2) are still writable.

@@ -10,8 +10,10 @@ import { isAsyncIteratorObject } from '@standardserver/shared'
 import request from 'supertest'
 import { toNodeHttpBody, toStandardBody } from './body'
 import * as EventStreamModule from './event-stream'
+import * as UtilsModule from './utils'
 
 const toEventStreamSpy = vi.spyOn(EventStreamModule, 'toEventStream')
+const toWebReadableStreamSpy = vi.spyOn(UtilsModule, 'toWebReadableStream')
 const generateContentDispositionSpy = vi.spyOn(StandardServerModule, 'generateContentDisposition')
 const getFilenameFromContentDispositionSpy = vi.spyOn(StandardServerModule, 'getFilenameFromContentDisposition')
 
@@ -309,6 +311,8 @@ describe('toStandardBody', () => {
 
       expect(result).toBeInstanceOf(ReadableStream)
       expect(streamedBytes).toEqual(new Uint8Array(body))
+      expect(toWebReadableStreamSpy).toHaveBeenCalledTimes(1)
+      expect(result).toBe(toWebReadableStreamSpy.mock.results[0]!.value)
     })
   })
 
@@ -342,6 +346,8 @@ describe('toStandardBody', () => {
         .send('hello')
 
       expect(standardBody).toBeInstanceOf(ReadableStream)
+      expect(toWebReadableStreamSpy).toHaveBeenCalledTimes(1)
+      expect(standardBody).toBe(toWebReadableStreamSpy.mock.results[0]!.value)
       const reader = (standardBody as ReadableStream).pipeThrough(new TextDecoderStream()).getReader()
       expect(await reader.read()).toEqual({ done: false, value: 'hello' })
     })
