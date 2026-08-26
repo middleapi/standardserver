@@ -6,6 +6,7 @@ import { Readable } from 'node:stream'
 import { generateContentDisposition, getFilenameFromContentDisposition, resolveStandardBodyHint } from '@standardserver/core'
 import { isAsyncIteratorObject, parseEmptyableJSON, stringifyJSON } from '@standardserver/shared'
 import { toAsyncIteratorObject, toEventStream } from './event-stream'
+import { toWebReadableStream } from './utils'
 
 export interface ToStandardBodyOptions {
   /**
@@ -71,7 +72,7 @@ export async function toStandardBody(
     return _streamToFile(req, fileName ?? 'blob', contentType ?? '')
   }
 
-  return Readable.toWeb(req as Readable)
+  return toWebReadableStream(req)
 }
 
 export interface ToNodeHttpBodyOptions {

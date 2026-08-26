@@ -2,9 +2,11 @@ import { Readable } from 'node:stream'
 import * as FetchAdapter from '@standardserver/fetch'
 import { isAsyncIteratorObject } from '@standardserver/shared'
 import { toAsyncIteratorObject, toEventStream } from './event-stream'
+import * as UtilsModule from './utils'
 
 const toAsyncIteratorObjectFetch = vi.spyOn(FetchAdapter, 'toAsyncIteratorObject')
 const toEventStreamFetch = vi.spyOn(FetchAdapter, 'toEventStream')
+const toWebReadableStreamSpy = vi.spyOn(UtilsModule, 'toWebReadableStream')
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -28,7 +30,9 @@ it('toAsyncIteratorObject', async () => {
   expect(await generator.next()).toEqual({ done: false, value: 3 })
   expect(await generator.next()).toEqual({ done: true, value: undefined })
 
+  expect(toWebReadableStreamSpy).toBeCalledTimes(1)
   expect(toAsyncIteratorObjectFetch).toBeCalledTimes(1)
+  expect(toAsyncIteratorObjectFetch).toHaveBeenCalledWith(toWebReadableStreamSpy.mock.results[0]!.value)
 })
 
 it('toEventStream', async () => {
