@@ -325,6 +325,21 @@ describe('eventStreamDecoderStream', () => {
     ])
   })
 
+  it('imports without TransformStream in the global scope', async ({ onTestFinished }) => {
+    vi.stubGlobal('TransformStream', undefined)
+    vi.resetModules()
+
+    onTestFinished(() => {
+      vi.unstubAllGlobals()
+      vi.resetModules()
+    })
+
+    const module = await import('./decoder')
+
+    expect(module.EventStreamDecoderStream).toBeDefined()
+    expect(module.decodeEventStreamMessage('data: hello\n\n')).toEqual({ data: 'hello' })
+  })
+
   it('on incomplete message', async () => {
     const stream = new ReadableStream<string>({
       start(controller) {
