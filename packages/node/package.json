@@ -56,7 +56,7 @@
     "@standardserver/shared": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "^26.1.2",
+    "@types/node": "^26.3.0",
     "@types/supertest": "^7.2.1",
     "supertest": "^7.1.4"
   }
