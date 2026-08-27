@@ -143,11 +143,14 @@ export class EventStreamDecoder {
   }
 }
 
-export class EventStreamDecoderStream extends TransformStream<string, EventStreamMessage> {
+export class EventStreamDecoderStream implements ReadableWritablePair<EventStreamMessage, string> {
+  readonly readable: ReadableStream<EventStreamMessage>
+  readonly writable: WritableStream<string>
+
   constructor() {
     let decoder!: EventStreamDecoder
 
-    super({
+    const transform = new TransformStream<string, EventStreamMessage>({
       start(controller) {
         decoder = new EventStreamDecoder((event) => {
           controller.enqueue(event)
@@ -160,5 +163,8 @@ export class EventStreamDecoderStream extends TransformStream<string, EventStrea
         decoder.end()
       },
     })
+
+    this.readable = transform.readable
+    this.writable = transform.writable
   }
 }
