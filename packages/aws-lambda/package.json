@@ -1,7 +1,7 @@
 {
   "name": "@standardserver/aws-lambda",
   "type": "module",
-  "version": "0.8.1",
+  "version": "0.8.2",
   "description": "AWS Lambda adapter for Standard Server: transport-agnostic requests and responses with Lambda response streaming support",
   "license": "MIT",
   "funding": [

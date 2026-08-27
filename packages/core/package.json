@@ -1,7 +1,7 @@
 {
   "name": "@standardserver/core",
   "type": "module",
-  "version": "0.8.1",
+  "version": "0.8.2",
   "description": "The Standard Server contract: transport-agnostic request, response, body, and streaming types with body parsing rules, runtime validators, and SSE helpers shared by every adapter",
   "license": "MIT",
   "funding": [
