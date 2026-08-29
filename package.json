@@ -33,7 +33,7 @@
     "@vitest/coverage-v8": "^4.1.10",
     "bumpp": "^12.1.1",
     "changelogithub": "^15.0.4",
-    "eslint": "^10.8.0",
+    "eslint": "^10.9.1",
     "eslint-plugin-ban": "^2.0.0",
     "eslint-plugin-format": "^2.0.1",
     "express": "^5.2.1",
