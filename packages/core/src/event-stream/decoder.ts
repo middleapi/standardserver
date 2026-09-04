@@ -143,7 +143,7 @@ export class EventStreamDecoder {
   }
 }
 
-export class EventStreamDecoderStream implements ReadableWritablePair<EventStreamMessage, string> {
+export class EventStreamDecoderStream {
   readonly readable: ReadableStream<EventStreamMessage>
   readonly writable: WritableStream<string>
 
