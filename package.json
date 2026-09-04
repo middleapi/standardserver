@@ -3,8 +3,14 @@
   "type": "module",
   "version": "0.8.2",
   "private": true,
-  "packageManager": "pnpm@12.3.3",
   "license": "MIT",
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "^11.0.0",
+      "onFail": "download"
+    }
+  },
   "scripts": {
     "prepare": "simple-git-hooks",
     "type:check": "pnpm -r run type:check && tsc",
