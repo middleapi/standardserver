@@ -3,7 +3,7 @@
   "type": "module",
   "version": "0.8.2",
   "private": true,
-  "packageManager": "pnpm@11.21.0",
+  "packageManager": "pnpm@12.3.3",
   "license": "MIT",
   "scripts": {
     "prepare": "simple-git-hooks",
