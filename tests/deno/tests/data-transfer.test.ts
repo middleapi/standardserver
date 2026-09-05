@@ -16,24 +16,16 @@ import { createDenoWsClientServerTest } from './client-server.deno-ws'
 const CHUNK_DELAY = 60
 const PARALLEL_THRESHOLD = 150
 
+/**
+ * Requires Deno >= 2.9.6: Deno 2.8.3 through 2.9.5 stopped delivering request
+ * body chunks to a `Deno.serve` handler once it started writing a streaming
+ * response (denoland/deno#36629), so echoing a transformed request stream
+ * back over plain HTTP stalled after the first chunk for `deno-fetch`.
+ */
 const ADAPTERS = [
   ['deno-fetch', createDenoFetchClientServerTest],
   ['deno-ws', createDenoWsClientServerTest],
 ] as const
-
-/**
- * Deno stops delivering request body chunks to a `Deno.serve` handler once it
- * starts writing a streaming response, so echoing a *transformed* request
- * stream back over plain HTTP stalls after the first chunk (echoing the
- * untouched request stream still works: Deno pumps identity passthroughs
- * internally, which is why the octet echo is unaffected). Deno 2.2 LTS did
- * not have this problem, it appeared somewhere on the way to 2.9.
- *
- * The event stream echo tests assert the current (stalling) behavior for the
- * other adapters, so a Deno fix shows up as a failure: then move the adapter
- * into this set.
- */
-const FULL_DUPLEX_ADAPTERS = new Set(['deno-ws'])
 
 for (const [adapter, createClientServer] of ADAPTERS) {
   describe({
@@ -289,16 +281,6 @@ for (const [adapter, createClientServer] of ADAPTERS) {
         expect(Date.now() - start).toBeLessThan(PARALLEL_THRESHOLD)
         start = Date.now()
 
-        if (!FULL_DUPLEX_ADAPTERS.has(adapter)) {
-          // request chunks stop flowing once the response streams, so the echo stalls
-          const outcome = await Promise.race([
-            body.next().then(() => 'delivered', () => 'delivered'),
-            sleep(500).then(() => 'stalled'),
-          ])
-          expect(outcome).toEqual('stalled')
-          return
-        }
-
         const second = await body.next()
         expect(second.done).toBe(false)
         const [secondData, secondMeta] = unwrapEvent(second.value)
@@ -354,16 +336,6 @@ for (const [adapter, createClientServer] of ADAPTERS) {
         expect(firstMeta).toEqual(undefined)
         expect(Date.now() - start).toBeLessThan(PARALLEL_THRESHOLD)
         start = Date.now()
-
-        if (!FULL_DUPLEX_ADAPTERS.has(adapter)) {
-          // request chunks stop flowing once the response streams, so the echo stalls
-          const outcome = await Promise.race([
-            body.next().then(() => 'delivered', () => 'delivered'),
-            sleep(500).then(() => 'stalled'),
-          ])
-          expect(outcome).toEqual('stalled')
-          return
-        }
 
         const second = await body.next()
         expect(second.done).toBe(false)

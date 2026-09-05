@@ -3,8 +3,14 @@
   "type": "module",
   "version": "0.8.2",
   "private": true,
-  "packageManager": "pnpm@11.21.0",
   "license": "MIT",
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "^11.0.0",
+      "onFail": "download"
+    }
+  },
   "scripts": {
     "prepare": "simple-git-hooks",
     "type:check": "pnpm -r run type:check && tsc",
@@ -28,7 +34,7 @@
     "@standardserver/peer": "workspace:*",
     "@standardserver/shared": "workspace:*",
     "@types/express": "^5.0.6",
-    "@types/node": "^26.1.2",
+    "@types/node": "^26.4.1",
     "@types/ws": "^8.18.1",
     "@vitest/coverage-v8": "^4.1.10",
     "bumpp": "^12.1.1",

@@ -10,20 +10,19 @@ const ADAPTERS = [
 ] as const
 
 /**
- * Only peer-based adapters propagate request body stream cancellation back to the client.
- */
-const REQUEST_STREAM_CANCEL_ADAPTERS = new Set(['bun-ws'])
-
-/**
- * Bun's fetch client does not close the connection when only the response body
- * is cancelled, and Bun's server ends errored response streams as if they
- * completed, so response stream cancellation/errors cannot reach the other
- * side over plain HTTP yet. Only the peer-based adapter propagates them.
+ * Since Bun 1.4.0 both adapters propagate stream cancellation: cancelling a
+ * response body closes the connection, and a streaming request body is
+ * cancelled once the response has been received.
  *
- * Tests assert the current (broken) behavior for the other adapters, so a Bun
- * fix shows up as a failure: then move the adapter into this set.
+ * `Bun.serve` however only aborts `request.signal` when the client goes away,
+ * not when the server itself tears the connection down after its response
+ * stream errors, so a response stream error only aborts the server signal for
+ * the peer-based adapter, which reports it through an explicit cancel message.
+ *
+ * Tests assert the current Bun behavior for the other adapters, so a Bun change
+ * shows up as a failure: then move the adapter into this set.
  */
-const RESPONSE_STREAM_CANCEL_ADAPTERS = new Set(['bun-ws'])
+const RESPONSE_STREAM_ERROR_ABORT_ADAPTERS = new Set(['bun-ws'])
 
 for (const [adapter, createClientServer] of ADAPTERS) {
   describe(`signal and cancel: ${adapter}`, () => {
@@ -226,20 +225,12 @@ for (const [adapter, createClientServer] of ADAPTERS) {
 
       await actualBody.return(undefined)
 
-      if (RESPONSE_STREAM_CANCEL_ADAPTERS.has(adapter)) {
-        await waitFor(() => { // wait for server receive cancel signal
-          expect(serverSignal.aborted).toBe(true)
-          expect(canceled).toBe(true)
-          expect(times).toBe(2) // the second chunk is being pulled
-        })
-        expect(Date.now() - start).toBeLessThan(300) // cancelled in parallel without waiting for the second chunk
-      }
-      else {
-        // the cancellation never reaches the server
-        await sleep(200)
-        expect(serverSignal.aborted).toBe(false)
-        expect(canceled).toBe(false)
-      }
+      await waitFor(() => { // wait for server receive cancel signal
+        expect(serverSignal.aborted).toBe(true)
+        expect(canceled).toBe(true)
+        expect(times).toBe(2) // the second chunk is being pulled
+      })
+      expect(Date.now() - start).toBeLessThan(300) // cancelled in parallel without waiting for the second chunk
     })
 
     it('cancel unfinished response octet stream', async () => {
@@ -282,20 +273,12 @@ for (const [adapter, createClientServer] of ADAPTERS) {
       expect(serverSignal.aborted).toBe(false)
       await reader.cancel()
 
-      if (RESPONSE_STREAM_CANCEL_ADAPTERS.has(adapter)) {
-        await waitFor(() => { // wait for server receive cancel signal
-          expect(serverSignal.aborted).toBe(true)
-          expect(canceled).toBe(true)
-          expect(times).toBe(2) // the second chunk is being pulled
-        })
-        expect(Date.now() - start).toBeLessThan(300) // cancelled in parallel without waiting for the second chunk
-      }
-      else {
-        // the cancellation never reaches the server
-        await sleep(200)
-        expect(serverSignal.aborted).toBe(false)
-        expect(canceled).toBe(false)
-      }
+      await waitFor(() => { // wait for server receive cancel signal
+        expect(serverSignal.aborted).toBe(true)
+        expect(canceled).toBe(true)
+        expect(times).toBe(2) // the second chunk is being pulled
+      })
+      expect(Date.now() - start).toBeLessThan(300) // cancelled in parallel without waiting for the second chunk
     })
 
     it('cancel unfinished request event stream', async () => {
@@ -340,7 +323,7 @@ for (const [adapter, createClientServer] of ADAPTERS) {
 
       expect(response.status).toEqual(200)
 
-      expect(canceled).toBe(REQUEST_STREAM_CANCEL_ADAPTERS.has(adapter))
+      expect(canceled).toBe(true)
       expect(serverSignal.aborted).toBe(false) // DO NOT ABORT IF ONLY CANCEL REQUEST BODY
       expect(times).toBe(2) // the second chunk is being pulled
       expect(Date.now() - start).toBeLessThan(300) // cancelled in parallel without waiting for the second chunk
@@ -387,7 +370,7 @@ for (const [adapter, createClientServer] of ADAPTERS) {
 
       expect(response.status).toEqual(200)
 
-      expect(canceled).toBe(REQUEST_STREAM_CANCEL_ADAPTERS.has(adapter))
+      expect(canceled).toBe(true)
       expect(serverSignal.aborted).toBe(false) // DO NOT ABORT IF ONLY CANCEL REQUEST BODY
       expect(times).toBe(2) // the second chunk is being pulled
       expect(Date.now() - start).toBeLessThan(300) // cancelled in parallel without waiting for the second chunk
@@ -435,27 +418,26 @@ for (const [adapter, createClientServer] of ADAPTERS) {
       const reader = body.getReader()
       await reader.read()
 
-      if (RESPONSE_STREAM_CANCEL_ADAPTERS.has(adapter)) {
-        let error: unknown
-        try {
-          await reader.read()
-        }
-        catch (e) {
-          error = e
-        }
-        expect(error).toBeDefined()
+      let error: unknown
+      try {
+        await reader.read()
+      }
+      catch (e) {
+        error = e
+      }
+      expect(error).toBeDefined()
 
+      if (RESPONSE_STREAM_ERROR_ABORT_ADAPTERS.has(adapter)) {
         await waitFor(() => expect(serverSignal.aborted).toBe(true)) // wait until server handled error
-        expect(times).toBe(2) // stop at second chunk
-        expect(canceled).toBe(false) // don't need cancel if error happen
       }
       else {
-        // the errored stream ends as a clean end-of-body instead of an error
-        expect(await reader.read()).toEqual({ done: true, value: undefined })
+        // the server closed the connection itself, so its own signal never aborts
         await sleep(200)
         expect(serverSignal.aborted).toBe(false)
-        expect(canceled).toBe(false)
       }
+
+      expect(times).toBe(2) // stop at second chunk
+      expect(canceled).toBe(false) // don't need cancel if error happen
     })
   })
 }
