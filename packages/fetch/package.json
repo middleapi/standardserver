@@ -1,7 +1,7 @@
 {
   "name": "@standardserver/fetch",
   "type": "module",
-  "version": "0.8.2",
+  "version": "0.8.3",
   "description": "Fetch API adapter for Standard Server: transport-agnostic requests, responses, and streaming for browsers, workers, Deno, Bun, and any Fetch-based runtime",
   "license": "MIT",
   "funding": [

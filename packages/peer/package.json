@@ -1,7 +1,7 @@
 {
   "name": "@standardserver/peer",
   "type": "module",
-  "version": "0.8.2",
+  "version": "0.8.3",
   "description": "Message-based adapter for Standard Server: transport-agnostic requests, responses, and streaming over WebSocket, MessagePort, and custom peer transports",
   "license": "MIT",
   "funding": [
