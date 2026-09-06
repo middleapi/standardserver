@@ -1,4 +1,4 @@
-import type { AsyncCleanupFn, Queue } from '@standardserver/shared'
+import type { AsyncCleanupFn, Queue } from '@standard-server/shared'
 import type { PeerOctetStreamMessage } from './types'
 
 export function toOctetStream(

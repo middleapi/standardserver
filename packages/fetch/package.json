@@ -1,5 +1,5 @@
 {
-  "name": "@standardserver/fetch",
+  "name": "@standard-server/fetch",
   "type": "module",
   "version": "0.8.3",
   "description": "Fetch API adapter for Standard Server: transport-agnostic requests, responses, and streaming for browsers, workers, Deno, Bun, and any Fetch-based runtime",
@@ -8,14 +8,13 @@
     "https://github.com/sponsors/dinwwwh",
     "https://opencollective.com/middleapi"
   ],
-  "homepage": "https://standardserver.dev",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/middleapi/standardserver.git",
+    "url": "git+https://github.com/middleapi/standard-server.git",
     "directory": "packages/fetch"
   },
   "keywords": [
-    "standardserver",
+    "standard-server",
     "fetch",
     "adapter",
     "http",
@@ -53,7 +52,7 @@
     "type:check": "tsc -b"
   },
   "dependencies": {
-    "@standardserver/core": "workspace:*",
-    "@standardserver/shared": "workspace:*"
+    "@standard-server/core": "workspace:*",
+    "@standard-server/shared": "workspace:*"
   }
 }

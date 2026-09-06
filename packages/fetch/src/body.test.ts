@@ -1,5 +1,5 @@
-import * as StandardServerModule from '@standardserver/core'
-import { isAsyncIteratorObject } from '@standardserver/shared'
+import * as StandardServerModule from '@standard-server/core'
+import { isAsyncIteratorObject } from '@standard-server/shared'
 import { toFetchBody, toStandardBody } from './body'
 import * as EventStreamModule from './event-stream'
 import { toFetchHeaders } from './headers'

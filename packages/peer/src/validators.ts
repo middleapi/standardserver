@@ -1,6 +1,6 @@
 import type { ClientPeerSendMessage, PeerCancelMessage, PeerEventStreamMessage, PeerMessage, PeerOctetStreamMessage, PeerRequestMessage, PeerResponseMessage, PeerStreamCancelMessage, ServerPeerSendMessage } from './types'
-import { isStandardHeaders, isStandardMethod, isStandardStatus, isStandardUrl } from '@standardserver/core'
-import { isTypescriptObject } from '@standardserver/shared'
+import { isStandardHeaders, isStandardMethod, isStandardStatus, isStandardUrl } from '@standard-server/core'
+import { isTypescriptObject } from '@standard-server/shared'
 
 export function isPeerMessage(maybe: unknown): maybe is PeerMessage {
   if (!isTypescriptObject(maybe)) {

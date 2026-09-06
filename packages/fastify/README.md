@@ -1,43 +1,43 @@
-# @standardserver/fastify
+# @standard-server/fastify
 
 <div align="center">
-  <a href="https://codecov.io/gh/middleapi/standardserver">
-    <img alt="codecov" src="https://codecov.io/gh/middleapi/standardserver/branch/main/graph/badge.svg">
+  <a href="https://codecov.io/gh/middleapi/standard-server">
+    <img alt="codecov" src="https://codecov.io/gh/middleapi/standard-server/branch/main/graph/badge.svg">
   </a>
-  <a href="https://www.npmjs.com/package/@standardserver/fastify">
-    <img alt="weekly downloads" src="https://img.shields.io/npm/dw/%40standardserver%2Ffastify?logo=npm" />
+  <a href="https://www.npmjs.com/package/@standard-server/fastify">
+    <img alt="weekly downloads" src="https://img.shields.io/npm/dw/%40standard-server%2Ffastify?logo=npm" />
   </a>
-  <a href="https://app.codspeed.io/middleapi/standardserver?utm_source=badge">
+  <a href="https://app.codspeed.io/middleapi/standard-server?utm_source=badge">
     <img src="https://img.shields.io/endpoint?url=https://codspeed.io/badge.json" alt="CodSpeed" />
   </a>
-  <a href="https://github.com/middleapi/standardserver/blob/main/LICENSE">
-    <img alt="MIT License" src="https://img.shields.io/github/license/middleapi/standardserver?logo=open-source-initiative" />
+  <a href="https://github.com/middleapi/standard-server/blob/main/LICENSE">
+    <img alt="MIT License" src="https://img.shields.io/github/license/middleapi/standard-server?logo=open-source-initiative" />
   </a>
   <a href="https://discord.gg/TXEbwRBvQn">
     <img alt="Discord" src="https://img.shields.io/discord/1308966753044398161?color=7389D8&label&logo=discord&logoColor=ffffff" />
   </a>
-  <a href="https://deepwiki.com/middleapi/standardserver">
+  <a href="https://deepwiki.com/middleapi/standard-server">
     <img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki">
   </a>
 </div>
 
-`@standardserver/fastify` adapts Fastify request and reply objects to the transport-agnostic request and response model defined by Standard Server.
+`@standard-server/fastify` adapts Fastify request and reply objects to the transport-agnostic request and response model defined by Standard Server.
 
 Standard Server provides a unified interface for client-server communication across HTTP and message-based transports. It lets you write handlers against the same request, response, body, and streaming primitives whether the underlying transport is the Fetch API, Node.js HTTP, HTTP/2, or a peer-style message channel.
 
 Standard Server ships as a small ecosystem of packages:
 
-| Package                                                                                                             | Description                                                                 |
-| ------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| [`@standardserver/core`](https://github.com/middleapi/standardserver/blob/main/packages/core/README.md)             | The shared contract: types, body parsing rules, validators, and SSE helpers |
-| [`@standardserver/fetch`](https://github.com/middleapi/standardserver/blob/main/packages/fetch/README.md)           | Fetch API adapter for browsers, workers, and other Fetch-based runtimes     |
-| [`@standardserver/node`](https://github.com/middleapi/standardserver/blob/main/packages/node/README.md)             | Node.js HTTP and HTTP/2 adapter                                             |
-| [`@standardserver/fastify`](https://github.com/middleapi/standardserver/blob/main/packages/fastify/README.md)       | Fastify adapter built on the Node.js adapter                                |
-| [`@standardserver/aws-lambda`](https://github.com/middleapi/standardserver/blob/main/packages/aws-lambda/README.md) | AWS Lambda adapter with response streaming                                  |
-| [`@standardserver/peer`](https://github.com/middleapi/standardserver/blob/main/packages/peer/README.md)             | Message-based adapter for WebSocket, MessagePort, and custom transports     |
-| [`@standardserver/shared`](https://github.com/middleapi/standardserver/blob/main/packages/shared/README.md)         | Internal utilities shared across the ecosystem                              |
+| Package                                                                                                               | Description                                                                 |
+| --------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| [`@standard-server/core`](https://github.com/middleapi/standard-server/blob/main/packages/core/README.md)             | The shared contract: types, body parsing rules, validators, and SSE helpers |
+| [`@standard-server/fetch`](https://github.com/middleapi/standard-server/blob/main/packages/fetch/README.md)           | Fetch API adapter for browsers, workers, and other Fetch-based runtimes     |
+| [`@standard-server/node`](https://github.com/middleapi/standard-server/blob/main/packages/node/README.md)             | Node.js HTTP and HTTP/2 adapter                                             |
+| [`@standard-server/fastify`](https://github.com/middleapi/standard-server/blob/main/packages/fastify/README.md)       | Fastify adapter built on the Node.js adapter                                |
+| [`@standard-server/aws-lambda`](https://github.com/middleapi/standard-server/blob/main/packages/aws-lambda/README.md) | AWS Lambda adapter with response streaming                                  |
+| [`@standard-server/peer`](https://github.com/middleapi/standard-server/blob/main/packages/peer/README.md)             | Message-based adapter for WebSocket, MessagePort, and custom transports     |
+| [`@standard-server/shared`](https://github.com/middleapi/standard-server/blob/main/packages/shared/README.md)         | Internal utilities shared across the ecosystem                              |
 
-This package is the Fastify adapter for that model. It builds on [`@standardserver/node`](https://github.com/middleapi/standardserver/blob/main/packages/node/README.md), reusing the same body, URL, and abort-signal primitives, while routing the response back through Fastify's reply lifecycle so hooks, plugins, and serializers keep working. Both `Fastify()` and `Fastify({ http2: true })` instances are supported.
+This package is the Fastify adapter for that model. It builds on [`@standard-server/node`](https://github.com/middleapi/standard-server/blob/main/packages/node/README.md), reusing the same body, URL, and abort-signal primitives, while routing the response back through Fastify's reply lifecycle so hooks, plugins, and serializers keep working. Both `Fastify()` and `Fastify({ http2: true })` instances are supported.
 
 `fastify` is a peer dependency, so the adapter always uses the Fastify version installed in your project.
 
@@ -52,15 +52,15 @@ The package exposes two helpers and their option shapes:
 
 Both helpers accept `AnyFastifyRequest` and `AnyFastifyReply`, which are `FastifyRequest` and `FastifyReply` widened over every raw server. That is what lets the same call site work for `Fastify()`, `Fastify({ http2: true })`, typed route generics, hooks, and encapsulated plugins alike.
 
-Lower-level helpers such as `toStandardBody()`, `toNodeHttpBody()`, and `toEventStream()` are not re-exported here — import them from [`@standardserver/node`](https://github.com/middleapi/standardserver/blob/main/packages/node/README.md) when you need them.
+Lower-level helpers such as `toStandardBody()`, `toNodeHttpBody()`, and `toEventStream()` are not re-exported here — import them from [`@standard-server/node`](https://github.com/middleapi/standard-server/blob/main/packages/node/README.md) when you need them.
 
 ## Server-side request handling
 
 Use `toStandardLazyRequest()` to convert an incoming Fastify request into a `StandardLazyRequest`, then `sendStandardResponse()` to write the resulting `StandardResponse` back through the reply.
 
 ```ts
-import type { StandardLazyRequest, StandardResponse } from '@standardserver/core'
-import { sendStandardResponse, toStandardLazyRequest } from '@standardserver/fastify'
+import type { StandardLazyRequest, StandardResponse } from '@standard-server/core'
+import { sendStandardResponse, toStandardLazyRequest } from '@standard-server/fastify'
 import Fastify from 'fastify'
 
 async function handle(request: StandardLazyRequest): Promise<StandardResponse> {
@@ -97,7 +97,7 @@ await fastify.listen({ port: 3000 })
 
 ## Resolving Body
 
-`resolveBody(hint?)` returns the body Fastify already parsed with its own content type parsers, if there is one. Otherwise it falls back to `toStandardBody()` from `@standardserver/node`, which follows the shared Standard Server resolution rules: an explicit `hint` wins, then the [`standard-server` header](https://github.com/middleapi/standardserver/blob/main/packages/core/README.md#the-standard-server-header), then inference from the content headers. See [how body parsing works](https://github.com/middleapi/standardserver/blob/main/packages/core/README.md#how-body-parsing-works) in the core README for the full algorithm.
+`resolveBody(hint?)` returns the body Fastify already parsed with its own content type parsers, if there is one. Otherwise it falls back to `toStandardBody()` from `@standard-server/node`, which follows the shared Standard Server resolution rules: an explicit `hint` wins, then the [`standard-server` header](https://github.com/middleapi/standard-server/blob/main/packages/core/README.md#the-standard-server-header), then inference from the content headers. See [how body parsing works](https://github.com/middleapi/standard-server/blob/main/packages/core/README.md#how-body-parsing-works) in the core README for the full algorithm.
 
 Because Fastify's own parsers win, a `hint` only applies to bodies Fastify left unparsed. Fastify ships parsers for `application/json` and `text/plain`, and rejects every other content type with `415 Unsupported Media Type` unless you register one. To let the adapter own body parsing end to end, register a catch-all parser that leaves the body untouched:
 
@@ -135,7 +135,7 @@ Fastify owns the reply lifecycle, so a few of its rules apply to the response th
 
 ## Learn more
 
-For the project overview and the shared contract, see the [core documentation](https://github.com/middleapi/standardserver/blob/main/packages/core/README.md). For the Node.js primitives this adapter is built on, see the [Node.js adapter documentation](https://github.com/middleapi/standardserver/blob/main/packages/node/README.md).
+For the project overview and the shared contract, see the [core documentation](https://github.com/middleapi/standard-server/blob/main/packages/core/README.md). For the Node.js primitives this adapter is built on, see the [Node.js adapter documentation](https://github.com/middleapi/standard-server/blob/main/packages/node/README.md).
 
 ## Sponsors
 
@@ -223,4 +223,4 @@ With thanks to [36 past sponsors](https://htmlpreview.github.io/?https://github.
 
 ## License
 
-Distributed under the MIT License. See [LICENCE](https://github.com/middleapi/standardserver/blob/main/LICENCE) for more information.
+Distributed under the MIT License. See [LICENCE](https://github.com/middleapi/standard-server/blob/main/LICENCE) for more information.

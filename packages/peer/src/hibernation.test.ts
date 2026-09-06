@@ -1,4 +1,4 @@
-import { isAsyncIteratorObject } from '@standardserver/shared'
+import { isAsyncIteratorObject } from '@standard-server/shared'
 import { HibernationAsyncIteratorClass } from './hibernation'
 
 describe('hibernationAsyncIteratorClass', () => {

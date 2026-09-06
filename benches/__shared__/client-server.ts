@@ -1,5 +1,5 @@
-import type { StandardLazyRequest, StandardLazyResponse, StandardRequest, StandardResponse } from '@standardserver/core'
-import { isAsyncIteratorObject } from '@standardserver/shared'
+import type { StandardLazyRequest, StandardLazyResponse, StandardRequest, StandardResponse } from '@standard-server/core'
+import { isAsyncIteratorObject } from '@standard-server/shared'
 
 export interface ClientServer {
   handler: (request: StandardLazyRequest) => Promise<StandardResponse>

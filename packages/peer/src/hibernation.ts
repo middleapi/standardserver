@@ -1,4 +1,4 @@
-import { AsyncIteratorClass } from '@standardserver/shared'
+import { AsyncIteratorClass } from '@standard-server/shared'
 
 export interface HibernationAsyncIteratorClassCallback {
   (id: string): void | Promise<void>

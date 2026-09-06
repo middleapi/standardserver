@@ -1,9 +1,9 @@
-import type { StandardLazyRequest, StandardRequest, StandardResponse } from '@standardserver/core'
-import type { ClientPeer, PeerMessage, ServerPeer } from '@standardserver/peer'
+import type { StandardLazyRequest, StandardRequest, StandardResponse } from '@standard-server/core'
+import type { ClientPeer, PeerMessage, ServerPeer } from '@standard-server/peer'
 import type { BlobPart } from 'node:buffer'
 import type { ClientServerTest } from './client-server'
-import { toFetchBody, toFetchHeaders, toStandardBody } from '@standardserver/fetch'
-import { encodePeerMessage } from '@standardserver/peer'
+import { toFetchBody, toFetchHeaders, toStandardBody } from '@standard-server/fetch'
+import { encodePeerMessage } from '@standard-server/peer'
 
 export const peerPrefix = '__PREFIX__'
 

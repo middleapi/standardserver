@@ -1,6 +1,6 @@
 import type { ClientServerTest } from './client-server'
 import type { PeerClientServerTestOptions } from './client-server.peer'
-import { ClientPeer, decodePeerMessage, isClientPeerSendMessage, isServerPeerSendMessage, ServerPeer } from '@standardserver/peer'
+import { ClientPeer, decodePeerMessage, isClientPeerSendMessage, isServerPeerSendMessage, ServerPeer } from '@standard-server/peer'
 import { WebSocket, WebSocketServer } from 'ws'
 import { expectPeerRequestsCleanedUpAfterEach, peerPrefix, randomEncodePeerMessage, toFetchStreamedStandardRequest, wrapFetchStreamedServerHandler, wsMessageDataToEncoded } from './client-server.peer'
 

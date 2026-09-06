@@ -1,7 +1,7 @@
-import type { AsyncCleanupFn, Queue } from '@standardserver/shared'
+import type { AsyncCleanupFn, Queue } from '@standard-server/shared'
 import type { PeerEventStreamMessage } from './types'
-import { ErrorEvent, unwrapEvent, withEventMeta } from '@standardserver/core'
-import { AsyncIteratorClass, isTypescriptObject } from '@standardserver/shared'
+import { ErrorEvent, unwrapEvent, withEventMeta } from '@standard-server/core'
+import { AsyncIteratorClass, isTypescriptObject } from '@standard-server/shared'
 
 export function toAsyncIteratorObject(
   queue: Queue<PeerEventStreamMessage>,

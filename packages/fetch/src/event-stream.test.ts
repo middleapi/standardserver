@@ -1,5 +1,5 @@
-import { ErrorEvent, getEventMeta, withEventMeta } from '@standardserver/core'
-import { AbortError, isAsyncIteratorObject, sleep } from '@standardserver/shared'
+import { ErrorEvent, getEventMeta, withEventMeta } from '@standard-server/core'
+import { AbortError, isAsyncIteratorObject, sleep } from '@standard-server/shared'
 import { toAsyncIteratorObject, toEventStream } from './event-stream'
 
 beforeEach(() => {

@@ -1,12 +1,11 @@
 {
-  "name": "@standardserver/deno",
+  "name": "@standard-server/deno",
   "type": "module",
   "version": "0.8.3",
   "license": "MIT",
-  "homepage": "https://standardserver.dev",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/middleapi/standardserver.git",
+    "url": "git+https://github.com/middleapi/standard-server.git",
     "directory": "packages/deno"
   },
   "files": [
@@ -17,10 +16,10 @@
     "test": "deno test --no-check --unstable-sloppy-imports --allow-net tests/"
   },
   "devDependencies": {
-    "@standardserver/core": "workspace:*",
-    "@standardserver/fetch": "workspace:*",
-    "@standardserver/peer": "workspace:*",
-    "@standardserver/shared": "workspace:*",
+    "@standard-server/core": "workspace:*",
+    "@standard-server/fetch": "workspace:*",
+    "@standard-server/peer": "workspace:*",
+    "@standard-server/shared": "workspace:*",
     "@std/expect": "jsr:^1.0.20",
     "@std/testing": "jsr:^1.0.19",
     "@types/deno": "^2.7.0"

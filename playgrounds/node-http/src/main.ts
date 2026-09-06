@@ -1,7 +1,7 @@
-import type { StandardLazyRequest, StandardResponse } from '@standardserver/core'
+import type { StandardLazyRequest, StandardResponse } from '@standard-server/core'
 import { createServer } from 'node:http'
 
-import { sendStandardResponse, toStandardLazyRequest } from '@standardserver/node'
+import { sendStandardResponse, toStandardLazyRequest } from '@standard-server/node'
 
 async function main(request: StandardLazyRequest): Promise<StandardResponse> {
   return {

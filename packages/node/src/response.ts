@@ -1,4 +1,4 @@
-import type { StandardResponse } from '@standardserver/core'
+import type { StandardResponse } from '@standard-server/core'
 import type { ToNodeHttpBodyOptions } from './body'
 import type { NodeHttpResponse } from './types'
 import { toNodeHttpBody } from './body'

@@ -1,5 +1,5 @@
 import type { StandardBodyHint, StandardHeaders, StandardUrl } from './types'
-import { toArray, tryDecodeURIComponent } from '@standardserver/shared'
+import { toArray, tryDecodeURIComponent } from '@standard-server/shared'
 
 export function generateContentDisposition(filename: string, type: 'inline' | 'attachment' = 'inline'): string {
   const encodedFilename = filename.replace(/[^\x20-\x7E]/g, '_').replace(/[\\"]/g, '\\$&')

@@ -1,9 +1,9 @@
-import type { StandardBody, StandardBodyHint } from '@standardserver/core'
+import type { StandardBody, StandardBodyHint } from '@standard-server/core'
 import type { AnyAPIGatewayProxyEvent } from './types'
 import { Buffer } from 'node:buffer'
-import { flattenStandardHeader, getFilenameFromContentDisposition, resolveStandardBodyHint } from '@standardserver/core'
-import { toAsyncIteratorObject } from '@standardserver/fetch'
-import { parseEmptyableJSON } from '@standardserver/shared'
+import { flattenStandardHeader, getFilenameFromContentDisposition, resolveStandardBodyHint } from '@standard-server/core'
+import { toAsyncIteratorObject } from '@standard-server/fetch'
+import { parseEmptyableJSON } from '@standard-server/shared'
 import { getEventHeader } from './headers'
 
 export interface ToStandardBodyOptions {

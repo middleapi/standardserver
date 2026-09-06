@@ -1,6 +1,6 @@
 import http2 from 'node:http2'
 import Stream from 'node:stream'
-import { AbortError } from '@standardserver/shared'
+import { AbortError } from '@standard-server/shared'
 import { toAbortSignal } from './signal'
 
 describe('toAbortSignal', async () => {

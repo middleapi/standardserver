@@ -1,4 +1,4 @@
-import type { StandardResponse } from '@standardserver/core'
+import type { StandardResponse } from '@standard-server/core'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { Buffer } from 'node:buffer'
 import Stream from 'node:stream'

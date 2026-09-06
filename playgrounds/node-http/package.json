@@ -1,5 +1,5 @@
 {
-  "name": "@standardserver/node-http-playground",
+  "name": "@standard-server/node-http-playground",
   "type": "module",
   "version": "0.8.3",
   "private": true,
@@ -8,8 +8,8 @@
     "type:check": "tsc --noEmit"
   },
   "devDependencies": {
-    "@standardserver/core": "latest",
-    "@standardserver/node": "latest",
+    "@standard-server/core": "latest",
+    "@standard-server/node": "latest",
     "@types/node": "^26.4.1",
     "tsx": "^4.22.4",
     "typescript": "^6.0.3"

@@ -1,5 +1,5 @@
-import type { StandardLazyRequest, StandardLazyResponse, StandardRequest, StandardResponse } from '@standardserver/core'
-import type { ClientPeerSendMessage, ServerPeerSendMessage } from '@standardserver/peer'
+import type { StandardLazyRequest, StandardLazyResponse, StandardRequest, StandardResponse } from '@standard-server/core'
+import type { ClientPeerSendMessage, ServerPeerSendMessage } from '@standard-server/peer'
 import type { Mock } from 'vitest'
 
 export interface ClientServerTest {

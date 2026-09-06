@@ -1,4 +1,4 @@
-import { AsyncIteratorClass, isAsyncIteratorObject, sleep } from '@standardserver/shared'
+import { AsyncIteratorClass, isAsyncIteratorObject, sleep } from '@standard-server/shared'
 import { afterAll, beforeEach, describe, expect, it } from 'bun:test'
 import { NOT_FOUND_HANDLER, waitFor } from './client-server'
 import { createBunFetchClientServerTest } from './client-server.bun-fetch'

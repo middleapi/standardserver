@@ -1,5 +1,5 @@
 import type { ClientServerTest } from './client-server'
-import { toFetchBody, toFetchHeaders, toFetchResponse, toStandardLazyRequest, toStandardLazyResponse } from '@standardserver/fetch'
+import { toFetchBody, toFetchHeaders, toFetchResponse, toStandardLazyRequest, toStandardLazyResponse } from '@standard-server/fetch'
 import { fromWebHandler, H3, serve } from 'h3'
 
 export function createH3WebHandlerClientServerTest(): ClientServerTest {

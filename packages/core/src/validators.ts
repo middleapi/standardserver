@@ -1,5 +1,5 @@
 import type { StandardHeaders, StandardMethod, StandardRequest, StandardResponse, StandardUrl } from './types'
-import { isTypescriptObject } from '@standardserver/shared'
+import { isTypescriptObject } from '@standard-server/shared'
 
 export function isStandardMethod(maybe: unknown): maybe is StandardMethod {
   return typeof maybe === 'string'

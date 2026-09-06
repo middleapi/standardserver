@@ -2,7 +2,7 @@ import type { AddressInfo } from 'node:net'
 import type { ClientServerTest } from './client-server'
 import * as http from 'node:http'
 import { createRequestListener } from '@remix-run/node-fetch-server'
-import { toFetchBody, toFetchHeaders, toFetchResponse, toStandardLazyRequest, toStandardLazyResponse } from '@standardserver/fetch'
+import { toFetchBody, toFetchHeaders, toFetchResponse, toStandardLazyRequest, toStandardLazyResponse } from '@standard-server/fetch'
 
 export function createNodeFetchServerClientServerTest(): ClientServerTest {
   const handler: ClientServerTest['handler'] = vi.fn(async () => {

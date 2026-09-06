@@ -1,6 +1,6 @@
-import type { StandardLazyRequest } from '@standardserver/core'
+import type { StandardLazyRequest } from '@standard-server/core'
 import type { AnyFastifyReply, AnyFastifyRequest } from './types'
-import { toAbortSignal, toStandardBody, toStandardMethod, toStandardUrl } from '@standardserver/node'
+import { toAbortSignal, toStandardBody, toStandardMethod, toStandardUrl } from '@standard-server/node'
 
 export function toStandardLazyRequest(
   req: AnyFastifyRequest,

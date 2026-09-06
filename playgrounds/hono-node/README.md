@@ -1,6 +1,6 @@
-# StandardServer Playground
+# Standard Server Playground
 
-This is a playground for [StandardServer](https://standardserver.dev) + [Hono Node Server](https://github.com/honojs/node-server).
+This is a playground for [Standard Server](https://github.com/middleapi/standard-server) + [Hono Node Server](https://github.com/honojs/node-server).
 
 ## Getting Started
 

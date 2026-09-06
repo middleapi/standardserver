@@ -1,5 +1,5 @@
 {
-  "name": "@standardserver/fastify",
+  "name": "@standard-server/fastify",
   "type": "module",
   "version": "0.8.3",
   "description": "Fastify adapter for Standard Server: transport-agnostic requests, responses, and streaming on top of Fastify's request and reply objects",
@@ -8,14 +8,13 @@
     "https://github.com/sponsors/dinwwwh",
     "https://opencollective.com/middleapi"
   ],
-  "homepage": "https://standardserver.dev",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/middleapi/standardserver.git",
+    "url": "git+https://github.com/middleapi/standard-server.git",
     "directory": "packages/fastify"
   },
   "keywords": [
-    "standardserver",
+    "standard-server",
     "fastify",
     "adapter",
     "http",
@@ -57,8 +56,8 @@
     }
   },
   "dependencies": {
-    "@standardserver/core": "workspace:*",
-    "@standardserver/node": "workspace:*"
+    "@standard-server/core": "workspace:*",
+    "@standard-server/node": "workspace:*"
   },
   "devDependencies": {
     "@fastify/cookie": "^11.1.2",

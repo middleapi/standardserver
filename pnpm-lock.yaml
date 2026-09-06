@@ -121,22 +121,22 @@ importers:
       '@remix-run/node-fetch-server':
         specifier: ^0.14.0
         version: 0.14.1
-      '@standardserver/core':
+      '@standard-server/core':
         specifier: workspace:*
         version: link:packages/core
-      '@standardserver/fastify':
+      '@standard-server/fastify':
         specifier: workspace:*
         version: link:packages/fastify
-      '@standardserver/fetch':
+      '@standard-server/fetch':
         specifier: workspace:*
         version: link:packages/fetch
-      '@standardserver/node':
+      '@standard-server/node':
         specifier: workspace:*
         version: link:packages/node
-      '@standardserver/peer':
+      '@standard-server/peer':
         specifier: workspace:*
         version: link:packages/peer
-      '@standardserver/shared':
+      '@standard-server/shared':
         specifier: workspace:*
         version: link:packages/shared
       '@types/express':
@@ -208,16 +208,16 @@ importers:
 
   packages/aws-lambda:
     dependencies:
-      '@standardserver/core':
+      '@standard-server/core':
         specifier: workspace:*
         version: link:../core
-      '@standardserver/fetch':
+      '@standard-server/fetch':
         specifier: workspace:*
         version: link:../fetch
-      '@standardserver/node':
+      '@standard-server/node':
         specifier: workspace:*
         version: link:../node
-      '@standardserver/shared':
+      '@standard-server/shared':
         specifier: workspace:*
         version: link:../shared
     devDependencies:
@@ -230,16 +230,16 @@ importers:
 
   packages/core:
     dependencies:
-      '@standardserver/shared':
+      '@standard-server/shared':
         specifier: workspace:*
         version: link:../shared
 
   packages/fastify:
     dependencies:
-      '@standardserver/core':
+      '@standard-server/core':
         specifier: workspace:*
         version: link:../core
-      '@standardserver/node':
+      '@standard-server/node':
         specifier: workspace:*
         version: link:../node
     devDependencies:
@@ -261,22 +261,22 @@ importers:
 
   packages/fetch:
     dependencies:
-      '@standardserver/core':
+      '@standard-server/core':
         specifier: workspace:*
         version: link:../core
-      '@standardserver/shared':
+      '@standard-server/shared':
         specifier: workspace:*
         version: link:../shared
 
   packages/node:
     dependencies:
-      '@standardserver/core':
+      '@standard-server/core':
         specifier: workspace:*
         version: link:../core
-      '@standardserver/fetch':
+      '@standard-server/fetch':
         specifier: workspace:*
         version: link:../fetch
-      '@standardserver/shared':
+      '@standard-server/shared':
         specifier: workspace:*
         version: link:../shared
     devDependencies:
@@ -292,10 +292,10 @@ importers:
 
   packages/peer:
     dependencies:
-      '@standardserver/core':
+      '@standard-server/core':
         specifier: workspace:*
         version: link:../core
-      '@standardserver/shared':
+      '@standard-server/shared':
         specifier: workspace:*
         version: link:../shared
 
@@ -306,10 +306,10 @@ importers:
       '@hono/node-server':
         specifier: ^2.0.12
         version: 2.1.1(hono@4.13.5)
-      '@standardserver/core':
+      '@standard-server/core':
         specifier: latest
         version: link:../../packages/core
-      '@standardserver/fetch':
+      '@standard-server/fetch':
         specifier: latest
         version: link:../../packages/fetch
       '@types/node':
@@ -324,10 +324,10 @@ importers:
 
   playgrounds/node-http:
     devDependencies:
-      '@standardserver/core':
+      '@standard-server/core':
         specifier: latest
         version: link:../../packages/core
-      '@standardserver/node':
+      '@standard-server/node':
         specifier: latest
         version: link:../../packages/node
       '@types/node':
@@ -342,16 +342,16 @@ importers:
 
   tests/bun:
     devDependencies:
-      '@standardserver/core':
+      '@standard-server/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@standardserver/fetch':
+      '@standard-server/fetch':
         specifier: workspace:*
         version: link:../../packages/fetch
-      '@standardserver/peer':
+      '@standard-server/peer':
         specifier: workspace:*
         version: link:../../packages/peer
-      '@standardserver/shared':
+      '@standard-server/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       '@types/bun':
@@ -360,16 +360,16 @@ importers:
 
   tests/deno:
     devDependencies:
-      '@standardserver/core':
+      '@standard-server/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@standardserver/fetch':
+      '@standard-server/fetch':
         specifier: workspace:*
         version: link:../../packages/fetch
-      '@standardserver/peer':
+      '@standard-server/peer':
         specifier: workspace:*
         version: link:../../packages/peer
-      '@standardserver/shared':
+      '@standard-server/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       '@std/expect':

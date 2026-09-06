@@ -1,8 +1,8 @@
-import type { StandardResponse } from '@standardserver/core'
+import type { StandardResponse } from '@standard-server/core'
 import type { HttpResponseStream } from './types'
 import { Buffer } from 'node:buffer'
 import Stream from 'node:stream'
-import * as StandardServerNode from '@standardserver/node'
+import * as StandardServerNode from '@standard-server/node'
 import { sendStandardResponse } from './response'
 
 const toNodeHttpBodySpy = vi.spyOn(StandardServerNode, 'toNodeHttpBody')

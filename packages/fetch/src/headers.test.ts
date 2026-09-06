@@ -1,4 +1,4 @@
-import type { StandardHeaders } from '@standardserver/core'
+import type { StandardHeaders } from '@standard-server/core'
 import { toFetchHeaders, toStandardHeaders } from './headers'
 
 it('toStandardHeaders', () => {

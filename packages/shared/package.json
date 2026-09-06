@@ -1,5 +1,5 @@
 {
-  "name": "@standardserver/shared",
+  "name": "@standard-server/shared",
   "type": "module",
   "version": "0.8.3",
   "description": "Internal types and utilities shared across the Standard Server ecosystem",
@@ -8,14 +8,13 @@
     "https://github.com/sponsors/dinwwwh",
     "https://opencollective.com/middleapi"
   ],
-  "homepage": "https://standardserver.dev",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/middleapi/standardserver.git",
+    "url": "git+https://github.com/middleapi/standard-server.git",
     "directory": "packages/shared"
   },
   "keywords": [
-    "standardserver",
+    "standard-server",
     "utils",
     "utilities",
     "internal",

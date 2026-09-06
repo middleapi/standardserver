@@ -1,39 +1,39 @@
 # Standard Server
 
 <div align="center">
-  <a href="https://codecov.io/gh/middleapi/standardserver">
-    <img alt="codecov" src="https://codecov.io/gh/middleapi/standardserver/branch/main/graph/badge.svg">
+  <a href="https://codecov.io/gh/middleapi/standard-server">
+    <img alt="codecov" src="https://codecov.io/gh/middleapi/standard-server/branch/main/graph/badge.svg">
   </a>
-  <a href="https://www.npmjs.com/package/@standardserver/core">
-    <img alt="weekly downloads" src="https://img.shields.io/npm/dw/%40standardserver%2Fcore?logo=npm" />
+  <a href="https://www.npmjs.com/package/@standard-server/core">
+    <img alt="weekly downloads" src="https://img.shields.io/npm/dw/%40standard-server%2Fcore?logo=npm" />
   </a>
-  <a href="https://app.codspeed.io/middleapi/standardserver?utm_source=badge">
+  <a href="https://app.codspeed.io/middleapi/standard-server?utm_source=badge">
     <img src="https://img.shields.io/endpoint?url=https://codspeed.io/badge.json" alt="CodSpeed" />
   </a>
-  <a href="https://github.com/middleapi/standardserver/blob/main/LICENSE">
-    <img alt="MIT License" src="https://img.shields.io/github/license/middleapi/standardserver?logo=open-source-initiative" />
+  <a href="https://github.com/middleapi/standard-server/blob/main/LICENSE">
+    <img alt="MIT License" src="https://img.shields.io/github/license/middleapi/standard-server?logo=open-source-initiative" />
   </a>
   <a href="https://discord.gg/TXEbwRBvQn">
     <img alt="Discord" src="https://img.shields.io/discord/1308966753044398161?color=7389D8&label&logo=discord&logoColor=ffffff" />
   </a>
-  <a href="https://deepwiki.com/middleapi/standardserver">
+  <a href="https://deepwiki.com/middleapi/standard-server">
     <img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki">
   </a>
 </div>
 
-`@standardserver/core` is the shared contract package for **Standard Server** — a unified interface for client-server communication across HTTP and message-based transports. It lets you keep handler and client code transport-agnostic by working with the same request, response, body, and streaming abstractions whether the transport is Fetch, Node.js HTTP, or a peer-style message channel.
+`@standard-server/core` is the shared contract package for **Standard Server** — a unified interface for client-server communication across HTTP and message-based transports. It lets you keep handler and client code transport-agnostic by working with the same request, response, body, and streaming abstractions whether the transport is Fetch, Node.js HTTP, or a peer-style message channel.
 
 Standard Server ships as a small ecosystem of packages:
 
-| Package                                                                                                             | Description                                                                 |
-| ------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| [`@standardserver/core`](https://github.com/middleapi/standardserver/blob/main/packages/core/README.md)             | The shared contract: types, body parsing rules, validators, and SSE helpers |
-| [`@standardserver/fetch`](https://github.com/middleapi/standardserver/blob/main/packages/fetch/README.md)           | Fetch API adapter for browsers, workers, and other Fetch-based runtimes     |
-| [`@standardserver/node`](https://github.com/middleapi/standardserver/blob/main/packages/node/README.md)             | Node.js HTTP and HTTP/2 adapter                                             |
-| [`@standardserver/fastify`](https://github.com/middleapi/standardserver/blob/main/packages/fastify/README.md)       | Fastify adapter built on the Node.js adapter                                |
-| [`@standardserver/aws-lambda`](https://github.com/middleapi/standardserver/blob/main/packages/aws-lambda/README.md) | AWS Lambda adapter with response streaming                                  |
-| [`@standardserver/peer`](https://github.com/middleapi/standardserver/blob/main/packages/peer/README.md)             | Message-based adapter for WebSocket, MessagePort, and custom transports     |
-| [`@standardserver/shared`](https://github.com/middleapi/standardserver/blob/main/packages/shared/README.md)         | Internal utilities shared across the ecosystem                              |
+| Package                                                                                                               | Description                                                                 |
+| --------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| [`@standard-server/core`](https://github.com/middleapi/standard-server/blob/main/packages/core/README.md)             | The shared contract: types, body parsing rules, validators, and SSE helpers |
+| [`@standard-server/fetch`](https://github.com/middleapi/standard-server/blob/main/packages/fetch/README.md)           | Fetch API adapter for browsers, workers, and other Fetch-based runtimes     |
+| [`@standard-server/node`](https://github.com/middleapi/standard-server/blob/main/packages/node/README.md)             | Node.js HTTP and HTTP/2 adapter                                             |
+| [`@standard-server/fastify`](https://github.com/middleapi/standard-server/blob/main/packages/fastify/README.md)       | Fastify adapter built on the Node.js adapter                                |
+| [`@standard-server/aws-lambda`](https://github.com/middleapi/standard-server/blob/main/packages/aws-lambda/README.md) | AWS Lambda adapter with response streaming                                  |
+| [`@standard-server/peer`](https://github.com/middleapi/standard-server/blob/main/packages/peer/README.md)             | Message-based adapter for WebSocket, MessagePort, and custom transports     |
+| [`@standard-server/shared`](https://github.com/middleapi/standard-server/blob/main/packages/shared/README.md)         | Internal utilities shared across the ecosystem                              |
 
 This package is the foundation of that model. It defines the request and response types every adapter converts to and from, the body parsing rules they all share, runtime validators, header and URL utilities, and event stream (SSE) helpers.
 
@@ -61,7 +61,7 @@ Supporting primitives:
 By convention, adapters normalize headers to lowercase keys. `signal` is part of `StandardRequest` only and is used to propagate request cancellation.
 
 ```ts
-import type { StandardLazyRequest, StandardResponse } from '@standardserver/core'
+import type { StandardLazyRequest, StandardResponse } from '@standard-server/core'
 
 export async function handle(request: StandardLazyRequest): Promise<StandardResponse> {
   const body = await request.resolveBody()
@@ -98,7 +98,7 @@ export async function handle(request: StandardLazyRequest): Promise<StandardResp
 Standard Server treats primitive values, objects, and arrays as JSON.
 
 ```ts
-import type { StandardRequest } from '@standardserver/core'
+import type { StandardRequest } from '@standard-server/core'
 
 const request: StandardRequest = {
   method: 'POST',
@@ -113,7 +113,7 @@ const request: StandardRequest = {
 Standard Server treats [FormData](https://developer.mozilla.org/en-US/docs/Web/API/FormData) and [URLSearchParams](https://developer.mozilla.org/en-US/docs/Web/API/URLSearchParams) as form submissions.
 
 ```ts
-import type { StandardRequest } from '@standardserver/core'
+import type { StandardRequest } from '@standard-server/core'
 
 const requestWithURLSearchParams: StandardRequest = {
   method: 'POST',
@@ -145,7 +145,7 @@ Standard Server treats [File](https://developer.mozilla.org/en-US/docs/Web/API/F
 > Since `File` extends `Blob`, `resolveBody` always returns a `File` when representing either `File` or `Blob` bodies.
 
 ```ts
-import type { StandardResponse } from '@standardserver/core'
+import type { StandardResponse } from '@standard-server/core'
 
 const response: StandardResponse = {
   status: 200,
@@ -163,8 +163,8 @@ When sending a file or blob body, adapters automatically set the `content-length
 Standard Server uses [AsyncIteratorObject](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/AsyncIterator) to represent an event stream body, and you can use `withEventMeta()` to attach additional [SSE event metadata](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events#event_stream_format) to each emitted event.
 
 ```ts
-import type { StandardResponse } from '@standardserver/core'
-import { ErrorEvent, withEventMeta } from '@standardserver/core'
+import type { StandardResponse } from '@standard-server/core'
+import { ErrorEvent, withEventMeta } from '@standard-server/core'
 
 const response: StandardResponse = {
   status: 200,
@@ -191,7 +191,7 @@ For explicit SSE encoding, decoding, and metadata handling, see the [Event-Strea
 Standard Server uses [ReadableStream<Uint8Array>](https://developer.mozilla.org/en-US/docs/Web/API/ReadableStream) to represent a binary streaming body.
 
 ```ts
-import type { StandardResponse } from '@standardserver/core'
+import type { StandardResponse } from '@standard-server/core'
 
 const response: StandardResponse = {
   status: 200,
@@ -213,7 +213,7 @@ When sending a binary streaming body, adapters automatically set the `content-ty
 ## How body parsing works
 
 > [!NOTE]
-> This section applies to the HTTP adapters (Fetch, Node.js, Fastify, AWS Lambda). It does not apply to the [peer adapter](https://github.com/middleapi/standardserver/blob/main/packages/peer/README.md#body-resolution), which identifies body types through its own message protocol — a different but fairly similar mechanism.
+> This section applies to the HTTP adapters (Fetch, Node.js, Fastify, AWS Lambda). It does not apply to the [peer adapter](https://github.com/middleapi/standard-server/blob/main/packages/peer/README.md#body-resolution), which identifies body types through its own message protocol — a different but fairly similar mechanism.
 
 `resolveBody(hint?)` on `StandardLazyRequest` and `StandardLazyResponse` resolves the body lazily — the underlying stream is only consumed once you call it. The `StandardBodyHint` that decides how the raw body is parsed comes from three places: an explicit `hint` argument, the `standard-server` header, or inference from the content headers.
 
@@ -256,7 +256,7 @@ The hint is chosen in this order:
 This resolution is implemented once in this package as `resolveStandardBodyHint(headers)` and shared by every HTTP adapter, so the same body parses the same way regardless of which HTTP transport carried it:
 
 ```ts
-import { resolveStandardBodyHint } from '@standardserver/core'
+import { resolveStandardBodyHint } from '@standard-server/core'
 
 resolveStandardBodyHint({ 'content-type': 'application/json' })
 // 'json'
@@ -285,7 +285,7 @@ Use `generateContentDisposition()` to produce a safe `Content-Disposition` value
 import {
   generateContentDisposition,
   getFilenameFromContentDisposition,
-} from '@standardserver/core'
+} from '@standard-server/core'
 
 const disposition = generateContentDisposition('report "Q2".csv')
 // inline; filename="report \"Q2\".csv"; filename*=utf-8''report%20%22Q2%22.csv
@@ -304,7 +304,7 @@ const filename = getFilenameFromContentDisposition(disposition)
 import {
   flattenStandardHeader,
   mergeStandardHeaders,
-} from '@standardserver/core'
+} from '@standard-server/core'
 
 const headers = mergeStandardHeaders(
   { 'accept': 'application/json', 'set-cookie': ['a=1'] },
@@ -325,7 +325,7 @@ const cookieHeader = flattenStandardHeader(headers['set-cookie'])
 `parseStandardUrl()` splits a `StandardUrl` into `[pathname, search, hash]` without requiring a full origin.
 
 ```ts
-import { parseStandardUrl } from '@standardserver/core'
+import { parseStandardUrl } from '@standard-server/core'
 
 const [pathname, search, hash] = parseStandardUrl('/users/123?tab=settings#profile')
 // pathname => '/users/123'
@@ -346,7 +346,7 @@ Runtime type guards are useful when requests or responses cross process, transpo
 | `isStandardResponse()` |                                                        |
 
 ```ts
-import { isStandardRequest } from '@standardserver/core'
+import { isStandardRequest } from '@standard-server/core'
 
 export function expectStandardRequest(input: unknown) {
   if (!isStandardRequest(input)) {
@@ -374,7 +374,7 @@ The event-stream helpers include:
 import {
   decodeEventStreamMessage,
   encodeEventStreamMessage,
-} from '@standardserver/core'
+} from '@standard-server/core'
 
 const encoded = encodeEventStreamMessage({
   comments: ['bootstrap'],
@@ -397,7 +397,7 @@ const decoded = decodeEventStreamMessage(encoded)
 For streaming decode, pipe text chunks through `EventStreamDecoderStream`:
 
 ```ts
-import { EventStreamDecoderStream } from '@standardserver/core'
+import { EventStreamDecoderStream } from '@standard-server/core'
 
 const messages = response.body!
   .pipeThrough(new TextDecoderStream())
@@ -409,8 +409,8 @@ const messages = response.body!
 `StandardBody` uses async iterators for event-stream bodies. To attach SSE metadata to a yielded value without changing its visible shape, use `withEventMeta()`.
 
 ```ts
-import type { StandardResponse } from '@standardserver/core'
-import { getEventMeta, unwrapEvent, withEventMeta } from '@standardserver/core'
+import type { StandardResponse } from '@standard-server/core'
+import { getEventMeta, unwrapEvent, withEventMeta } from '@standard-server/core'
 
 const event = withEventMeta(
   { message: 'hello' },
@@ -446,7 +446,7 @@ The package also exports:
 - `assertEventStreamMessageId()`, `assertEventStreamMessageName()`, `assertEventStreamMessageRetry()`, and `assertEventStreamMessageComment()` for low-level validation when building custom SSE tooling
 
 ```ts
-import { ErrorEvent } from '@standardserver/core'
+import { ErrorEvent } from '@standard-server/core'
 
 const error = new ErrorEvent(
   { code: 'E_STREAM', detail: 'Connection lost' },
@@ -462,7 +462,7 @@ error.data
 
 ## Learn more
 
-For transport-specific quick-starts and options, see the adapter documentation: [Fetch](https://github.com/middleapi/standardserver/blob/main/packages/fetch/README.md) · [Node.js](https://github.com/middleapi/standardserver/blob/main/packages/node/README.md) · [Fastify](https://github.com/middleapi/standardserver/blob/main/packages/fastify/README.md) · [AWS Lambda](https://github.com/middleapi/standardserver/blob/main/packages/aws-lambda/README.md) · [Peer](https://github.com/middleapi/standardserver/blob/main/packages/peer/README.md)
+For transport-specific quick-starts and options, see the adapter documentation: [Fetch](https://github.com/middleapi/standard-server/blob/main/packages/fetch/README.md) · [Node.js](https://github.com/middleapi/standard-server/blob/main/packages/node/README.md) · [Fastify](https://github.com/middleapi/standard-server/blob/main/packages/fastify/README.md) · [AWS Lambda](https://github.com/middleapi/standard-server/blob/main/packages/aws-lambda/README.md) · [Peer](https://github.com/middleapi/standard-server/blob/main/packages/peer/README.md)
 
 ## Sponsors
 
@@ -550,4 +550,4 @@ With thanks to [36 past sponsors](https://htmlpreview.github.io/?https://github.
 
 ## License
 
-Distributed under the MIT License. See [LICENCE](https://github.com/middleapi/standardserver/blob/main/LICENCE) for more information.
+Distributed under the MIT License. See [LICENCE](https://github.com/middleapi/standard-server/blob/main/LICENCE) for more information.

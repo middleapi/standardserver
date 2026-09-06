@@ -1,5 +1,5 @@
-import type { StandardHeaders } from '@standardserver/core'
-import type { NodeHttpRequest, NodeHttpResponse } from '@standardserver/node'
+import type { StandardHeaders } from '@standard-server/core'
+import type { NodeHttpRequest, NodeHttpResponse } from '@standard-server/node'
 import type { AnyFastifyReply, AnyFastifyRequest } from './types'
 import Fastify from 'fastify'
 
@@ -8,7 +8,7 @@ import Fastify from 'fastify'
  * aliases accept it, whatever raw server and route generic it came from.
  */
 function accepts(req: AnyFastifyRequest, reply: AnyFastifyReply): void {
-  // the aliases must expose exactly what `@standardserver/node` consumes
+  // the aliases must expose exactly what `@standard-server/node` consumes
   expectTypeOf(req.raw).toExtend<NodeHttpRequest>()
   expectTypeOf(req.headers).toExtend<StandardHeaders>()
   expectTypeOf(reply.raw).toExtend<NodeHttpResponse>()

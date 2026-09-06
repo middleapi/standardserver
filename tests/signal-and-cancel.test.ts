@@ -1,4 +1,4 @@
-import { AsyncIteratorClass, isAsyncIteratorObject, sleep } from '@standardserver/shared'
+import { AsyncIteratorClass, isAsyncIteratorObject, sleep } from '@standard-server/shared'
 import { expectPeerMessages } from './client-server'
 import { createExpressjsClientServerTest } from './client-server.expressjs'
 import { createFastifyClientServerTest } from './client-server.fastify'

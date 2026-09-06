@@ -1,6 +1,6 @@
 import type Stream from 'node:stream'
 import type { NodeHttpResponse } from './types'
-import { AbortError } from '@standardserver/shared'
+import { AbortError } from '@standard-server/shared'
 import { canWriteToNodeResponse, getNodeResponseError } from './utils'
 
 export function toAbortSignal(stream: Stream.Writable | NodeHttpResponse): AbortSignal {
