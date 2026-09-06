@@ -1,6 +1,6 @@
 import { Readable } from 'node:stream'
-import * as FetchAdapter from '@standardserver/fetch'
-import { isAsyncIteratorObject } from '@standardserver/shared'
+import * as FetchAdapter from '@standard-server/fetch'
+import { isAsyncIteratorObject } from '@standard-server/shared'
 import { toAsyncIteratorObject, toEventStream } from './event-stream'
 import * as UtilsModule from './utils'
 

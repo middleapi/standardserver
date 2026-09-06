@@ -1,4 +1,4 @@
-import type { StandardUrl } from '@standardserver/core'
+import type { StandardUrl } from '@standard-server/core'
 
 export function toStandardUrl(url: URL): StandardUrl {
   /* v8 ignore start - url.pathname always start with "/" */

@@ -4,7 +4,7 @@ import Fastify from 'fastify'
 import { sendStandardResponse, toStandardLazyRequest } from '../src'
 
 /**
- * `@standardserver/node` supports both node http and http2, so the fastify adapter
+ * `@standard-server/node` supports both node http and http2, so the fastify adapter
  * must keep working when fastify is created with `{ http2: true }`.
  */
 describe('http2', () => {

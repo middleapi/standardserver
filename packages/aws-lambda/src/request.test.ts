@@ -1,6 +1,6 @@
 import type { APIGatewayProxyEvent, APIGatewayProxyEventV2, HttpResponseStream } from './types'
 import Stream from 'node:stream'
-import * as StandardServerNode from '@standardserver/node'
+import * as StandardServerNode from '@standard-server/node'
 import * as Body from './body'
 import * as Headers from './headers'
 import { toStandardLazyRequest } from './request'

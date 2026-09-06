@@ -1,12 +1,12 @@
 import type {
   ToEventStreamOptions as ToEventStreamOptionsFetch,
-} from '@standardserver/fetch'
-import type { AsyncIteratorClass } from '@standardserver/shared'
+} from '@standard-server/fetch'
+import type { AsyncIteratorClass } from '@standard-server/shared'
 import { Readable } from 'node:stream'
 import {
   toAsyncIteratorObject as toAsyncIteratorObjectFetch,
   toEventStream as toEventStreamFetch,
-} from '@standardserver/fetch'
+} from '@standard-server/fetch'
 import { toWebReadableStream } from './utils'
 
 export function toAsyncIteratorObject(

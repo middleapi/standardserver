@@ -1,6 +1,6 @@
-import type { StandardLazyRequest, StandardResponse } from '@standardserver/core'
+import type { StandardLazyRequest, StandardResponse } from '@standard-server/core'
 import { serve } from '@hono/node-server'
-import { toFetchResponse, toStandardLazyRequest } from '@standardserver/fetch'
+import { toFetchResponse, toStandardLazyRequest } from '@standard-server/fetch'
 
 async function main(request: StandardLazyRequest): Promise<StandardResponse> {
   return {

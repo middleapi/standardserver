@@ -4,7 +4,7 @@ import type {
   StandardHeaders,
   StandardMethod,
   StandardUrl,
-} from '@standardserver/core'
+} from '@standard-server/core'
 
 /**
  * Base interface for all peer messages.

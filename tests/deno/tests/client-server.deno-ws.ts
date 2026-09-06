@@ -1,5 +1,5 @@
 import type { ClientServerHandler, ClientServerTest } from './client-server'
-import { ClientPeer, decodePeerMessage, encodePeerMessage, isClientPeerSendMessage, isServerPeerSendMessage, ServerPeer } from '@standardserver/peer'
+import { ClientPeer, decodePeerMessage, encodePeerMessage, isClientPeerSendMessage, isServerPeerSendMessage, ServerPeer } from '@standard-server/peer'
 import { NOT_FOUND_HANDLER, toEncodedPeerMessage } from './client-server'
 
 export function createDenoWsClientServerTest(): ClientServerTest {

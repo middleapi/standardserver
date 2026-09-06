@@ -1,5 +1,5 @@
-import { encodeEventStreamMessage, ErrorEvent, EventStreamDecoderStream, getEventMeta, unwrapEvent, withEventMeta } from '@standardserver/core'
-import { AbortError, AsyncIteratorClass, isTypescriptObject, parseEmptyableJSON, stringifyJSON } from '@standardserver/shared'
+import { encodeEventStreamMessage, ErrorEvent, EventStreamDecoderStream, getEventMeta, unwrapEvent, withEventMeta } from '@standard-server/core'
+import { AbortError, AsyncIteratorClass, isTypescriptObject, parseEmptyableJSON, stringifyJSON } from '@standard-server/shared'
 
 export function toAsyncIteratorObject(
   stream: ReadableStream<Uint8Array<ArrayBuffer>> | null,

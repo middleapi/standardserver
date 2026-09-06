@@ -1,5 +1,5 @@
 import type { PeerOctetStreamMessage } from './types'
-import { Queue } from '@standardserver/shared'
+import { Queue } from '@standard-server/shared'
 import { OctetStreamTransmitter, toOctetStream } from './octet-stream'
 
 describe('toOctetStream', () => {

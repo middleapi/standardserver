@@ -1,7 +1,7 @@
-import type { StandardLazyRequest, StandardResponse } from '@standardserver/core'
+import type { StandardLazyRequest, StandardResponse } from '@standard-server/core'
 import type { ClientPeer, ServerPeer } from '../src'
 import type { ClientPeerSendMessage, ServerPeerSendMessage } from '../src/types'
-import { ErrorEvent, getEventMeta, withEventMeta } from '@standardserver/core'
+import { ErrorEvent, getEventMeta, withEventMeta } from '@standard-server/core'
 import { ClientPeer as ClientPeerClass, decodePeerMessage, encodePeerMessage, ServerPeer as ServerPeerClass } from '../src'
 
 /**

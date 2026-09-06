@@ -1,45 +1,45 @@
-# @standardserver/shared
+# @standard-server/shared
 
 <div align="center">
-  <a href="https://codecov.io/gh/middleapi/standardserver">
-    <img alt="codecov" src="https://codecov.io/gh/middleapi/standardserver/branch/main/graph/badge.svg">
+  <a href="https://codecov.io/gh/middleapi/standard-server">
+    <img alt="codecov" src="https://codecov.io/gh/middleapi/standard-server/branch/main/graph/badge.svg">
   </a>
-  <a href="https://www.npmjs.com/package/@standardserver/shared">
-    <img alt="weekly downloads" src="https://img.shields.io/npm/dw/%40standardserver%2Fshared?logo=npm" />
+  <a href="https://www.npmjs.com/package/@standard-server/shared">
+    <img alt="weekly downloads" src="https://img.shields.io/npm/dw/%40standard-server%2Fshared?logo=npm" />
   </a>
-  <a href="https://app.codspeed.io/middleapi/standardserver?utm_source=badge">
+  <a href="https://app.codspeed.io/middleapi/standard-server?utm_source=badge">
     <img src="https://img.shields.io/endpoint?url=https://codspeed.io/badge.json" alt="CodSpeed" />
   </a>
-  <a href="https://github.com/middleapi/standardserver/blob/main/LICENSE">
-    <img alt="MIT License" src="https://img.shields.io/github/license/middleapi/standardserver?logo=open-source-initiative" />
+  <a href="https://github.com/middleapi/standard-server/blob/main/LICENSE">
+    <img alt="MIT License" src="https://img.shields.io/github/license/middleapi/standard-server?logo=open-source-initiative" />
   </a>
   <a href="https://discord.gg/TXEbwRBvQn">
     <img alt="Discord" src="https://img.shields.io/discord/1308966753044398161?color=7389D8&label&logo=discord&logoColor=ffffff" />
   </a>
-  <a href="https://deepwiki.com/middleapi/standardserver">
+  <a href="https://deepwiki.com/middleapi/standard-server">
     <img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki">
   </a>
 </div>
 
-`@standardserver/shared` contains internal types and utilities shared across the `@standardserver` ecosystem — small helpers for arrays, objects, JSON, iterators, promises, queues, IDs, URIs, and more.
+`@standard-server/shared` contains internal types and utilities shared across the `@standard-server` ecosystem — small helpers for arrays, objects, JSON, iterators, promises, queues, IDs, URIs, and more.
 
-It has no runtime dependencies and works in any JavaScript environment. The package exists so the other `@standardserver` packages can share these building blocks without duplication; its API follows their needs and is not designed for direct use in applications.
+It has no runtime dependencies and works in any JavaScript environment. The package exists so the other `@standard-server` packages can share these building blocks without duplication; its API follows their needs and is not designed for direct use in applications.
 
 Standard Server ships as a small ecosystem of packages:
 
-| Package                                                                                                             | Description                                                                 |
-| ------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| [`@standardserver/core`](https://github.com/middleapi/standardserver/blob/main/packages/core/README.md)             | The shared contract: types, body parsing rules, validators, and SSE helpers |
-| [`@standardserver/fetch`](https://github.com/middleapi/standardserver/blob/main/packages/fetch/README.md)           | Fetch API adapter for browsers, workers, and other Fetch-based runtimes     |
-| [`@standardserver/node`](https://github.com/middleapi/standardserver/blob/main/packages/node/README.md)             | Node.js HTTP and HTTP/2 adapter                                             |
-| [`@standardserver/fastify`](https://github.com/middleapi/standardserver/blob/main/packages/fastify/README.md)       | Fastify adapter built on the Node.js adapter                                |
-| [`@standardserver/aws-lambda`](https://github.com/middleapi/standardserver/blob/main/packages/aws-lambda/README.md) | AWS Lambda adapter with response streaming                                  |
-| [`@standardserver/peer`](https://github.com/middleapi/standardserver/blob/main/packages/peer/README.md)             | Message-based adapter for WebSocket, MessagePort, and custom transports     |
-| [`@standardserver/shared`](https://github.com/middleapi/standardserver/blob/main/packages/shared/README.md)         | Internal utilities shared across the ecosystem                              |
+| Package                                                                                                               | Description                                                                 |
+| --------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| [`@standard-server/core`](https://github.com/middleapi/standard-server/blob/main/packages/core/README.md)             | The shared contract: types, body parsing rules, validators, and SSE helpers |
+| [`@standard-server/fetch`](https://github.com/middleapi/standard-server/blob/main/packages/fetch/README.md)           | Fetch API adapter for browsers, workers, and other Fetch-based runtimes     |
+| [`@standard-server/node`](https://github.com/middleapi/standard-server/blob/main/packages/node/README.md)             | Node.js HTTP and HTTP/2 adapter                                             |
+| [`@standard-server/fastify`](https://github.com/middleapi/standard-server/blob/main/packages/fastify/README.md)       | Fastify adapter built on the Node.js adapter                                |
+| [`@standard-server/aws-lambda`](https://github.com/middleapi/standard-server/blob/main/packages/aws-lambda/README.md) | AWS Lambda adapter with response streaming                                  |
+| [`@standard-server/peer`](https://github.com/middleapi/standard-server/blob/main/packages/peer/README.md)             | Message-based adapter for WebSocket, MessagePort, and custom transports     |
+| [`@standard-server/shared`](https://github.com/middleapi/standard-server/blob/main/packages/shared/README.md)         | Internal utilities shared across the ecosystem                              |
 
 ## Learn more
 
-For the project overview and the public contract of the ecosystem, see the [core documentation](https://github.com/middleapi/standardserver/blob/main/packages/core/README.md).
+For the project overview and the public contract of the ecosystem, see the [core documentation](https://github.com/middleapi/standard-server/blob/main/packages/core/README.md).
 
 ## Sponsors
 
@@ -127,4 +127,4 @@ With thanks to [36 past sponsors](https://htmlpreview.github.io/?https://github.
 
 ## License
 
-Distributed under the MIT License. See [LICENCE](https://github.com/middleapi/standardserver/blob/main/LICENCE) for more information.
+Distributed under the MIT License. See [LICENCE](https://github.com/middleapi/standard-server/blob/main/LICENCE) for more information.

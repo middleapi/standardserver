@@ -1,4 +1,4 @@
-# @standardserver/bun
+# @standard-server/bun
 
 ## Sponsors
 

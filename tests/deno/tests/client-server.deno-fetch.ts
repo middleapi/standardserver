@@ -1,5 +1,5 @@
 import type { ClientServerHandler, ClientServerTest } from './client-server'
-import { toFetchBody, toFetchHeaders, toFetchResponse, toStandardLazyRequest, toStandardLazyResponse } from '@standardserver/fetch'
+import { toFetchBody, toFetchHeaders, toFetchResponse, toStandardLazyRequest, toStandardLazyResponse } from '@standard-server/fetch'
 import { NOT_FOUND_HANDLER } from './client-server'
 
 export function createDenoFetchClientServerTest(): ClientServerTest {

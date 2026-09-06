@@ -3,8 +3,8 @@ import type { AddressInfo } from 'node:net'
 import type { ClientServerTest } from './client-server'
 import * as https from 'node:https'
 import { Readable } from 'node:stream'
-import { toFetchBody, toFetchHeaders, toStandardLazyResponse } from '@standardserver/fetch'
-import { sendStandardResponse, toStandardLazyRequest } from '@standardserver/node'
+import { toFetchBody, toFetchHeaders, toStandardLazyResponse } from '@standard-server/fetch'
+import { sendStandardResponse, toStandardLazyRequest } from '@standard-server/node'
 import { generateTlsCert } from './tls'
 
 export function createNodeHttpsClientServerTest(): ClientServerTest {

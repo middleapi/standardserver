@@ -1,4 +1,4 @@
-# @standardserver/deno
+# @standard-server/deno
 
 ## Sponsors
 

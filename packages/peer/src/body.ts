@@ -1,8 +1,8 @@
-import type { StandardBody, StandardBodyHint, StandardHeaders } from '@standardserver/core'
-import type { AsyncCleanupFn } from '@standardserver/shared'
+import type { StandardBody, StandardBodyHint, StandardHeaders } from '@standard-server/core'
+import type { AsyncCleanupFn } from '@standard-server/shared'
 import type { PeerEventStreamMessage, PeerOctetStreamMessage, PeerRequestMessage, PeerResponseMessage } from './types'
-import { flattenStandardHeader, generateContentDisposition, getFilenameFromContentDisposition } from '@standardserver/core'
-import { isAsyncIteratorObject, Queue } from '@standardserver/shared'
+import { flattenStandardHeader, generateContentDisposition, getFilenameFromContentDisposition } from '@standard-server/core'
+import { isAsyncIteratorObject, Queue } from '@standard-server/shared'
 import { toAsyncIteratorObject } from './event-stream'
 import { toOctetStream } from './octet-stream'
 

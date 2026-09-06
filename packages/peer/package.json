@@ -1,5 +1,5 @@
 {
-  "name": "@standardserver/peer",
+  "name": "@standard-server/peer",
   "type": "module",
   "version": "0.8.3",
   "description": "Message-based adapter for Standard Server: transport-agnostic requests, responses, and streaming over WebSocket, MessagePort, and custom peer transports",
@@ -8,14 +8,13 @@
     "https://github.com/sponsors/dinwwwh",
     "https://opencollective.com/middleapi"
   ],
-  "homepage": "https://standardserver.dev",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/middleapi/standardserver.git",
+    "url": "git+https://github.com/middleapi/standard-server.git",
     "directory": "packages/peer"
   },
   "keywords": [
-    "standardserver",
+    "standard-server",
     "peer",
     "websocket",
     "messageport",
@@ -50,7 +49,7 @@
     "type:check": "tsc -b"
   },
   "dependencies": {
-    "@standardserver/core": "workspace:*",
-    "@standardserver/shared": "workspace:*"
+    "@standard-server/core": "workspace:*",
+    "@standard-server/shared": "workspace:*"
   }
 }

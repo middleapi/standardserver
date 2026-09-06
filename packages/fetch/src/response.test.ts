@@ -1,4 +1,4 @@
-import type { StandardResponse } from '@standardserver/core'
+import type { StandardResponse } from '@standard-server/core'
 import * as Body from './body'
 import * as Headers from './headers'
 import { toFetchResponse, toStandardLazyResponse } from './response'

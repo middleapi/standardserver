@@ -1,7 +1,7 @@
 import { Buffer } from 'node:buffer'
 import { Readable, Writable } from 'node:stream'
 import FastifyCookie from '@fastify/cookie'
-import * as StandardServerNode from '@standardserver/node'
+import * as StandardServerNode from '@standard-server/node'
 import Fastify from 'fastify'
 import request from 'supertest'
 import { sendStandardResponse } from './response'

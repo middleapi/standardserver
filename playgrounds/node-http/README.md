@@ -1,6 +1,6 @@
-# StandardServer Playground
+# Standard Server Playground
 
-This is a playground for [StandardServer](https://standardserver.dev) + [Node.js HTTP](https://nodejs.org/api/http.html).
+This is a playground for [Standard Server](https://github.com/middleapi/standard-server) + [Node.js HTTP](https://nodejs.org/api/http.html).
 
 ## Getting Started
 

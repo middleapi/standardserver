@@ -1,6 +1,6 @@
-import type { StandardLazyRequest } from '@standardserver/core'
+import type { StandardLazyRequest } from '@standard-server/core'
 import type { AnyAPIGatewayProxyEvent, HttpResponseStream } from './types'
-import { toAbortSignal } from '@standardserver/node'
+import { toAbortSignal } from '@standard-server/node'
 import { toStandardBody } from './body'
 import { toStandardHeaders } from './headers'
 import { toStandardUrl } from './url'

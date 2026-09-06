@@ -1,5 +1,5 @@
-import { ErrorEvent, unwrapEvent, withEventMeta } from '@standardserver/core'
-import { isAsyncIteratorObject, sleep } from '@standardserver/shared'
+import { ErrorEvent, unwrapEvent, withEventMeta } from '@standard-server/core'
+import { isAsyncIteratorObject, sleep } from '@standard-server/shared'
 import { expectPeerMessages } from './client-server'
 import { createExpressjsClientServerTest } from './client-server.expressjs'
 import { createFastifyClientServerTest } from './client-server.fastify'

@@ -1,7 +1,7 @@
-import type { StandardBody, StandardBodyHint, StandardHeaders } from '@standardserver/core'
+import type { StandardBody, StandardBodyHint, StandardHeaders } from '@standard-server/core'
 import type { ToEventStreamOptions } from './event-stream'
-import { generateContentDisposition, getFilenameFromContentDisposition, resolveStandardBodyHint } from '@standardserver/core'
-import { isAsyncIteratorObject, parseEmptyableJSON, stringifyJSON } from '@standardserver/shared'
+import { generateContentDisposition, getFilenameFromContentDisposition, resolveStandardBodyHint } from '@standard-server/core'
+import { isAsyncIteratorObject, parseEmptyableJSON, stringifyJSON } from '@standard-server/shared'
 import { toAsyncIteratorObject, toEventStream } from './event-stream'
 
 export interface ToStandardBodyOptions {

@@ -1,4 +1,4 @@
-import type { AsyncIteratorClass } from '@standardserver/shared'
+import type { AsyncIteratorClass } from '@standard-server/shared'
 import type { APIGatewayProxyEvent } from './types'
 import { Buffer } from 'node:buffer'
 import { toStandardBody } from './body'

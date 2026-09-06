@@ -1,4 +1,4 @@
-import type { StandardUrl } from '@standardserver/core'
+import type { StandardUrl } from '@standard-server/core'
 import type { AnyAPIGatewayProxyEvent } from './types'
 
 /**

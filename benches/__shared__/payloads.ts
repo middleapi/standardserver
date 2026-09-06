@@ -1,4 +1,4 @@
-import { stringifyJSON } from '@standardserver/shared'
+import { stringifyJSON } from '@standard-server/shared'
 
 const SIZE_1KB = 1024
 const SIZE_10KB = 10 * SIZE_1KB

@@ -1,5 +1,5 @@
-import type { StandardLazyRequest } from '@standardserver/core'
-import * as StandardServerNode from '@standardserver/node'
+import type { StandardLazyRequest } from '@standard-server/core'
+import * as StandardServerNode from '@standard-server/node'
 import Fastify from 'fastify'
 import request from 'supertest'
 import { toStandardLazyRequest } from './request'

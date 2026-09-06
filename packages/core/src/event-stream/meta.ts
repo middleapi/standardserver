@@ -1,5 +1,5 @@
 import type { EventMeta } from './types'
-import { getOrBind, isTypescriptObject } from '@standardserver/shared'
+import { getOrBind, isTypescriptObject } from '@standard-server/shared'
 import { assertEventStreamMessageComment, assertEventStreamMessageId, assertEventStreamMessageRetry } from './encoder'
 
 const EVENT_META_SYMBOL = Symbol.for('STANDARDSERVER_EVENT_META')

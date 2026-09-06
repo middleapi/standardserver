@@ -1,5 +1,5 @@
 import type { PeerMessage } from './types'
-import { stringifyJSON } from '@standardserver/shared'
+import { stringifyJSON } from '@standard-server/shared'
 import { isPeerMessage } from './validators'
 
 /**

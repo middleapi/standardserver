@@ -1,6 +1,6 @@
-import type { StandardLazyResponse, StandardRequest } from '@standardserver/core'
+import type { StandardLazyResponse, StandardRequest } from '@standard-server/core'
 import type { ClientPeerSendMessage, PeerCancelMessage, PeerEventStreamMessage, PeerOctetStreamMessage, PeerRequestMessage, PeerResponseMessage, PeerStreamCancelMessage } from './types'
-import { AbortError, AsyncIteratorClass, isAsyncIteratorObject, promiseWithResolvers, sleep } from '@standardserver/shared'
+import { AbortError, AsyncIteratorClass, isAsyncIteratorObject, promiseWithResolvers, sleep } from '@standard-server/shared'
 import * as Body from './body'
 import { ClientPeer } from './client'
 

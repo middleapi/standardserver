@@ -1,5 +1,5 @@
-import type { StandardLazyRequest, StandardLazyResponse, StandardRequest, StandardResponse } from '@standardserver/core'
-import { sleep } from '@standardserver/shared'
+import type { StandardLazyRequest, StandardLazyResponse, StandardRequest, StandardResponse } from '@standard-server/core'
+import { sleep } from '@standard-server/shared'
 
 export type ClientServerHandler = (request: StandardLazyRequest) => Promise<StandardResponse>
 

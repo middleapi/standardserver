@@ -1,6 +1,6 @@
-import type { StandardHeaders } from '@standardserver/core'
+import type { StandardHeaders } from '@standard-server/core'
 import type { AnyAPIGatewayProxyEvent } from './types'
-import { toArray } from '@standardserver/shared'
+import { toArray } from '@standard-server/shared'
 
 /**
  * Convert API Gateway proxy event headers to standard headers.

@@ -1,5 +1,5 @@
 {
-  "name": "@standardserver/hono-node-playground",
+  "name": "@standard-server/hono-node-playground",
   "type": "module",
   "version": "0.8.3",
   "private": true,
@@ -9,8 +9,8 @@
   },
   "devDependencies": {
     "@hono/node-server": "^2.0.12",
-    "@standardserver/core": "latest",
-    "@standardserver/fetch": "latest",
+    "@standard-server/core": "latest",
+    "@standard-server/fetch": "latest",
     "@types/node": "^26.4.1",
     "tsx": "^4.22.4",
     "typescript": "^6.0.3"

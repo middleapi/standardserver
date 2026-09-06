@@ -1,7 +1,7 @@
-import type { StandardBodyHint, StandardHeaders } from '@standardserver/core'
+import type { StandardBodyHint, StandardHeaders } from '@standard-server/core'
 import type { PeerRequestMessage } from './types'
-import { generateContentDisposition } from '@standardserver/core'
-import { AsyncIteratorClass, isAsyncIteratorObject, Queue } from '@standardserver/shared'
+import { generateContentDisposition } from '@standard-server/core'
+import { AsyncIteratorClass, isAsyncIteratorObject, Queue } from '@standard-server/shared'
 import { encodeAtomicStandardBody, toStandardBody } from './body'
 
 describe('toStandardBody', () => {

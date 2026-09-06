@@ -1,4 +1,4 @@
-import { AsyncIteratorClass, isAsyncIteratorObject, sleep } from '@standardserver/shared'
+import { AsyncIteratorClass, isAsyncIteratorObject, sleep } from '@standard-server/shared'
 import { expect } from '@std/expect'
 import { afterAll, beforeEach, describe, it } from '@std/testing/bdd'
 import { NOT_FOUND_HANDLER, waitFor } from './client-server'
