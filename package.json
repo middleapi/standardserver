@@ -17,10 +17,10 @@
     "test": "pnpm run -r test && vitest run",
     "test:coverage": "pnpm run -r test && vitest run --coverage",
     "bench": "vitest bench --run",
-    "lint": "eslint --max-warnings=0 .",
-    "lint:fix": "eslint --max-warnings=0 --fix .",
+    "lint": "eslint .",
+    "lint:fix": "eslint --fix .",
     "repo:fix": "sherif --fix",
-    "sponsors:sync": "node scripts/sync-sponsors.ts && eslint --max-warnings=0 --fix **/README.md"
+    "sponsors:sync": "node scripts/sync-sponsors.ts && eslint --fix **/README.md"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^9.2.0",
@@ -60,6 +60,6 @@
     "pre-commit": "pnpm lint-staged"
   },
   "lint-staged": {
-    "*": "eslint --no-warn-ignored --max-warnings=0 --fix"
+    "*": "eslint --no-warn-ignored --fix"
   }
 }
