@@ -2,8 +2,8 @@ import type { EventMeta } from './types'
 import { getOrBind, isTypescriptObject } from '@standard-server/shared'
 import { assertEventStreamMessageComment, assertEventStreamMessageId, assertEventStreamMessageRetry } from './encoder'
 
-const EVENT_META_SYMBOL = Symbol.for('STANDARDSERVER_EVENT_META')
-const EVENT_SOURCE_SYMBOL = Symbol.for('STANDARDSERVER_EVENT_SOURCE')
+const EVENT_META_SYMBOL = Symbol.for('STANDARD_SERVER_EVENT_META')
+const EVENT_SOURCE_SYMBOL = Symbol.for('STANDARD_SERVER_EVENT_SOURCE')
 
 /**
  * Returns a new iterator *event value* with attached, validated metadata.
